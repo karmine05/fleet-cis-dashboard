@@ -1,61 +1,10 @@
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    image: fleet-cis-dashboard-backend
-    command: gunicorn --bind 0.0.0.0:5001 --workers 4 --threads 2 backend.app:app
-    environment:
-      - FLASK_APP=backend/app.py
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
-      - REDIS_URL=redis://redis:6379/0
-      - FLEET_URL=https://192.168.89.92/
-      - FLEET_API_TOKEN=a+nbpzCn6J3+WuBmyVn89wVaaXUFzEAfIA+C042j3SuAfsjYBuD0elskzEj2af2FVuK5soHVJTNRDK6dqcsLAQ==
-      - PORT=5001
-      - PYTHONPATH=/app/backend
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
-  sync:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    image: fleet-cis-dashboard-backend
-    command: python backend/sync_daemon.py
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
-      - FLEET_URL=https://192.168.89.92/
-      - FLEET_API_TOKEN=a+nbpzCn6J3+WuBmyVn89wVaaXUFzEAfIA+C042j3SuAfsjYBuD0elskzEj2af2FVuK5soHVJTNRDK6dqcsLAQ==
-      - SYNC_INTERVAL_MINUTES=15
-      - PYTHONPATH=/app/backend
-    depends_on:
-      db:
-        condition: service_healthy
-      backend:
-        condition: service_started
-    restart: always
-
-  nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "8081:80"
-    depends_on:
-      - backend
-
   db:
     image: postgres:16-alpine
-    restart: always
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=fleet_cis
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fleet_cis
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -63,15 +12,73 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - fleet_cis_network
 
   redis:
     image: redis:7-alpine
-    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fleet_cis_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: fleet-cis-dashboard-backend
     ports:
-      - "6379:6379"
+      - "5001:5001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
+      - REDIS_URL=redis://redis:6379/0
+      - FLEET_URL=${FLEET_URL}
+      - FLEET_API_TOKEN=${FLEET_API_TOKEN}
+      - ALLOWED_ORIGINS=http://localhost:8081
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fleet_cis_network
+
+  sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: fleet-cis-dashboard-backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
+      - REDIS_URL=redis://redis:6379/0
+      - FLEET_URL=${FLEET_URL}
+      - FLEET_API_TOKEN=${FLEET_API_TOKEN}
+      - SYNC_INTERVAL_MINUTES=15
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - fleet_cis_network
+    command: python backend/sync_daemon.py
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
     volumes:
-      - redis_data:/data
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - fleet_cis_network
 
 volumes:
   postgres_data:
-  redis_data:
+
+networks:
+  fleet_cis_network:
+    driver: bridge

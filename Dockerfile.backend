@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Set Python path to include backend directory
+ENV PYTHONPATH=/app/backend
+
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser
 
@@ -22,4 +25,4 @@ USER appuser
 EXPOSE 5001
 
 # Default command (can be overridden by docker-compose)
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--threads", "2", "backend.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--threads", "2", "app:app"]
