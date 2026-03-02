@@ -9,8 +9,8 @@ services:
       - FLASK_APP=backend/app.py
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
       - REDIS_URL=redis://redis:6379/0
-      - FLEET_URL=https://example[.]com
-      - FLEET_API_TOKEN=<add your token>
+      - FLEET_URL=https://192.168.89.92/
+      - FLEET_API_TOKEN=a+nbpzCn6J3+WuBmyVn89wVaaXUFzEAfIA+C042j3SuAfsjYBuD0elskzEj2af2FVuK5soHVJTNRDK6dqcsLAQ==
       - PORT=5001
       - PYTHONPATH=/app/backend
     depends_on:
@@ -27,8 +27,8 @@ services:
     command: python backend/sync_daemon.py
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
-      - FLEET_URL=https://example[.]com
-      - FLEET_API_TOKEN=<add your token>
+      - FLEET_URL=https://192.168.89.92/
+      - FLEET_API_TOKEN=a+nbpzCn6J3+WuBmyVn89wVaaXUFzEAfIA+C042j3SuAfsjYBuD0elskzEj2af2FVuK5soHVJTNRDK6dqcsLAQ==
       - SYNC_INTERVAL_MINUTES=15
       - PYTHONPATH=/app/backend
     depends_on:

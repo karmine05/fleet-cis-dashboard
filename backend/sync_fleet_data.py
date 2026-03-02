@@ -61,7 +61,7 @@ def fetch_hosts_generator():
     page = 0
     while True:
         try:
-            url = f"{FLEET_URL}/api/v1/fleet/hosts?per_page={HOSTS_PER_PAGE}&page={page}"
+            url = f"{FLEET_URL}/api/v1/fleet/hosts?per_page={HOSTS_PER_PAGE}&page={page}&populate_labels=true"
             response = requests.get(url, headers=get_fleet_headers(), timeout=30, verify=FLEET_SSL_VERIFY)
             response.raise_for_status()
             hosts = response.json().get("hosts", [])
@@ -88,6 +88,24 @@ def fetch_labels():
         response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
         return response.json().get("labels", [])
     except Exception: return []
+
+def fetch_hosts_by_label(label_id):
+    """Fetch all host IDs that belong to a specific label."""
+    if not FLEET_TOKEN: return []
+    host_ids = []
+    page = 0
+    while True:
+        try:
+            url = f"{FLEET_URL}/api/v1/fleet/hosts?per_page={HOSTS_PER_PAGE}&page={page}&label_id={label_id}"
+            response = requests.get(url, headers=get_fleet_headers(), timeout=30, verify=FLEET_SSL_VERIFY)
+            hosts = response.json().get("hosts", [])
+            if not hosts:
+                break
+            host_ids.extend([h['id'] for h in hosts])
+            page += 1
+        except Exception:
+            break
+    return host_ids
 
 def fetch_host_details(host_id):
     try:
@@ -199,22 +217,29 @@ def sync_data():
         hosts_upsert_buffer = []
         host_ids_processed = set()
         hosts_changed_ids = []
-        
+        host_labels_buffer = []  # Buffer for host-label associations
+
         print("  🔄 Fetching hosts...")
-        
+
         for batch in fetch_hosts_generator():
             for host in batch:
                 hid = host['id']
                 seen_time = host.get('seen_time') # ISO String
                 # Compare Logic: If local doesn't exist or seen_time changed
                 # Simplification: Always update 'last_seen', but only trigger deep sync if changed significantly
-                
+
                 hosts_upsert_buffer.append((
                     hid, host['hostname'], host['uuid'], host['platform'],
                     host['os_version'], host['osquery_version'], host.get('team_id'),
                     host.get('team_name'), host['status'], seen_time,
                     datetime.now()
                 ))
+
+                # Extract labels from host response
+                host_labels_list = host.get('labels', [])
+                for label in host_labels_list:
+                    host_labels_buffer.append((hid, label['id']))
+
                 hosts_changed_ids.append(hid) # For now assume all valid for label sync (optimize later)
                 host_ids_processed.add(hid)
             
@@ -272,19 +297,31 @@ def sync_data():
                 cur.execute("DELETE FROM fleet_hosts WHERE host_id = ANY(%s)", (list(stale_ids),))
             print(f"  ✅ Removed {len(stale_ids)} stale hosts.")
 
-        # 3. Host Labels (Heavy Operation - Only doing for a subset if possible)
-        # For 100K hosts, iterating one by one is impossible via API.
-        # Fleet doesn't have a "bulk get host labels" endpoint efficiently.
-        # Strategy: Rely on manual triggers or background slow sync?
-        # OR: Check if `fetch_hosts` includes labels? (Usually no, usually summary)
-        # Fleet API v1/hosts?per_page=X Response includes 'labels' usually?
-        # If yes, we can do it in the loop above.
-        # Checking implementation: `fetch_host_details` calls /hosts/{id}.
-        # Standard /hosts response usually DOES NOT include labels list.
-        # WE WILL SKIP label sync for every host to save API calls, 
-        # or we implement a separate "Label Sync" phase that runs slower.
-        
-        pass # Skipping label sync for 100K scalability for now, unless critical.
+        # 3. Host Labels - Query hosts by each label
+        print("  🔄 Syncing host-label associations...")
+        all_labels = fetch_labels()
+        host_labels_buffer = []
+
+        for label in all_labels:
+            label_id = label['id']
+            host_ids_for_label = fetch_hosts_by_label(label_id)
+            for hid in host_ids_for_label:
+                host_labels_buffer.append((hid, label_id))
+
+        if host_labels_buffer:
+            print(f"  🔄 Saving {len(host_labels_buffer)} host-label associations...")
+            # Delete existing labels for processed hosts
+            processed_host_ids = list(set(h for h, _ in host_labels_buffer))
+            if processed_host_ids:
+                with db.get_db_cursor(commit=True) as cur:
+                    cur.execute("DELETE FROM host_labels WHERE host_id = ANY(%s)", (processed_host_ids,))
+            # Insert new associations
+            with db.get_db_cursor(commit=True) as cur:
+                extras.execute_values(cur, """
+                    INSERT INTO host_labels (host_id, label_id) VALUES %s
+                    ON CONFLICT DO NOTHING
+                """, host_labels_buffer)
+            print(f"  ✅ Synced {len(host_labels_buffer)} host-label associations.")
 
         # 4. Policies & Results
         policies = fetch_policies(teams)
