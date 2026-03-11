@@ -1,6 +1,5 @@
 # Sensitive Data
 .env
-.env.*
 secrets/
 
 # Databases
