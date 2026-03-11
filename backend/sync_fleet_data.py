@@ -334,7 +334,15 @@ def sync_data():
                     policy_id, policy_name, cis_control, description, resolution, query,
                     category, severity, platform
                 ) VALUES %s
-                ON CONFLICT (policy_id) DO UPDATE SET policy_name=EXCLUDED.policy_name
+                ON CONFLICT (policy_id) DO UPDATE SET 
+                    policy_name=EXCLUDED.policy_name,
+                    cis_control=EXCLUDED.cis_control,
+                    description=EXCLUDED.description,
+                    resolution=EXCLUDED.resolution,
+                    query=EXCLUDED.query,
+                    category=EXCLUDED.category,
+                    severity=EXCLUDED.severity,
+                    platform=EXCLUDED.platform
             """, policy_buffer)
             
         # 5. Policy Results (Differential by Counts)
