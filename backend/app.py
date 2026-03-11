@@ -617,11 +617,21 @@ def get_heatmap_data():
     h_query, params = get_filtered_hosts_subquery()
     
     query = f"""
-        SELECT p.cis_control, pr.status, COUNT(*) as count
-        FROM policy_results pr
-        JOIN cis_policies p ON pr.policy_id = p.policy_id
-        WHERE pr.host_id IN ({h_query})
-        GROUP BY p.cis_control, pr.status
+        SELECT 
+            cis_control,
+            COUNT(*) as total_count,
+            SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count
+        FROM (
+            SELECT 
+                p.cis_control, 
+                pr.host_id, 
+                SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
+            FROM policy_results pr
+            JOIN cis_policies p ON pr.policy_id = p.policy_id
+            WHERE pr.host_id IN ({h_query}) AND p.cis_control IS NOT NULL
+            GROUP BY p.cis_control, pr.host_id
+        ) sq
+        GROUP BY cis_control
     """
     
     with db.get_db_cursor() as cur:
@@ -634,9 +644,8 @@ def get_heatmap_data():
             if cis_id not in cis_stats:
                 cis_stats[cis_id] = {'pass': 0, 'total': 0}
             
-            cis_stats[cis_id]['total'] += row['count']
-            if row['status'] == 'pass':
-                cis_stats[cis_id]['pass'] += row['count']
+            cis_stats[cis_id]['total'] += row['total_count']
+            cis_stats[cis_id]['pass'] += row['pass_count']
 
         platform = request.args.get('platform', '')
         heatmap_data = []
@@ -799,13 +808,23 @@ def get_architecture():
     platform = request.args.get('platform', '')
 
     with db.get_db_cursor() as cur:
-        # Get all policy results for these hosts
+        # Get host-level compliance per cis_control
         cur.execute(f"""
-            SELECT p.cis_control, pr.status, COUNT(*) as count
-            FROM policy_results pr
-            JOIN cis_policies p ON pr.policy_id = p.policy_id
-            WHERE pr.host_id IN ({h_query})
-            GROUP BY p.cis_control, pr.status
+            SELECT 
+                cis_control,
+                SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count,
+                COUNT(*) as total_count
+            FROM (
+                SELECT 
+                    p.cis_control, 
+                    pr.host_id, 
+                    SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
+                FROM policy_results pr
+                JOIN cis_policies p ON pr.policy_id = p.policy_id
+                WHERE pr.host_id IN ({h_query}) AND p.cis_control IS NOT NULL
+                GROUP BY p.cis_control, pr.host_id
+            ) sq
+            GROUP BY cis_control
         """, params)
         rows = cur.fetchall()
 
@@ -822,17 +841,17 @@ def get_architecture():
             cis_id = row['cis_control']
             if not cis_id: continue
 
-            count = row['count']
-            is_pass = (row['status'] == 'pass')
+            count = row['total_count']
+            pass_count = row['pass_count']
 
             # Global Stats
             total_checks += count
-            if is_pass: total_passed += count
+            total_passed += pass_count
 
             # CIS Stats
             if cis_id not in cis_stats: cis_stats[cis_id] = {'pass': 0, 'total': 0}
             cis_stats[cis_id]['total'] += count
-            if is_pass: cis_stats[cis_id]['pass'] += count
+            cis_stats[cis_id]['pass'] += pass_count
 
             # Map to Frameworks
             mapping = get_d3fend_entry(cis_id, platform)
@@ -843,7 +862,7 @@ def get_architecture():
                 if d3_tech:
                     if d3_tech not in d3fend_tech_stats: d3fend_tech_stats[d3_tech] = {'pass': 0, 'total': 0}
                     d3fend_tech_stats[d3_tech]['total'] += count
-                    if is_pass: d3fend_tech_stats[d3_tech]['pass'] += count
+                    d3fend_tech_stats[d3_tech]['pass'] += pass_count
 
                 # 2. MITRE Stats
                 attack_id = mapping.get('attack_id')
@@ -854,13 +873,13 @@ def get_architecture():
                     # Attack ID Stats
                     if attack_id not in mitre_stats: mitre_stats[attack_id] = {'pass': 0, 'total': 0, 'name': meta['name'], 'tactic': tactic}
                     mitre_stats[attack_id]['total'] += count
-                    if is_pass: mitre_stats[attack_id]['pass'] += count
+                    mitre_stats[attack_id]['pass'] += pass_count
                     
                     # Tactic Stats
                     if tactic not in tactic_stats: tactic_stats[tactic] = {'pass': 0, 'total': 0}
                     tactic_stats[tactic]['total'] += count
-                    if is_pass: tactic_stats[tactic]['pass'] += count
-
+                    tactic_stats[tactic]['pass'] += pass_count
+                    
         # --- Check for empty results ---
         if total_checks == 0:
              return jsonify({
