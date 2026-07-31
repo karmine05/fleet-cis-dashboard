@@ -38,6 +38,7 @@ services:
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
       - ALLOWED_ORIGINS=http://localhost:8081
+      - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
     depends_on:
       db:
         condition: service_healthy
@@ -56,7 +57,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
-      - SYNC_INTERVAL_MINUTES=15
+      - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
     depends_on:
       db:
         condition: service_healthy
