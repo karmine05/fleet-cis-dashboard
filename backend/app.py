@@ -51,6 +51,7 @@ VALID_CONFIG_KEYS = {
 
 # Import new DB module
 import db
+import policy_catalog
 
 # Load environment variables
 # Load environment variables
@@ -700,37 +701,56 @@ def get_safeguard_compliance():
 @app.route('/api/heatmap-data', methods=['GET'])
 def get_heatmap_data():
     """
-    Heat map grain: (host.platform, cis_control) — never collapse CIS IDs across OS.
-    risk_score = fail_hosts / fleet_size * 100 (fleet exposure, not in-control pass rate alone).
+    Heat map grain: policy (or cis_safeguard_id aggregation).
+
+    Primary identity comes from fleet_policies tags:
+      - cis_safeguard_ids (e.g. CIS8.4)
+      - cis_category / benchmark / control slug
+    D3FEND is derived from safeguard_d3fend.json (category + CIS Controls function),
+    NOT the legacy benchmark-section CIS→ATT&CK dump CSVs.
+
+    risk_score = fail_hosts / fleet_size * 100
     """
     h_query, params = get_filtered_hosts_subquery()
     filter_platform = request.args.get('platform', '')
+    # group_mode query param reserved; frontend groups client-side
 
     query = f"""
         SELECT
-            platform,
-            cis_control,
+            p.policy_id,
+            p.policy_name,
+            p.cis_control,
+            p.platform AS policy_platform,
+            p.cis_safeguard_ids,
+            p.benchmark,
+            p.control_slug,
+            p.cis_category,
+            p.cis_subcategory,
+            p.framework,
+            p.level,
+            p.catalog_matched,
+            h.platform AS host_platform,
             COUNT(*) as total_count,
             SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count
         FROM (
             SELECT
-                h.platform,
-                p.cis_control,
+                pr.policy_id,
                 pr.host_id,
                 SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
             FROM policy_results pr
-            JOIN cis_policies p ON pr.policy_id = p.policy_id
-            JOIN fleet_hosts h ON pr.host_id = h.host_id
             WHERE pr.host_id IN ({h_query})
-              AND p.cis_control IS NOT NULL
-              AND h.platform IS NOT NULL
-            GROUP BY h.platform, p.cis_control, pr.host_id
+            GROUP BY pr.policy_id, pr.host_id
         ) sq
-        GROUP BY platform, cis_control
+        JOIN cis_policies p ON sq.policy_id = p.policy_id
+        JOIN fleet_hosts h ON sq.host_id = h.host_id
+        GROUP BY
+            p.policy_id, p.policy_name, p.cis_control, p.platform,
+            p.cis_safeguard_ids, p.benchmark, p.control_slug,
+            p.cis_category, p.cis_subcategory, p.framework, p.level,
+            p.catalog_matched, h.platform
     """
 
     with db.get_db_cursor() as cur:
-        # Fleet size in current filter (denominator for exposure)
         cur.execute(f"SELECT COUNT(*) as n FROM ({h_query}) hosts", params)
         fleet_size = cur.fetchone()['n'] or 0
 
@@ -739,50 +759,86 @@ def get_heatmap_data():
 
         heatmap_data = []
         attack_counts = {}
+        catalog_hits = 0
+        safeguard_hits = 0
 
         for row in rows:
-            host_plat = row['platform'] or 'unknown'
-            cis_id = row['cis_control'] or 'Unknown'
+            host_plat = row['host_platform'] or row['policy_platform'] or 'unknown'
             total = int(row['total_count'] or 0)
             passed = int(row['pass_count'] or 0)
             fail_hosts = max(0, total - passed)
             pass_rate = (passed / total * 100) if total else 0.0
-            # Exposure: share of filtered fleet failing this control
             risk_score = (fail_hosts / fleet_size * 100) if fleet_size else 0.0
 
-            mapping = enrich_mapping(cis_id, host_plat)
-            attack_id = mapping['attack_id']
+            sids = row['cis_safeguard_ids'] or []
+            if isinstance(sids, str):
+                sids = [sids]
+            primary_sg = policy_catalog.primary_safeguard(list(sids)) if sids else ''
+
+            # Prefer safeguard-based D3FEND map; fallback unmapped
+            if primary_sg:
+                mapping = policy_catalog.mapping_for_safeguard(primary_sg)
+                safeguard_hits += 1
+            else:
+                mapping = policy_catalog.mapping_for_safeguard('')
+
+            if row.get('catalog_matched'):
+                catalog_hits += 1
+
+            attack_id = (mapping.get('attack_id') or '').strip()
             if attack_id and attack_id not in ('Unmapped', 'N/A'):
                 attack_counts[attack_id] = attack_counts.get(attack_id, 0) + 1
 
+            section = row['cis_control'] or ''
+            name = row['policy_name'] or ''
             heatmap_data.append({
-                "cis_id": cis_id,
+                "policy_id": row['policy_id'],
+                "policy_name": name,
+                "cis_id": section,  # legacy benchmark section for filters
+                "cis_section": section,
+                "cis_safeguard_id": primary_sg or 'CISNone',
+                "cis_safeguard_ids": list(sids),
                 "platform": host_plat,
-                "key": f"{host_plat}:{cis_id}",
+                "benchmark": row.get('benchmark') or '',
+                "control_slug": row.get('control_slug') or '',
+                "cis_category": row.get('cis_category') or '',
+                "cis_subcategory": row.get('cis_subcategory') or '',
+                "framework": row.get('framework') or '',
+                "level": row.get('level') or '',
+                "key": f"{host_plat}:{row['policy_id']}",
                 "pass": passed,
                 "total": total,
                 "fail": fail_hosts,
                 "pass_rate": round(pass_rate, 1),
                 "risk_score": round(risk_score, 1),
                 "fleet_size": fleet_size,
-                "d3fend_id": mapping['d3fend_id'],
-                "d3fend_technique": mapping['d3fend_technique'],
-                "d3fend_tactic": mapping['d3fend_tactic'],
-                "d3fend_tactic_raw": mapping['d3fend_tactic_raw'],
-                "attack_id": attack_id,
-                "mapping_confidence": mapping['mapping_confidence'],
+                "d3fend_id": mapping.get('d3fend_id') or 'N/A',
+                "d3fend_technique": mapping.get('d3fend_technique') or 'Unmapped',
+                "d3fend_tactic": mapping.get('d3fend_tactic') or 'Unmapped',
+                "attack_id": attack_id or '',
+                "mapping_confidence": mapping.get('mapping_confidence') or 'unmapped',
+                "mapping_source": mapping.get('mapping_source') or 'none',
+                # Prefer fleet_policies category label over official CIS Controls title
+                # (benchmark tags reuse CIS* ids that are not always Controls v8.1 semantics)
+                "safeguard_title": (
+                    row.get('cis_category')
+                    or mapping.get('title')
+                    or mapping.get('safeguard_title')
+                    or primary_sg
+                ),
+                "catalog_matched": bool(row.get('catalog_matched')),
             })
 
-        heatmap_data.sort(key=lambda x: (x['platform'], x['cis_id']))
+        heatmap_data.sort(key=lambda x: (x['platform'], x['cis_safeguard_id'], x['policy_name']))
 
         coarse_techniques = sorted(
             aid for aid, n in attack_counts.items() if n >= COARSE_ATTACK_THRESHOLD
         )
-        # Annotate coarse mapping on cells
         for item in heatmap_data:
-            item['mapping_coarse'] = item['attack_id'] in coarse_techniques
+            item['mapping_coarse'] = bool(item['attack_id'] and item['attack_id'] in coarse_techniques)
 
-        platforms_present = sorted({i['platform'] for i in heatmap_data})
+        platforms_present = sorted({i['platform'] for i in heatmap_data if i['platform']})
+        stats = policy_catalog.catalog_stats()
 
         return jsonify({
             "heatmap": heatmap_data,
@@ -792,6 +848,13 @@ def get_heatmap_data():
             "multi_platform": len(platforms_present) > 1,
             "coarse_techniques": coarse_techniques,
             "filter_platform": filter_platform or None,
+            "catalog": {
+                **stats,
+                "matched_rows": catalog_hits,
+                "safeguard_mapped_rows": safeguard_hits,
+                "total_rows": len(heatmap_data),
+            },
+            "identity": "fleet_policies_tags",
         })
 
 @app.route('/api/strategy', methods=['GET'])
@@ -943,28 +1006,28 @@ def get_architecture():
     h_query, params = get_filtered_hosts_subquery()
 
     with db.get_db_cursor() as cur:
-        # Host-level compliance per (platform, cis_control) — no cross-OS collapse
+        # Aggregate by policy × host platform; map via cis_safeguard_ids
         cur.execute(f"""
             SELECT
-                platform,
-                cis_control,
+                h.platform AS host_platform,
+                p.policy_id,
+                p.policy_name,
+                p.cis_safeguard_ids,
+                p.cis_category,
                 SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count,
                 COUNT(*) as total_count
             FROM (
                 SELECT
-                    h.platform,
-                    p.cis_control,
+                    pr.policy_id,
                     pr.host_id,
                     SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
                 FROM policy_results pr
-                JOIN cis_policies p ON pr.policy_id = p.policy_id
-                JOIN fleet_hosts h ON pr.host_id = h.host_id
                 WHERE pr.host_id IN ({h_query})
-                  AND p.cis_control IS NOT NULL
-                  AND h.platform IS NOT NULL
-                GROUP BY h.platform, p.cis_control, pr.host_id
+                GROUP BY pr.policy_id, pr.host_id
             ) sq
-            GROUP BY platform, cis_control
+            JOIN cis_policies p ON sq.policy_id = p.policy_id
+            JOIN fleet_hosts h ON sq.host_id = h.host_id
+            GROUP BY h.platform, p.policy_id, p.policy_name, p.cis_safeguard_ids, p.cis_category
         """, params)
         rows = cur.fetchall()
 
@@ -976,17 +1039,16 @@ def get_architecture():
         total_passed = 0
 
         for row in rows:
-            cis_id = row['cis_control']
-            host_plat = row['platform']
-            if not cis_id:
-                continue
-
             count = row['total_count']
             pass_count = row['pass_count']
             total_checks += count
             total_passed += pass_count
 
-            mapping = enrich_mapping(cis_id, host_plat)
+            sids = row['cis_safeguard_ids'] or []
+            if isinstance(sids, str):
+                sids = [sids]
+            primary = policy_catalog.primary_safeguard(list(sids)) if sids else ''
+            mapping = policy_catalog.mapping_for_safeguard(primary) if primary else policy_catalog.mapping_for_safeguard('')
 
             d3_tech = mapping.get('d3fend_technique')
             if d3_tech and d3_tech != 'Unmapped':
@@ -995,7 +1057,7 @@ def get_architecture():
                 d3fend_tech_stats[d3_tech]['total'] += count
                 d3fend_tech_stats[d3_tech]['pass'] += pass_count
 
-            attack_id = mapping.get('attack_id')
+            attack_id = (mapping.get('attack_id') or '').strip()
             if attack_id and attack_id in MITRE_DATA:
                 meta = MITRE_DATA[attack_id]
                 tactic = meta['tactic']

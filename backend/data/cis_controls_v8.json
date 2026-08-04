@@ -1,0 +1,506 @@
+{
+  "CIS1.1": {
+    "cis_safeguard_id": "CIS1.1",
+    "control": "1",
+    "safeguard": "1.1",
+    "asset_type": "Devices",
+    "security_function": "Identify",
+    "title": "Establish and Maintain Detailed Enterprise Asset Inventory",
+    "description": "Establish and maintain an accurate, detailed, and up-to-date inventory of all enterprise assets with the potential to store or process data, to include: end-user devices (including portable and mobile), network devices, non-computing/IoT devices, and servers. Ensure the inventory records the network address (if static), hardware address, machine name, enterprise asset owner, department for each asset, and whether the asset has been approved to connect to the network. For mobile end-user devices,"
+  },
+  "CIS1.2": {
+    "cis_safeguard_id": "CIS1.2",
+    "control": "1",
+    "safeguard": "1.2",
+    "asset_type": "Devices",
+    "security_function": "Respond",
+    "title": "Address Unauthorized Assets",
+    "description": "Ensure that a process exists to address unauthorized assets on a weekly basis. The enterprise may choose to remove the asset from the network, deny the asset from connecting remotely to the network, or quarantine the asset.                                                                                                                                                                                                                                                                                     "
+  },
+  "CIS2.1": {
+    "cis_safeguard_id": "CIS2.1",
+    "control": "2",
+    "safeguard": "2.1",
+    "asset_type": "Software",
+    "security_function": "Identify",
+    "title": "Establish and Maintain a Software Inventory",
+    "description": "Establish and maintain a detailed inventory of all licensed software installed on enterprise assets. The software inventory must document the title, publisher, initial install/use date, and business purpose for each entry; where appropriate, include the Uniform Resource Locator (URL), app store(s), version(s), deployment mechanism, and decommission date. Review and update the software inventory bi-annually, or more frequently.                                                                      "
+  },
+  "CIS2.2": {
+    "cis_safeguard_id": "CIS2.2",
+    "control": "2",
+    "safeguard": "2.2",
+    "asset_type": "Software",
+    "security_function": "Identify",
+    "title": "Ensure Authorized Software is Currently Supported",
+    "description": "Ensure that only currently supported software is designated as authorized in the software inventory for enterprise assets. If software is unsupported, yet necessary for the fulfillment of the enterprise\u2019s mission, document an exception detailing mitigating controls and residual risk acceptance. For any unsupported software without an exception documentation, designate as unauthorized. Review the software list to verify software support at least monthly, or more frequently.                       "
+  },
+  "CIS2.3": {
+    "cis_safeguard_id": "CIS2.3",
+    "control": "2",
+    "safeguard": "2.3",
+    "asset_type": "Software",
+    "security_function": "Respond",
+    "title": "Address Unauthorized Software",
+    "description": "Ensure that unauthorized software is either removed from use on enterprise assets or receives a documented exception. Review monthly, or more frequently.                                                                                                                                                                                                                                                                                                                                                           "
+  },
+  "CIS3.1": {
+    "cis_safeguard_id": "CIS3.1",
+    "control": "3",
+    "safeguard": "3.1",
+    "asset_type": "Data",
+    "security_function": "Govern",
+    "title": "Establish and Maintain a Data Management Process",
+    "description": "Establish and maintain a documented data management process. In the process, address data sensitivity, data owner, handling of data, data retention limits, and disposal requirements, based on sensitivity and retention standards for the enterprise. Review and update documentation annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                                    "
+  },
+  "CIS3.2": {
+    "cis_safeguard_id": "CIS3.2",
+    "control": "3",
+    "safeguard": "3.2",
+    "asset_type": "Data",
+    "security_function": "Identify",
+    "title": "Establish and Maintain a Data Inventory",
+    "description": "Establish and maintain a data inventory based on the enterprise\u2019s data management process. Inventory sensitive data annually, at a minimum. Review and update inventory annually, at a minimum, with a priority on sensitive data.                                                                                                                                                                                                                                                                                  "
+  },
+  "CIS3.3": {
+    "cis_safeguard_id": "CIS3.3",
+    "control": "3",
+    "safeguard": "3.3",
+    "asset_type": "Data",
+    "security_function": "Protect",
+    "title": "Configure Data Access Control Lists",
+    "description": "Configure data access control lists based on a user\u2019s need to know. Apply data access control lists, also known as access permissions, to local and remote file systems, databases, and applications.                                                                                                                                                                                                                                                                                                               "
+  },
+  "CIS3.4": {
+    "cis_safeguard_id": "CIS3.4",
+    "control": "3",
+    "safeguard": "3.4",
+    "asset_type": "Data",
+    "security_function": "Protect",
+    "title": "Enforce Data Retention",
+    "description": "Retain data according to the enterprise\u2019s documented data management process. Data retention must include both minimum and maximum timelines.                                                                                                                                                                                                                                                                                                                                                                       "
+  },
+  "CIS3.5": {
+    "cis_safeguard_id": "CIS3.5",
+    "control": "3",
+    "safeguard": "3.5",
+    "asset_type": "Data",
+    "security_function": "Protect",
+    "title": "Securely Dispose of Data",
+    "description": "Securely dispose of data as outlined in the enterprise\u2019s documented data management process. Ensure the disposal process and method are commensurate with the data sensitivity.                                                                                                                                                                                                                                                                                                                                     "
+  },
+  "CIS3.6": {
+    "cis_safeguard_id": "CIS3.6",
+    "control": "3",
+    "safeguard": "3.6",
+    "asset_type": "Data",
+    "security_function": "Protect",
+    "title": "Encrypt Data on End-User Devices",
+    "description": "Encrypt data on end-user devices containing sensitive data. Example implementations can include: Windows BitLocker\u00ae, Apple FileVault\u00ae, Linux\u00ae dm-crypt.                                                                                                                                                                                                                                                                                                                                                             "
+  },
+  "CIS4.1": {
+    "cis_safeguard_id": "CIS4.1",
+    "control": "4",
+    "safeguard": "4.1",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain a Secure Configuration Process",
+    "description": "Establish and maintain a documented secure configuration process for enterprise assets (end-user devices, including portable and mobile, non-computing/IoT devices, and servers) and software (operating systems and applications). Review and update documentation annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                                                        "
+  },
+  "CIS4.2": {
+    "cis_safeguard_id": "CIS4.2",
+    "control": "4",
+    "safeguard": "4.2",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain a Secure Configuration Process for Network Infrastructure",
+    "description": "Establish and maintain a documented secure configuration process for network devices. Review and update documentation annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                                                                                                                                                                                                      "
+  },
+  "CIS4.3": {
+    "cis_safeguard_id": "CIS4.3",
+    "control": "4",
+    "safeguard": "4.3",
+    "asset_type": "Devices",
+    "security_function": "Protect",
+    "title": "Configure Automatic Session Locking on Enterprise Assets",
+    "description": "Configure automatic session locking on enterprise assets after a defined period of inactivity. For general purpose operating systems, the period must not exceed 15 minutes. For mobile end-user devices, the period must not exceed two (2) minutes.                                                                                                                                                                                                                                                               "
+  },
+  "CIS4.4": {
+    "cis_safeguard_id": "CIS4.4",
+    "control": "4",
+    "safeguard": "4.4",
+    "asset_type": "Devices",
+    "security_function": "Protect",
+    "title": "Implement and Manage a Firewall on Servers",
+    "description": "Implement and manage a firewall on servers, where supported. Example implementations include a virtual firewall, operating system firewall, or a third-party firewall agent.                                                                                                                                                                                                                                                                                                                                        "
+  },
+  "CIS4.5": {
+    "cis_safeguard_id": "CIS4.5",
+    "control": "4",
+    "safeguard": "4.5",
+    "asset_type": "Devices",
+    "security_function": "Protect",
+    "title": "Implement and Manage a Firewall on End-User Devices",
+    "description": "Implement and manage a host-based firewall or port-filtering tool on end-user devices, with a default-deny rule that drops all traffic except those services and ports that are explicitly allowed.                                                                                                                                                                                                                                                                                                                 "
+  },
+  "CIS4.6": {
+    "cis_safeguard_id": "CIS4.6",
+    "control": "4",
+    "safeguard": "4.6",
+    "asset_type": "Devices",
+    "security_function": "Protect",
+    "title": "Securely Manage Enterprise Assets and Software",
+    "description": "Securely manage enterprise assets and software. Example implementations include managing configuration through version-controlled Infrastructure-as-Code (IaC) and accessing administrative interfaces over secure network protocols, such as Secure Shell (SSH) and Hypertext Transfer Protocol Secure (HTTPS). Do not use insecure management protocols, such as Telnet (Teletype Network) and HTTP, unless operationally essential.                                                                              "
+  },
+  "CIS4.7": {
+    "cis_safeguard_id": "CIS4.7",
+    "control": "4",
+    "safeguard": "4.7",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Manage Default Accounts on Enterprise Assets and Software",
+    "description": "Manage default accounts on enterprise assets and software, such as root, administrator, and other pre-configured vendor accounts. Example implementations can include: disabling default accounts or making them unusable.                                                                                                                                                                                                                                                                                          "
+  },
+  "CIS5.1": {
+    "cis_safeguard_id": "CIS5.1",
+    "control": "5",
+    "safeguard": "5.1",
+    "asset_type": "Users",
+    "security_function": "Identify",
+    "title": "Establish and Maintain an Inventory of Accounts",
+    "description": "Establish and maintain an inventory of all accounts managed in the enterprise. The inventory must at a minimum include user, administrator accounts, and service accounts. The inventory, at a minimum, should contain the person\u2019s name, username, start/stop dates, and department. Validate that all active accounts are authorized, on a recurring schedule at a minimum quarterly, or more frequently.                                                                                                         "
+  },
+  "CIS5.2": {
+    "cis_safeguard_id": "CIS5.2",
+    "control": "5",
+    "safeguard": "5.2",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Use Unique Passwords",
+    "description": "Use unique passwords for all enterprise assets. Best practice implementation includes, at a minimum, an 8-character password for accounts using Multi-Factor Authentication (MFA) and a 14-character password for accounts not using MFA.                                                                                                                                                                                                                                                                           "
+  },
+  "CIS5.3": {
+    "cis_safeguard_id": "CIS5.3",
+    "control": "5",
+    "safeguard": "5.3",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Disable Dormant Accounts",
+    "description": "Delete or disable any dormant accounts after a period of 45 days of inactivity, where supported.                                                                                                                                                                                                                                                                                                                                                                                                                    "
+  },
+  "CIS5.4": {
+    "cis_safeguard_id": "CIS5.4",
+    "control": "5",
+    "safeguard": "5.4",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Restrict Administrator Privileges to Dedicated Administrator Accounts",
+    "description": "Restrict administrator privileges to dedicated administrator accounts on enterprise assets. Conduct general computing activities, such as internet browsing, email, and productivity suite use, from the user\u2019s primary, non-privileged account.                                                                                                                                                                                                                                                                    "
+  },
+  "CIS6.1": {
+    "cis_safeguard_id": "CIS6.1",
+    "control": "6",
+    "safeguard": "6.1",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish an Access Granting Process",
+    "description": "Establish and follow a documented process, preferably automated, for granting access to enterprise assets upon new hire or role change of a user.                                                                                                                                                                                                                                                                                                                                                                   "
+  },
+  "CIS6.2": {
+    "cis_safeguard_id": "CIS6.2",
+    "control": "6",
+    "safeguard": "6.2",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish an Access Revoking Process",
+    "description": "Establish and follow a process, preferably automated, for revoking access to enterprise assets, through disabling accounts immediately upon termination, rights revocation, or role change of a user. Disabling accounts, instead of deleting accounts, may be necessary to preserve audit trails.                                                                                                                                                                                                                  "
+  },
+  "CIS6.3": {
+    "cis_safeguard_id": "CIS6.3",
+    "control": "6",
+    "safeguard": "6.3",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Require MFA for Externally-Exposed Applications",
+    "description": "Require all externally-exposed enterprise or third-party applications to enforce MFA, where supported. Enforcing MFA through a directory service or SSO provider is a satisfactory implementation of this Safeguard.                                                                                                                                                                                                                                                                                                "
+  },
+  "CIS6.4": {
+    "cis_safeguard_id": "CIS6.4",
+    "control": "6",
+    "safeguard": "6.4",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Require MFA for Remote Network Access",
+    "description": "Require MFA for remote network access.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              "
+  },
+  "CIS6.5": {
+    "cis_safeguard_id": "CIS6.5",
+    "control": "6",
+    "safeguard": "6.5",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Require MFA for Administrative Access",
+    "description": "Require MFA for all administrative access accounts, where supported, on all enterprise assets, whether managed on-site or through a service provider.                                                                                                                                                                                                                                                                                                                                                               "
+  },
+  "CIS7.1": {
+    "cis_safeguard_id": "CIS7.1",
+    "control": "7",
+    "safeguard": "7.1",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain a Vulnerability Management Process",
+    "description": "Establish and maintain a documented vulnerability management process for enterprise assets. Review and update documentation annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                                                                                                                                                                                                "
+  },
+  "CIS7.2": {
+    "cis_safeguard_id": "CIS7.2",
+    "control": "7",
+    "safeguard": "7.2",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain a Remediation Process",
+    "description": "Establish and maintain a risk-based remediation strategy documented in a remediation process, with monthly, or more frequent, reviews.                                                                                                                                                                                                                                                                                                                                                                              "
+  },
+  "CIS7.3": {
+    "cis_safeguard_id": "CIS7.3",
+    "control": "7",
+    "safeguard": "7.3",
+    "asset_type": "Software",
+    "security_function": "Protect",
+    "title": "Perform Automated Operating System Patch Management",
+    "description": "Perform operating system updates on enterprise assets through automated patch management on a monthly, or more frequent, basis.                                                                                                                                                                                                                                                                                                                                                                                     "
+  },
+  "CIS7.4": {
+    "cis_safeguard_id": "CIS7.4",
+    "control": "7",
+    "safeguard": "7.4",
+    "asset_type": "Software",
+    "security_function": "Protect",
+    "title": "Perform Automated Application Patch Management",
+    "description": "Perform application updates on enterprise assets through automated patch management on a monthly, or more frequent, basis.                                                                                                                                                                                                                                                                                                                                                                                          "
+  },
+  "CIS8.1": {
+    "cis_safeguard_id": "CIS8.1",
+    "control": "8",
+    "safeguard": "8.1",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain an Audit Log Management Process",
+    "description": "Establish and maintain a documented audit log management process that defines the enterprise\u2019s logging requirements. At a minimum, address the collection, review, and retention of audit logs for enterprise assets. Review and update documentation annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                                                                      "
+  },
+  "CIS8.2": {
+    "cis_safeguard_id": "CIS8.2",
+    "control": "8",
+    "safeguard": "8.2",
+    "asset_type": "Data",
+    "security_function": "Detect",
+    "title": "Collect Audit Logs",
+    "description": "Collect audit logs. Ensure that logging, per the enterprise\u2019s audit log management process, has been enabled across enterprise assets.                                                                                                                                                                                                                                                                                                                                                                              "
+  },
+  "CIS8.3": {
+    "cis_safeguard_id": "CIS8.3",
+    "control": "8",
+    "safeguard": "8.3",
+    "asset_type": "Data",
+    "security_function": "Protect",
+    "title": "Ensure Adequate Audit Log Storage",
+    "description": "Ensure that logging destinations maintain adequate storage to comply with the enterprise\u2019s audit log management process.                                                                                                                                                                                                                                                                                                                                                                                            "
+  },
+  "CIS9.1": {
+    "cis_safeguard_id": "CIS9.1",
+    "control": "9",
+    "safeguard": "9.1",
+    "asset_type": "Software",
+    "security_function": "Protect",
+    "title": "Ensure Use of Only Fully Supported Browsers and Email Clients",
+    "description": "Ensure only fully supported browsers and email clients are allowed to execute in the enterprise, only using the latest version of browsers and email clients provided through the vendor.                                                                                                                                                                                                                                                                                                                           "
+  },
+  "CIS9.2": {
+    "cis_safeguard_id": "CIS9.2",
+    "control": "9",
+    "safeguard": "9.2",
+    "asset_type": "Devices",
+    "security_function": "Protect",
+    "title": "Use DNS Filtering Services",
+    "description": "Use DNS filtering services on all end-user devices, including remote and on-premises assets, to block access to known malicious domains.                                                                                                                                                                                                                                                                                                                                                                            "
+  },
+  "CIS10.1": {
+    "cis_safeguard_id": "CIS10.1",
+    "control": "10",
+    "safeguard": "10.1",
+    "asset_type": "Devices",
+    "security_function": "Detect",
+    "title": "Deploy and Maintain Anti-Malware Software",
+    "description": "Deploy and maintain anti-malware software on all enterprise assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                 "
+  },
+  "CIS10.2": {
+    "cis_safeguard_id": "CIS10.2",
+    "control": "10",
+    "safeguard": "10.2",
+    "asset_type": "Devices",
+    "security_function": "Protect",
+    "title": "Configure Automatic Anti-Malware Signature Updates",
+    "description": "Configure automatic updates for anti-malware signature files on all enterprise assets.                                                                                                                                                                                                                                                                                                                                                                                                                              "
+  },
+  "CIS10.3": {
+    "cis_safeguard_id": "CIS10.3",
+    "control": "10",
+    "safeguard": "10.3",
+    "asset_type": "Devices",
+    "security_function": "Protect",
+    "title": "Disable Autorun and Autoplay for Removable Media",
+    "description": "Disable autorun and autoplay auto-execute functionality for removable media.                                                                                                                                                                                                                                                                                                                                                                                                                                        "
+  },
+  "CIS11.1": {
+    "cis_safeguard_id": "CIS11.1",
+    "control": "11",
+    "safeguard": "11.1",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain a Data Recovery Process",
+    "description": "Establish and maintain a documented data recovery process. In the process, address the scope of data recovery activities, recovery prioritization, and the security of backup data. Review and update documentation annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                                                                                                        "
+  },
+  "CIS11.2": {
+    "cis_safeguard_id": "CIS11.2",
+    "control": "11",
+    "safeguard": "11.2",
+    "asset_type": "Data",
+    "security_function": "Recover",
+    "title": "Perform Automated Backups",
+    "description": "Perform automated backups of in-scope enterprise assets. Run backups weekly, or more frequently, based on the sensitivity of the data.                                                                                                                                                                                                                                                                                                                                                                              "
+  },
+  "CIS11.3": {
+    "cis_safeguard_id": "CIS11.3",
+    "control": "11",
+    "safeguard": "11.3",
+    "asset_type": "Data",
+    "security_function": "Protect",
+    "title": "Protect Recovery Data",
+    "description": "Protect recovery data with equivalent controls to the original data. Reference encryption or data separation, based on requirements.                                                                                                                                                                                                                                                                                                                                                                                "
+  },
+  "CIS11.4": {
+    "cis_safeguard_id": "CIS11.4",
+    "control": "11",
+    "safeguard": "11.4",
+    "asset_type": "Data",
+    "security_function": "Recover",
+    "title": "Establish and Maintain an Isolated Instance of Recovery Data",
+    "description": "Establish and maintain an isolated instance of recovery data. Example implementations include, version controlling backup destinations through offline, cloud, or off-site systems or services.                                                                                                                                                                                                                                                                                                                     "
+  },
+  "CIS12.1": {
+    "cis_safeguard_id": "CIS12.1",
+    "control": "12",
+    "safeguard": "12.1",
+    "asset_type": "Network",
+    "security_function": "Protect",
+    "title": "Ensure Network Infrastructure is Up-to-Date",
+    "description": "Ensure network infrastructure is kept up to date. Example implementations include running the latest stable release of software and/or using currently supported network-as-a-service (NaaS) offerings. Review software versions monthly, or more frequently, to verify software support.                                                                                                                                                                                                                           "
+  },
+  "CIS14.1": {
+    "cis_safeguard_id": "CIS14.1",
+    "control": "14",
+    "safeguard": "14.1",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain a Security Awareness Program",
+    "description": "Establish and maintain a security awareness program. The purpose of a security awareness program is to educate the enterprise\u2019s workforce on how to interact with enterprise assets and data in a secure manner. Conduct training at hire and, at a minimum, annually. Review and update content annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                           "
+  },
+  "CIS14.2": {
+    "cis_safeguard_id": "CIS14.2",
+    "control": "14",
+    "safeguard": "14.2",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Train Workforce Members to Recognize Social Engineering Attacks",
+    "description": "Train workforce members to recognize social engineering attacks, such as phishing, business email compromise (BEC), pretexting, and tailgating.                                                                                                                                                                                                                                                                                                                                                                     "
+  },
+  "CIS14.3": {
+    "cis_safeguard_id": "CIS14.3",
+    "control": "14",
+    "safeguard": "14.3",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Train Workforce Members on Authentication Best Practices",
+    "description": "Train workforce members on authentication best practices. Example topics include MFA, password composition, and credential management.                                                                                                                                                                                                                                                                                                                                                                              "
+  },
+  "CIS14.4": {
+    "cis_safeguard_id": "CIS14.4",
+    "control": "14",
+    "safeguard": "14.4",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Train Workforce on Data Handling Best Practices",
+    "description": "Train workforce members on how to identify and properly store, transfer, archive, and destroy sensitive data. This also includes training workforce members on clear screen and desk best practices, such as locking their screen when they step away from their enterprise asset, erasing physical and virtual whiteboards at the end of meetings, and storing data and assets securely.                                                                                                                           "
+  },
+  "CIS14.5": {
+    "cis_safeguard_id": "CIS14.5",
+    "control": "14",
+    "safeguard": "14.5",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Train Workforce Members on Causes of Unintentional Data Exposure",
+    "description": "Train workforce members to be aware of causes for unintentional data exposure. Example topics include mis-delivery of sensitive data, losing a portable end-user device, or publishing data to unintended audiences.                                                                                                                                                                                                                                                                                                "
+  },
+  "CIS14.6": {
+    "cis_safeguard_id": "CIS14.6",
+    "control": "14",
+    "safeguard": "14.6",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Train Workforce Members on Recognizing and Reporting Security Incidents",
+    "description": "Train workforce members to be able to recognize a potential incident and be able to report such an incident.                                                                                                                                                                                                                                                                                                                                                                                                        "
+  },
+  "CIS14.7": {
+    "cis_safeguard_id": "CIS14.7",
+    "control": "14",
+    "safeguard": "14.7",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Train Workforce on How to Identify and Report if Their Enterprise Assets are Missing Security Updates",
+    "description": "Train workforce to understand how to verify and report out-of-date software patches or any failures in automated processes and tools. Part of this training should include notifying IT personnel of any failures in automated processes and tools.                                                                                                                                                                                                                                                                 "
+  },
+  "CIS14.8": {
+    "cis_safeguard_id": "CIS14.8",
+    "control": "14",
+    "safeguard": "14.8",
+    "asset_type": "Users",
+    "security_function": "Protect",
+    "title": "Train Workforce on the Dangers of Connecting to and Transmitting Enterprise Data Over Insecure Networks",
+    "description": "Train workforce members on the dangers of connecting to and transmitting data over insecure networks for enterprise activities. If the enterprise has remote workers, training must include guidance to ensure that all users securely configure their home network infrastructure.                                                                                                                                                                                                                                 "
+  },
+  "CIS15.1": {
+    "cis_safeguard_id": "CIS15.1",
+    "control": "15",
+    "safeguard": "15.1",
+    "asset_type": "Users",
+    "security_function": "Identify",
+    "title": "Establish and Maintain an Inventory of Service Providers",
+    "description": "Establish and maintain an inventory of service providers. The inventory is to list all known service providers, include classification(s), and designate an enterprise contact for each service provider. Review and update the inventory annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                                                                                                  "
+  },
+  "CIS17.1": {
+    "cis_safeguard_id": "CIS17.1",
+    "control": "17",
+    "safeguard": "17.1",
+    "asset_type": "Users",
+    "security_function": "Respond",
+    "title": "Designate Personnel to Manage Incident Handling",
+    "description": "Designate one key person, and at least one backup, who will manage the enterprise\u2019s incident handling process. Management personnel are responsible for the coordination and documentation of incident response and recovery efforts and can consist of employees internal to the enterprise, service providers, or a hybrid approach. If using a service provider, designate at least one person internal to the enterprise to oversee any third-party work. Review annually, or when significant enterprise change"
+  },
+  "CIS17.2": {
+    "cis_safeguard_id": "CIS17.2",
+    "control": "17",
+    "safeguard": "17.2",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain Contact Information for Reporting Security Incidents",
+    "description": "Establish and maintain contact information for parties that need to be informed of security incidents. Contacts may include internal staff, service vendors, law enforcement, cyber insurance providers, relevant government agencies, Information Sharing and Analysis Center (ISAC) partners, or other stakeholders. Verify contacts annually to ensure that information is up to date.                                                                                                                           "
+  },
+  "CIS17.3": {
+    "cis_safeguard_id": "CIS17.3",
+    "control": "17",
+    "safeguard": "17.3",
+    "asset_type": "Documentation",
+    "security_function": "Govern",
+    "title": "Establish and Maintain an Enterprise Process for Reporting Incidents",
+    "description": "Establish and maintain a documented enterprise process for the workforce to report security incidents. The process includes reporting timeframe, personnel to report to, mechanism for reporting, and the minimum information to be reported. Ensure the process is publicly available to all of the workforce. Review annually, or when significant enterprise changes occur that could impact this Safeguard.                                                                                                     "
+  }
+}

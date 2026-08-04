@@ -27,18 +27,30 @@ CREATE TABLE IF NOT EXISTS fleet_hosts (
     FOREIGN KEY (team_id) REFERENCES fleet_teams(team_id) ON DELETE SET NULL
 );
 
--- CIS Policies
+-- CIS Policies (enriched from fleet_policies tags / cis_safeguard_ids)
 CREATE TABLE IF NOT EXISTS cis_policies (
     policy_id BIGINT PRIMARY KEY,
     policy_name TEXT NOT NULL,
-    cis_control TEXT,
+    cis_control TEXT,              -- benchmark section number (legacy, from name)
     description TEXT,
     resolution TEXT,
     query TEXT,
     category TEXT,
     severity TEXT,
-    platform TEXT
+    platform TEXT,
+    cis_safeguard_ids TEXT[] DEFAULT '{}',  -- e.g. {CIS8.4,CIS4.1} from tags
+    benchmark TEXT,                -- e.g. ubuntu24.04, win11, macosTahoe
+    control_slug TEXT,             -- tags.control
+    cis_category TEXT,             -- tags.cis_category
+    cis_subcategory TEXT,
+    framework TEXT,                -- e.g. CISv8.1
+    level TEXT,
+    tags JSONB DEFAULT '{}'::jsonb,
+    catalog_matched BOOLEAN DEFAULT FALSE
 );
+
+CREATE INDEX IF NOT EXISTS idx_policies_safeguard ON cis_policies USING GIN (cis_safeguard_ids);
+CREATE INDEX IF NOT EXISTS idx_policies_benchmark ON cis_policies(benchmark);
 
 -- Policy Results (Current State)
 -- Optimized for dashboard queries ("show me current status")

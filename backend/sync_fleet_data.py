@@ -10,6 +10,7 @@ from psycopg2 import extras
 
 # Import DB
 import db
+import policy_catalog
 
 import urllib3
 
@@ -318,23 +319,59 @@ def sync_data():
         # 4. Policies & Results
         policies = fetch_policies(teams)
         policy_buffer = []
+        matched = 0
         for p in policies:
-            # Regex logic for CIS...
+            # Benchmark section number from name (legacy display only)
             policy_name = p['name']
             match = CIS_REGEX.search(policy_name) or CIS_FALLBACK_REGEX.search(policy_name)
             cis_control = match.group(1) if match else None
+
+            # Authoritative tags / cis_safeguard_ids from fleet_policies catalog
+            # (Fleet API currently does not return policy tags)
+            enrich = policy_catalog.enrich_policy_from_catalog(
+                policy_name, platform=p.get('platform') or ''
+            )
+            if enrich.get('catalog_matched'):
+                matched += 1
+
+            sids = enrich.get('cis_safeguard_ids') or []
+            tags = enrich.get('tags') or {}
+            category = enrich.get('cis_category') or 'General'
+            severity = 'Critical' if enrich.get('critical') else 'Medium'
+
             policy_buffer.append((
-                p['id'], p['name'], cis_control, p.get('description'),
-                p.get('resolution'), p.get('query'), 'General', 'Medium', p.get('platform', 'all')
+                p['id'],
+                p['name'],
+                cis_control,
+                p.get('description'),
+                p.get('resolution'),
+                p.get('query'),
+                category,
+                severity,
+                p.get('platform') or enrich.get('platform') or 'all',
+                sids,
+                enrich.get('benchmark') or None,
+                enrich.get('control_slug') or None,
+                enrich.get('cis_category') or None,
+                enrich.get('cis_subcategory') or None,
+                enrich.get('framework') or None,
+                enrich.get('level') or None,
+                json.dumps(tags),
+                bool(enrich.get('catalog_matched')),
             ))
-            
+
+        print(f"  📚 Catalog match: {matched}/{len(policies)} policies "
+              f"({policy_catalog.catalog_stats().get('policy_count', 0)} in catalog)")
+
         with db.get_db_cursor(commit=True) as cur:
             extras.execute_values(cur, """
                 INSERT INTO cis_policies (
                     policy_id, policy_name, cis_control, description, resolution, query,
-                    category, severity, platform
+                    category, severity, platform,
+                    cis_safeguard_ids, benchmark, control_slug, cis_category, cis_subcategory,
+                    framework, level, tags, catalog_matched
                 ) VALUES %s
-                ON CONFLICT (policy_id) DO UPDATE SET 
+                ON CONFLICT (policy_id) DO UPDATE SET
                     policy_name=EXCLUDED.policy_name,
                     cis_control=EXCLUDED.cis_control,
                     description=EXCLUDED.description,
@@ -342,7 +379,16 @@ def sync_data():
                     query=EXCLUDED.query,
                     category=EXCLUDED.category,
                     severity=EXCLUDED.severity,
-                    platform=EXCLUDED.platform
+                    platform=EXCLUDED.platform,
+                    cis_safeguard_ids=EXCLUDED.cis_safeguard_ids,
+                    benchmark=EXCLUDED.benchmark,
+                    control_slug=EXCLUDED.control_slug,
+                    cis_category=EXCLUDED.cis_category,
+                    cis_subcategory=EXCLUDED.cis_subcategory,
+                    framework=EXCLUDED.framework,
+                    level=EXCLUDED.level,
+                    tags=EXCLUDED.tags,
+                    catalog_matched=EXCLUDED.catalog_matched
             """, policy_buffer)
             
         # 5. Policy Results (Differential by Counts)

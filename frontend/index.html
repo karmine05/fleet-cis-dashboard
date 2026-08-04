@@ -188,9 +188,9 @@
                                     <div class="heatmap-input-wrap">
                                         <i class="fas fa-search" aria-hidden="true"></i>
                                         <input type="search" id="heatmap-cis-filter"
-                                            placeholder="e.g. 1.1, 5.2…"
+                                            placeholder="e.g. CIS8.4, UBTU, password…"
                                             autocomplete="off"
-                                            aria-label="Filter by CIS Safeguard ID">
+                                            aria-label="Filter by CIS Safeguard, section, or policy name">
                                     </div>
                                 </div>
                                 <div class="heatmap-filter-field">
@@ -208,13 +208,14 @@
                             </div>
                             <div class="heatmap-toolbar-right">
                                 <div class="heatmap-group-toggle" role="group" aria-label="Group heat map by">
-                                    <button type="button" class="heatmap-group-btn active" data-group="d3fend"
-                                        aria-pressed="true" title="Group by D3FEND tactic">D3FEND</button>
+                                    <button type="button" class="heatmap-group-btn active" data-group="safeguard"
+                                        aria-pressed="true" title="Group by CIS Safeguard ID (from fleet_policies tags)">Safeguard</button>
+                                    <button type="button" class="heatmap-group-btn" data-group="d3fend"
+                                        aria-pressed="false" title="Group by D3FEND tactic">D3FEND</button>
+                                    <button type="button" class="heatmap-group-btn" data-group="category"
+                                        aria-pressed="false" title="Group by CIS category tag">Category</button>
                                     <button type="button" class="heatmap-group-btn" data-group="mitre"
-                                        aria-pressed="false" title="Group by MITRE technique">MITRE</button>
-                                    <button type="button" class="heatmap-group-btn" data-group="cis"
-                                        aria-pressed="false" title="Group by CIS control family (single platform only)"
-                                        id="heatmap-group-cis">CIS Family</button>
+                                        aria-pressed="false" title="Group by MITRE technique (optional, sparse)">MITRE</button>
                                     <button type="button" class="heatmap-group-btn" data-group="platform"
                                         aria-pressed="false" title="Group by host platform">Platform</button>
                                 </div>
