@@ -172,28 +172,34 @@ def mapping_for_safeguard(safeguard_id: str) -> Dict[str, Any]:
     return _unmapped(sid)
 
 
-# Per-policy category refinements (first match wins)
+# Per-policy refinements (first match wins). Keep patterns tight — broad
+# keywords like bare "network" poison whole groups when mis-applied.
 _POLICY_CAT_RULES = [
-    (r"\bsip\b|system integrity protection|secure boot|gatekeeper",
+    (r"\bsip\b|system integrity protection|secure boot|gatekeeper|xprotect",
      ("D3-SCA", "Harden", "System Integrity", "", "high")),
-    (r"bitlocker|filevault|encrypt|crypt",
+    (r"bitlocker|filevault|dm-crypt|encrypt(ed|ion)?|cipher",
      ("D3-FE", "Harden", "Data Encryption", "T1005", "high")),
-    (r"software update|os update|patch",
+    (r"software update|os update|install.*update|security response|patch management",
      ("D3-SU", "Harden", "Software Update", "T1190", "high")),
-    (r"password|passwd|lockout|pam\b|mfa|multi-factor",
+    (r"password policy|passwd|lockout|pam\b|mfa|multi-factor|password (age|length|complex|history)",
      ("D3-UAP", "Harden", "Authentication Hardening", "T1078", "high")),
-    (r"screen saver|inactiv|session lock|lock screen|above lock|cortana",
+    (r"screen saver|inactiv(e|ity)|session lock|lock screen|above lock|cortana above",
      ("D3-SCA", "Harden", "Session Lock", "T1078", "high")),
-    (r"firewall|network isolation|packet|rdp|\bssh\b",
+    # Require explicit firewall / isolation language — not bare "network"
+    (r"firewall|windows defender firewall|ufw\b|iptables|packet filter|network isolation",
      ("D3-NI", "Isolate", "Network Isolation", "T1021", "high")),
-    (r"audit|log management|logging|event log|syslog|time sync|ntp|chrony",
+    (r"\brdp\b|remote desktop|remote assistance",
+     ("D3-NI", "Isolate", "Network Isolation", "T1021", "medium")),
+    (r"audit (log|pol|setting)|event log|log management|syslog|journald|auditd|time sync|chrony|\bntp\b",
      ("D3-LME", "Detect", "Log Management", "", "high")),
-    (r"malware|defender|antivirus|asr",
+    (r"malware|windows defender|antivirus|\basr\b|attack surface|smartscreen",
      ("D3-PMAD", "Detect", "Malware Detection", "T1204", "medium")),
-    (r"browser|safari|chrome|edge",
+    (r"\bsafari\b|\bchrome\b|\bedge\b|internet explorer|browser",
      ("D3-SCA", "Harden", "Browser Hardening", "T1189", "medium")),
-    (r"backup|restore|recovery",
+    (r"backup|shadow copy|file history|time machine",
      ("D3-BA", "Restore", "Backup", "T1490", "high")),
+    (r"privacy|telemetry|diagnostic data|advertising id|analytics",
+     ("D3-SCA", "Harden", "Privacy Configuration", "", "medium")),
 ]
 
 

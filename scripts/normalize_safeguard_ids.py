@@ -348,9 +348,15 @@ def rebuild_catalog(fp_root: Path) -> dict:
     return catalog
 
 
+
 def rebuild_safeguard_d3fend(catalog: dict) -> dict:
-    """Refresh D3FEND map using fixed safeguards + category rules."""
-    # Reuse existing generator logic lightly
+    """
+    Map each cis_safeguard_id → default D3FEND from CIS Controls function.
+
+    Do NOT derive this from a single policy's keywords — that poisoned
+    CIS4.1 → Network Isolation for every policy under CIS4.1.
+    Per-policy refinements happen at runtime in mapping_for_policy().
+    """
     FUNC = {
         "Identify": ("D3-AI", "Model", "Asset Inventory", ""),
         "Protect": ("D3-SCA", "Harden", "Protective Configuration", ""),
@@ -359,88 +365,79 @@ def rebuild_safeguard_d3fend(catalog: dict) -> dict:
         "Recover": ("D3-BA", "Restore", "Backup and Recovery", ""),
         "Govern": ("D3-AMI", "Model", "Governance Policy", ""),
     }
-    CAT_RULES = [
-        # Specific technical signals first (before broad "authentication" category titles)
-        (r"\bsip\b|system integrity protection|secure boot|gatekeeper|xprotect",
-         ("D3-SCA", "Harden", "System Integrity", "", "high")),
-        (r"file integrity|aide\b|\bfim\b",
-         ("D3-FIM", "Detect", "File Integrity Monitoring", "", "high")),
-        (r"bitlocker|encryption|filevault|crypt",
-         ("D3-FE", "Harden", "Data Encryption", "T1005", "high")),
-        (r"patch|software update|os update",
-         ("D3-SU", "Harden", "Software Update", "T1190", "high")),
-        (r"password|passwd|lockout|pam\b|mfa|multi-factor|kerberos|ntlm",
-         ("D3-UAP", "Harden", "Authentication Hardening", "T1078", "high")),
-        (r"logon|login window|interactive logon",
-         ("D3-UAP", "Harden", "Authentication Hardening", "T1078", "high")),
-        (r"firewall|network isolation|packet|rdp|ssh\b|smb\b",
-         ("D3-NI", "Isolate", "Network Isolation", "T1021", "high")),
-        (r"audit|log management|logging|event log|syslog",
-         ("D3-LME", "Detect", "Log Management", "", "high")),
-        (r"backup|restore|recovery",
-         ("D3-BA", "Restore", "Backup", "T1490", "high")),
-        (r"account|privilege|uac|administrator|guest account",
-         ("D3-UAP", "Harden", "Account Hardening", "T1078", "medium")),
-        (r"session|screen saver|lock screen|above lock",
-         ("D3-SCA", "Harden", "Session Lock", "T1078", "medium")),
-        (r"browser|safari|chrome|edge",
-         ("D3-SCA", "Harden", "Browser Hardening", "T1189", "medium")),
-        (r"malware|defender|antivirus|asr",
-         ("D3-PMAD", "Detect", "Malware Detection", "T1204", "medium")),
-        (r"inventory|asset inventory",
-         ("D3-AI", "Model", "Asset Inventory", "T1082", "medium")),
-    ]
+    CONTROL_FUNC = {
+        "1": "Identify", "2": "Identify", "3": "Protect", "4": "Protect",
+        "5": "Protect", "6": "Protect", "7": "Protect", "8": "Detect",
+        "9": "Protect", "10": "Protect", "11": "Recover", "12": "Protect",
+        "13": "Protect", "14": "Protect", "15": "Identify", "16": "Protect",
+        "17": "Respond", "18": "Protect",
+    }
+    SG_OVERRIDE = {
+        "CIS4.1": ("D3-SCA", "Harden", "Protective Configuration", "", "medium"),
+        "CIS4.4": ("D3-NI", "Isolate", "Network Isolation", "T1021", "high"),
+        "CIS4.5": ("D3-NI", "Isolate", "Network Isolation", "T1021", "high"),
+        "CIS4.3": ("D3-SCA", "Harden", "Session Lock", "T1078", "high"),
+        "CIS3.6": ("D3-FE", "Harden", "Data Encryption", "T1005", "high"),
+        "CIS7.1": ("D3-SU", "Harden", "Software Update", "T1190", "high"),
+        "CIS7.2": ("D3-SU", "Harden", "Software Update", "T1190", "high"),
+        "CIS7.3": ("D3-SU", "Harden", "Software Update", "T1190", "high"),
+        "CIS7.4": ("D3-SU", "Harden", "Software Update", "T1190", "high"),
+        "CIS8.2": ("D3-LME", "Detect", "Log Management", "", "high"),
+        "CIS8.3": ("D3-LME", "Detect", "Log Management", "", "high"),
+        "CIS8.4": ("D3-LME", "Detect", "Log Management", "", "high"),
+        "CIS8.5": ("D3-LME", "Detect", "Log Management", "", "high"),
+        "CIS5.1": ("D3-UAP", "Harden", "Account Hardening", "T1078", "high"),
+        "CIS5.2": ("D3-UAP", "Harden", "Authentication Hardening", "T1078", "high"),
+        "CIS5.3": ("D3-UAP", "Harden", "Account Hardening", "T1078", "high"),
+        "CIS5.4": ("D3-UAP", "Harden", "Account Hardening", "T1078", "high"),
+        "CIS10.1": ("D3-PMAD", "Detect", "Malware Detection", "T1204", "medium"),
+        "CIS10.2": ("D3-PMAD", "Detect", "Malware Detection", "T1204", "medium"),
+        "CIS11.1": ("D3-BA", "Restore", "Backup", "T1490", "high"),
+        "CIS11.2": ("D3-BA", "Restore", "Backup", "T1490", "high"),
+        "CIS1.1": ("D3-AI", "Model", "Asset Inventory", "T1082", "high"),
+    }
+
+    sids = set()
+    for meta in catalog.values():
+        for sid in meta.get("cis_safeguard_ids") or []:
+            sids.add(sid)
 
     smap = {}
-    for meta in catalog.values():
-        blob = f"{meta.get('name','')} {meta.get('cis_category','')} {meta.get('cis_subcategory','')}".lower()
-        for sid in meta.get("cis_safeguard_ids") or []:
-            mapped = None
-            for pat, (d3, tac, tech, atk, conf) in CAT_RULES:
-                if re.search(pat, blob):
-                    mapped = {
-                        "cis_safeguard_id": sid,
-                        "d3fend_id": d3,
-                        "d3fend_tactic": tac,
-                        "d3fend_technique": tech,
-                        "attack_id": atk,
-                        "mapping_confidence": conf,
-                        "mapping_source": "category_rules",
-                        "title": OFFICIAL.get(sid, {}).get("title") or meta.get("cis_category") or sid,
-                        "security_function": OFFICIAL.get(sid, {}).get("security_function"),
-                    }
-                    break
-            if not mapped and sid in OFFICIAL:
-                func = OFFICIAL[sid]["security_function"]
-                d3, tac, tech, atk = FUNC.get(func, ("D3-SCA", "Harden", "Protective Configuration", ""))
-                mapped = {
-                    "cis_safeguard_id": sid,
-                    "d3fend_id": d3,
-                    "d3fend_tactic": tac,
-                    "d3fend_technique": tech,
-                    "attack_id": atk,
-                    "mapping_confidence": "medium",
-                    "mapping_source": f"cis_function:{func}",
-                    "title": OFFICIAL[sid]["title"],
-                    "security_function": func,
-                }
-            if not mapped:
-                mapped = {
-                    "cis_safeguard_id": sid,
-                    "d3fend_id": "D3-SCA",
-                    "d3fend_tactic": "Harden",
-                    "d3fend_technique": "Protective Configuration",
-                    "attack_id": "",
-                    "mapping_confidence": "low",
-                    "mapping_source": "default",
-                    "title": meta.get("cis_category") or sid,
-                }
-            prev = smap.get(sid)
-            rank = {"high": 3, "medium": 2, "low": 1}
-            if not prev or rank.get(mapped["mapping_confidence"], 0) > rank.get(
-                prev.get("mapping_confidence"), 0
-            ):
-                smap[sid] = mapped
+    for sid in sorted(sids):
+        title = OFFICIAL.get(sid, {}).get("title") or sid
+        func = OFFICIAL.get(sid, {}).get("security_function")
+        if not func:
+            m = re.match(r"CIS(\d+)\.", sid or "")
+            if m:
+                func = CONTROL_FUNC.get(m.group(1), "Protect")
+
+        if sid in SG_OVERRIDE:
+            d3, tac, tech, atk, conf = SG_OVERRIDE[sid]
+            smap[sid] = {
+                "cis_safeguard_id": sid,
+                "d3fend_id": d3,
+                "d3fend_tactic": tac,
+                "d3fend_technique": tech,
+                "attack_id": atk,
+                "mapping_confidence": conf,
+                "mapping_source": "safeguard_override",
+                "title": title,
+                "security_function": func or "",
+            }
+            continue
+
+        d3, tac, tech, atk = FUNC.get(func or "Protect", ("D3-SCA", "Harden", "Protective Configuration", ""))
+        smap[sid] = {
+            "cis_safeguard_id": sid,
+            "d3fend_id": d3,
+            "d3fend_tactic": tac,
+            "d3fend_technique": tech,
+            "attack_id": atk,
+            "mapping_confidence": "medium" if func else "low",
+            "mapping_source": f"cis_function:{func or 'unknown'}",
+            "title": title,
+            "security_function": func or "",
+        }
     return smap
 
 
