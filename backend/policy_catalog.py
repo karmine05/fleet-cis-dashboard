@@ -51,6 +51,16 @@ def load_cis_controls() -> Dict[str, Any]:
         return json.load(f)
 
 
+@lru_cache(maxsize=1)
+def load_safeguard_overrides() -> Dict[str, Any]:
+    """Per-policy hard overrides (mirrors normalized fleet_policies tags)."""
+    path = os.path.join(DATA_DIR, "safeguard_overrides.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def get_catalog_entry(policy_name: str) -> Optional[Dict[str, Any]]:
     """Exact name match against fleet_policies catalog."""
     if not policy_name:
@@ -65,12 +75,36 @@ def get_catalog_entry(policy_name: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _normalize_sid_list(raw) -> List[str]:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        items = raw
+    else:
+        items = re.split(r"[|;,\s]+", str(raw))
+    out = []
+    for s in items:
+        s = str(s).strip()
+        if not s or s in ("CISNone", "None", "none"):
+            continue
+        if not s.startswith("CIS"):
+            s = "CIS" + s
+        out.append(s)
+    return out
+
+
 def enrich_policy_from_catalog(policy_name: str, platform: str = "") -> Dict[str, Any]:
     """
     Return DB-ready enrichment fields for a Fleet policy name.
+
+    Precedence:
+      1. safeguard_overrides.json (dashboard hard fix)
+      2. policy_catalog.json from fleet_policies tags
     """
     entry = get_catalog_entry(policy_name)
-    if not entry:
+    override = load_safeguard_overrides().get(policy_name) or {}
+
+    if not entry and not override:
         return {
             "cis_safeguard_ids": [],
             "benchmark": "",
@@ -82,20 +116,40 @@ def enrich_policy_from_catalog(policy_name: str, platform: str = "") -> Dict[str
             "tags": {},
             "mapping_source": "unmatched",
             "catalog_matched": False,
+            "benchmark_section": "",
         }
 
+    entry = entry or {}
+    tags = dict(entry.get("tags") or {})
+    sids = _normalize_sid_list(
+        override.get("cis_safeguard_ids")
+        if override.get("cis_safeguard_ids") is not None
+        else entry.get("cis_safeguard_ids")
+    )
+    if override.get("cis_safeguard_ids") is not None:
+        tags["cis_safeguard_ids"] = ",".join(sids) if sids else "CISNone"
+    bench_section = (
+        override.get("benchmark_section")
+        or entry.get("benchmark_section")
+        or tags.get("benchmark_section")
+        or ""
+    )
+    if bench_section:
+        tags["benchmark_section"] = bench_section
+
     return {
-        "cis_safeguard_ids": list(entry.get("cis_safeguard_ids") or []),
+        "cis_safeguard_ids": sids,
         "benchmark": entry.get("benchmark") or "",
         "control_slug": entry.get("control") or "",
-        "cis_category": entry.get("cis_category") or "",
+        "cis_category": override.get("cis_category") or entry.get("cis_category") or "",
         "cis_subcategory": entry.get("cis_subcategory") or "",
         "framework": entry.get("framework") or "",
         "level": entry.get("level") or "",
-        "tags": entry.get("tags") or {},
-        "mapping_source": "fleet_policies_catalog",
+        "tags": tags,
+        "mapping_source": "override+catalog" if override else "fleet_policies_catalog",
         "catalog_matched": True,
         "platform": entry.get("platform") or platform,
+        "benchmark_section": bench_section,
     }
 
 
@@ -116,6 +170,59 @@ def mapping_for_safeguard(safeguard_id: str) -> Dict[str, Any]:
         m.setdefault("cis_safeguard_id", alt)
         return m
     return _unmapped(sid)
+
+
+# Per-policy category refinements (first match wins)
+_POLICY_CAT_RULES = [
+    (r"\bsip\b|system integrity protection|secure boot|gatekeeper",
+     ("D3-SCA", "Harden", "System Integrity", "", "high")),
+    (r"bitlocker|filevault|encrypt|crypt",
+     ("D3-FE", "Harden", "Data Encryption", "T1005", "high")),
+    (r"software update|os update|patch",
+     ("D3-SU", "Harden", "Software Update", "T1190", "high")),
+    (r"password|passwd|lockout|pam\b|mfa|multi-factor",
+     ("D3-UAP", "Harden", "Authentication Hardening", "T1078", "high")),
+    (r"screen saver|inactiv|session lock|lock screen|above lock|cortana",
+     ("D3-SCA", "Harden", "Session Lock", "T1078", "high")),
+    (r"firewall|network isolation|packet|rdp|\bssh\b",
+     ("D3-NI", "Isolate", "Network Isolation", "T1021", "high")),
+    (r"audit|log management|logging|event log|syslog|time sync|ntp|chrony",
+     ("D3-LME", "Detect", "Log Management", "", "high")),
+    (r"malware|defender|antivirus|asr",
+     ("D3-PMAD", "Detect", "Malware Detection", "T1204", "medium")),
+    (r"browser|safari|chrome|edge",
+     ("D3-SCA", "Harden", "Browser Hardening", "T1189", "medium")),
+    (r"backup|restore|recovery",
+     ("D3-BA", "Restore", "Backup", "T1490", "high")),
+]
+
+
+def mapping_for_policy(
+    policy_name: str = "",
+    cis_category: str = "",
+    cis_subcategory: str = "",
+    safeguard_id: str = "",
+) -> Dict[str, Any]:
+    """
+    Policy-level D3FEND mapping: category/name rules first, then safeguard aggregate.
+    """
+    blob = f"{policy_name} {cis_category} {cis_subcategory}".lower()
+    for pat, (d3, tac, tech, atk, conf) in _POLICY_CAT_RULES:
+        if re.search(pat, blob):
+            base = mapping_for_safeguard(safeguard_id) if safeguard_id else _unmapped(safeguard_id)
+            return {
+                **base,
+                "d3fend_id": d3,
+                "d3fend_tactic": tac,
+                "d3fend_technique": tech,
+                "attack_id": atk,
+                "mapping_confidence": conf,
+                "mapping_source": "policy_category_rules",
+                "cis_safeguard_id": safeguard_id or base.get("cis_safeguard_id", ""),
+            }
+    if safeguard_id:
+        return mapping_for_safeguard(safeguard_id)
+    return _unmapped()
 
 
 def _unmapped(sid: str = "") -> Dict[str, Any]:

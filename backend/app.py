@@ -775,12 +775,15 @@ def get_heatmap_data():
                 sids = [sids]
             primary_sg = policy_catalog.primary_safeguard(list(sids)) if sids else ''
 
-            # Prefer safeguard-based D3FEND map; fallback unmapped
+            # Policy-level D3FEND (category/name) with safeguard fallback
             if primary_sg:
-                mapping = policy_catalog.mapping_for_safeguard(primary_sg)
                 safeguard_hits += 1
-            else:
-                mapping = policy_catalog.mapping_for_safeguard('')
+            mapping = policy_catalog.mapping_for_policy(
+                policy_name=row.get('policy_name') or '',
+                cis_category=row.get('cis_category') or '',
+                cis_subcategory=row.get('cis_subcategory') or '',
+                safeguard_id=primary_sg,
+            )
 
             if row.get('catalog_matched'):
                 catalog_hits += 1
@@ -1048,7 +1051,12 @@ def get_architecture():
             if isinstance(sids, str):
                 sids = [sids]
             primary = policy_catalog.primary_safeguard(list(sids)) if sids else ''
-            mapping = policy_catalog.mapping_for_safeguard(primary) if primary else policy_catalog.mapping_for_safeguard('')
+            mapping = policy_catalog.mapping_for_policy(
+                policy_name=row.get('policy_name') or '',
+                cis_category=row.get('cis_category') or '',
+                cis_subcategory='',
+                safeguard_id=primary,
+            )
 
             d3_tech = mapping.get('d3fend_technique')
             if d3_tech and d3_tech != 'Unmapped':

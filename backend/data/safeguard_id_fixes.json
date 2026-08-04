@@ -1,0 +1,4584 @@
+{
+  "stats": {
+    "rule:software update|os update|install.*updat": 7,
+    "rewritten": 779,
+    "rule:audit(ing|ed)?|event log|log management|": 49,
+    "rule:safari|chrome|edge|browser|internet expl": 8,
+    "rule:\\bsip\\b|system integrity protection|secu": 5,
+    "rule:application": 6,
+    "keep_official_tag": 210,
+    "rule:bitlocker|filevault|dm-crypt|encrypt|cip": 37,
+    "section_map_parent": 38,
+    "rule:password|passwd|lockout|pam\\b|mfa|multi-": 46,
+    "rule:file integrity|aide\\b|\\bfim\\b|integrity ": 1,
+    "rule:privacy|telemetry|diagnostic|cortana|con": 18,
+    "rule:screen saver|inactiv|session lock|lock s": 11,
+    "rule:\\broot\\b|guest account|administrator acc": 38,
+    "rule:firewall|packet filter|network isolation": 39,
+    "default_secure_config": 186,
+    "rule:backup|restore|recovery|shadow copy": 1,
+    "rule:data protection|sensitive data|pii": 1,
+    "section_map": 1,
+    "rule:\\bdma\\b|device installation|driver insta": 2,
+    "rule:logon|login window|interactive logon|acc": 9,
+    "rule:time sync|ntp\\b|chrony|timesync|time syn": 2,
+    "rule:malware|defender|antivirus|asr\\b|attack ": 26,
+    "rule:unnecessary service|disable.*service|sec": 37,
+    "rule:powershell|macro|office|script execution": 1
+  },
+  "change_count": 569,
+  "changes": [
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 1.1 (L1) Ensure Apple-provided Software Updates Are Installed (Automated)",
+      "old": "CIS1.1",
+      "new": "CIS7.3",
+      "reason": "rule:software update|os update|install.*updat",
+      "category": "Install Updates, Patches and Additional Security Software"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.2 (L2) Audit History and Remove History Items (Manual)",
+      "old": "CIS6.3.2",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.1 (L1) Ensure Automatic Opening of Safe Files in Safari Is Disabled (Automated)",
+      "old": "CIS6.3.1",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.3 (L1) Ensure Warn When Visiting A Fraudulent Website in Safari Is Enabled ..371 (Automated)",
+      "old": "CIS6.3.3",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.2 (L1) Ensure System Integrity Protection Status (SIP) Is Enabled (Automated)",
+      "old": "CIS5.1.2",
+      "new": "CIS10.1",
+      "reason": "rule:\\bsip\\b|system integrity protection|secu",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.7 (L1) Ensure Show Full Website Address in Safari Is Enabled (Automated)",
+      "old": "CIS6.3.7",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.10 (L1) Ensure Show Status Bar Is Enabled (Automated)",
+      "old": "CIS6.3.10",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.4.1 (L1) Ensure Secure Keyboard Entry Terminal.app Is Enabled (Automated)",
+      "old": "CIS6.4.1",
+      "new": "CIS2.3",
+      "reason": "rule:application",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.1.1 (L1) Audit Show All Filename Extensions (Manual)",
+      "old": "CIS6.1.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.3.1 (L1) Ensure all user storage APFS volumes are encrypted (Manual)",
+      "old": "CIS5.3.1",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.3.1 (L1) Ensure all user storage APFS volumes are encrypted (Manual) [corestorage-user-volumes-encrypted]",
+      "old": "CIS5.3.1",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.5 (L2) Audit Hide IP Address in Safari Setting (Manual)",
+      "old": "CIS6.3.5",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.5 (L2) Audit Hide IP Address in Safari Setting (Manual) [safari-hide-ip-disabled]",
+      "old": "CIS6.3.5",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.1.1 (L1) Ensure External Intelligence Extensions Is Disabled (Automated)",
+      "old": "CIS2.5.1.1",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.1.3 (L1) Ensure Mail Summarization Is Disabled (Automated)",
+      "old": "CIS2.5.1.3",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.1.4 (L1) Ensure Notes Summarization Is Disabled (Automated)",
+      "old": "CIS2.5.1.4",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.1.2 (L1) Ensure Writing Tools Is Disabled (Automated)",
+      "old": "CIS2.5.1.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.2.3 (L2) Ensure Complex Password Must Contain Alphabetic Characters Is Configured (Manual)",
+      "old": "CIS5.2.3",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.2.3 (L2) Ensure Complex Password Must Contain Alphabetic Characters Is Configured (Manual) [password-requires-special]",
+      "old": "CIS5.2.3",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.2.6 (L2) Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured (Manual)",
+      "old": "CIS5.2.6",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.2.1 (L1) Ensure Password Account Lockout Threshold Is Configured (Automated)",
+      "old": "CIS5.2.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.2.2 (L1) Ensure Password Minimum Length Is Configured (Automated)",
+      "old": "CIS5.2.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.2.7 (L1) Ensure Password Age Is Configured (Automated)",
+      "old": "CIS5.2.7",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.2.8 (L1) Ensure Password History Is Set to at least 24 (Automated)",
+      "old": "CIS5.2.8",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.1 (L1) Ensure Home Folders Are Secure (Automated)",
+      "old": "CIS5.1.1",
+      "new": "CIS5.1",
+      "reason": "section_map_parent",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.2 (L1) Ensure System Integrity Protection Status (SIP) Is Enabled (Automated) [sip-enabled]",
+      "old": "CIS5.1.2",
+      "new": "CIS10.1",
+      "reason": "rule:\\bsip\\b|system integrity protection|secu",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.3 (L1) Ensure Apple Mobile File Integrity (AMFI) Is Enabled (Automated)",
+      "old": "CIS5.1.3",
+      "new": "CIS3.3",
+      "reason": "rule:file integrity|aide\\b|\\bfim\\b|integrity ",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.4 (L1) Ensure Signed System Volume (SSV) Is Enabled (Automated)",
+      "old": "CIS5.1.4",
+      "new": "CIS5.1",
+      "reason": "section_map_parent",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.5 (L1) Ensure Appropriate Permissions Are Enabled for System Wide Applications (Automated)",
+      "old": "CIS5.1.5",
+      "new": "CIS2.3",
+      "reason": "rule:application",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.6 (L1) Ensure No World Writable Folders Exist in the System Folder (Automated)",
+      "old": "CIS5.1.6",
+      "new": "CIS5.1",
+      "reason": "section_map_parent",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 5.1.7 (L2) Ensure No World Writable Folders Exist in the Library Folder (Automated)",
+      "old": "CIS5.1.7",
+      "new": "CIS5.1",
+      "reason": "section_map_parent",
+      "category": "System Access, Authentication and Authorization"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.1.1 (L2) Ensure Location Services Is Enabled (Automated)",
+      "old": "CIS2.6.1.1",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.1 (L2) Location Services (Manual)",
+      "old": "CIS2.6.1",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.4 (L1) Ensure Limit Ad Tracking Is Enabled (Automated)",
+      "old": "CIS2.6.4",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.8 (L1) Ensure an Administrator Password Is Required to Access System-Wide Preferences (Automated)",
+      "old": "CIS2.6.8",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.7.1 (L2) Ensure Screen Saver Corners Are Secure (Automated)",
+      "old": "CIS2.7.1",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.8.1 (L1) Audit Universal Control Settings (Manual)",
+      "old": "CIS2.8.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.8.1 (L1) Audit Universal Control Settings (Manual) [universal-control-disabled]",
+      "old": "CIS2.8.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.10.2 (L1) Ensure Power Nap Is Disabled for Intel Macs (Automated)",
+      "old": "CIS2.10.2",
+      "new": "CIS2.10",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.10.1.2 (L2) Ensure Sleep and Display Sleep Is Enabled on Apple Silicon Devices (Automated)",
+      "old": "CIS2.10.1.2",
+      "new": "CIS2.10",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.10.3 (L1) Ensure Wake for Network Access Is Disabled (Automated)",
+      "old": "CIS2.10.3",
+      "new": "CIS2.10",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.10.1.1 (L2) Ensure the OS Is Not Active When Resuming from Standby (Intel) (Manual)",
+      "old": "CIS2.10.1.1",
+      "new": "CIS2.10",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.11.2 (L1) Ensure Require Password After Screen Saver Begins or Display Is Turned Off Is Enabled for 5 Seconds or Immediately (Automated)",
+      "old": "CIS2.11.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.5 (L1) Ensure Gatekeeper Is Enabled (Automated)",
+      "old": "CIS2.6.5",
+      "new": "CIS10.1",
+      "reason": "rule:\\bsip\\b|system integrity protection|secu",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.3.1 (L1) Ensure Share Mac Analytics Is Disabled (Automated)",
+      "old": "CIS2.6.3.1",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.11.1 (L1) Ensure an Inactivity Interval of 15 Minutes Or Less for the Screen Saver Is Enabled (Automated)",
+      "old": "CIS2.11.1",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.11.3 (L1) Ensure a Custom Message for the Login Screen Is Enabled (Automated)",
+      "old": "CIS2.11.3",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.6 (L1) Ensure FileVault Is Enabled (Automated)",
+      "old": "CIS2.6.6",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.11.4 (L1) Ensure Login Window Displays as Name and Password Is Enabled (Automated)",
+      "old": "CIS2.11.4",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.11.5 (L1) Ensure Show Password Hints Is Disabled (Automated)",
+      "old": "CIS2.11.5",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.12.2 (L1) Audit Touch ID (Manual)",
+      "old": "CIS2.12.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.13.1 (L1) Ensure Guest Account Is Disabled (Automated)",
+      "old": "CIS2.13.1",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.13.2 (L1) Ensure Guest Access to Shared Folders Is Disabled (Automated)",
+      "old": "CIS2.13.2",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.13.3 (L1) Ensure Automatic Login Is Disabled (Automated)",
+      "old": "CIS2.13.3",
+      "new": "CIS2.13",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.18.1 (L1) Ensure On-Device Dictation Is Enabled (Automated)",
+      "old": "CIS2.18.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.4.1 (L1) Audit Menu Bar and Control Center Icons (Manual)",
+      "old": "CIS2.4.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.4.1 (L1) Audit Menu Bar and Control Center Icons (Manual) [show-bluetooth-status]",
+      "old": "CIS2.4.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.1 (L1) Ensure Siri Is Disabled (Automated)",
+      "old": "CIS2.5.2.1",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual)",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual) [siri-type-to-false]",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual) [siri-statusmenu-true]",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual) [siri-statusmenu-false]",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual) [siri-voicetrigger-true]",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual) [siri-voicetrigger-false]",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual) [siri-lockscreen-true]",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual) [siri-lockscreen-false]",
+      "old": "CIS2.5.2.2",
+      "new": "CIS2.5",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.1.1 (L2) Ensure Location Services Is Enabled (Automated) [location-services-enabled]",
+      "old": "CIS2.6.1.1",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.1.2 (L2) Ensure 'Show Location Icon in Control Center when System Services Request Your Location' Is Enabled (Automated)",
+      "old": "CIS2.6.1.2",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.3 (L1) Ensure Printer Sharing Is Disabled (Automated)",
+      "old": "CIS2.3.3.3",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.4 (L1) Ensure Remote Login Is Disabled (Automated)",
+      "old": "CIS2.3.3.4",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.5 (L1) Ensure Remote Management Is Disabled (Automated)",
+      "old": "CIS2.3.3.5",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.6 (L1) Ensure Remote Apple Events Is Disabled (Automated)",
+      "old": "CIS2.3.3.6",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.7 (L1) Ensure Internet Sharing Is Disabled (Automated)",
+      "old": "CIS2.3.3.7",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.8 (L2) Ensure Content Caching Is Disabled (Automated)",
+      "old": "CIS2.3.3.8",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.10 (L1) Ensure Bluetooth Sharing Is Disabled (Automated)",
+      "old": "CIS2.3.3.10",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.9 (L2) Ensure Media Sharing Is Disabled (Automated)",
+      "old": "CIS2.3.3.9",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.4.1 (L1) Ensure Backup Automatically is Enabled If Time Machine Is Enabled .118 (Automated)",
+      "old": "CIS2.3.4.1",
+      "new": "CIS11.2",
+      "reason": "rule:backup|restore|recovery|shadow copy",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.4 (L1) Time Machine (Manual)",
+      "old": "CIS2.3.4",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 1.2 (L1) Ensure Download New Updates When Available Is Enabled (Automated)",
+      "old": "CIS1.2",
+      "new": "CIS7.3",
+      "reason": "rule:software update|os update|install.*updat",
+      "category": "Install Updates, Patches and Additional Security Software"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 1.3 (L1) Ensure Install of macOS Updates Is Enabled (Automated)",
+      "old": "CIS1.3",
+      "new": "CIS7.3",
+      "reason": "rule:software update|os update|install.*updat",
+      "category": "Install Updates, Patches and Additional Security Software"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 1.4 (L1) Ensure Install Application Updates from the App Store Is Enabled (Automated)",
+      "old": "CIS1.4",
+      "new": "CIS7.3",
+      "reason": "rule:software update|os update|install.*updat",
+      "category": "Install Updates, Patches and Additional Security Software"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 1.5 (L1) Ensure Install Security Responses and System Files Is Enabled (Automated)",
+      "old": "CIS1.5",
+      "new": "CIS7.3",
+      "reason": "rule:software update|os update|install.*updat",
+      "category": "Install Updates, Patches and Additional Security Software"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 1.6 (L1) Ensure Software Update Deferment Is Less Than or Equal to 30 Days (Automated)",
+      "old": "CIS1.6",
+      "new": "CIS7.3",
+      "reason": "rule:software update|os update|install.*updat",
+      "category": "Install Updates, Patches and Additional Security Software"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.2 (L2) Audit iCloud Drive (Manual)",
+      "old": "CIS2.1.1.2",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.2 (L2) Audit iCloud Drive (Manual) [icloud-drive-enabled]",
+      "old": "CIS2.1.1.2",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.1 (L2) Audit iCloud Passwords & Keychain (Manual)",
+      "old": "CIS2.1.1.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.1 (L2) Audit iCloud Passwords & Keychain (Manual) [icloud-keychain-enabled]",
+      "old": "CIS2.1.1.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.3 (L2) Ensure iCloud Drive Document and Desktop Sync Is Disabled (Automated)",
+      "old": "CIS2.1.1.3",
+      "new": "CIS2.1",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.2.1 (L1) Ensure Firewall Is Enabled (Automated)",
+      "old": "CIS2.2.1",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.2.2 (L1) Ensure Firewall Stealth Mode Is Enabled (Automated)",
+      "old": "CIS2.2.2",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.1.1 (L1) Ensure AirDrop Is Disabled When Not Actively Transferring Files (Automated)",
+      "old": "CIS2.3.1.1",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.1.2 (L1) Ensure AirPlay Receiver Is Disabled (Automated)",
+      "old": "CIS2.3.1.2",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.2.1 (L1) Ensure Set Time and Date Automatically Is Enabled (Automated)",
+      "old": "CIS2.3.2.1",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.2.2 (L1) Ensure the Time Service Is Enabled (Automated)",
+      "old": "CIS2.3.2.2",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.1 (L1) Ensure Screen Sharing Is Disabled (Automated)",
+      "old": "CIS2.3.3.1",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.2 (L1) Ensure File Sharing Is Disabled (Automated)",
+      "old": "CIS2.3.3.2",
+      "new": "CIS2.3",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.4 (L2) Audit Security Keys Used With Apple Accounts (Manual)",
+      "old": "CIS2.1.1.4",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.5 (L2) Audit Freeform Sync to iCloud (Manual)",
+      "old": "CIS2.1.1.5",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.1.6 (L2) Audit Find My Mac (Manual)",
+      "old": "CIS2.1.1.6",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.1.2 (L2) Audit App Store Password Settings (Manual)",
+      "old": "CIS2.1.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.3.3.11 (L2) Ensure Computer Name Does Not Contain PII or Protected Organizational Information (Manual)",
+      "old": "CIS2.3.3.11",
+      "new": "CIS3.3",
+      "reason": "rule:data protection|sensitive data|pii",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.2 (L2) Full Disk Access (Manual)",
+      "old": "CIS2.6.2",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.3.2 (L1) Ensure Improve Siri & Dictation Is Disabled (Automated)",
+      "old": "CIS2.6.3.2",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.3.3 (L1) Ensure Improve Assistive Voice Features Is Disabled (Automated)",
+      "old": "CIS2.6.3.3",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.3.4 (L1) Ensure 'Share with app developers' Is Disabled (Automated)",
+      "old": "CIS2.6.3.4",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.3.5 (L1) Ensure Share iCloud Analytics Is Disabled (Manual)",
+      "old": "CIS2.6.3.5",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.6.7 (L2) Audit Lockdown Mode (Manual)",
+      "old": "CIS2.6.7",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.7.2 (L2) Audit iPhone Mirroring (Manual)",
+      "old": "CIS2.7.2",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.9.1 (L1) Ensure Help Apple Improve Search Is Disabled (Automated)",
+      "old": "CIS2.9.1",
+      "new": "CIS2.9",
+      "reason": "section_map_parent",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.12.2 (L1) Audit Touch ID (Manual) [touch-id-audit]",
+      "old": "CIS2.12.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.15.1 (L1) Audit Notification Settings (Manual)",
+      "old": "CIS2.15.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.16 (L2) Wallet & Apple Pay (Manual)",
+      "old": "CIS2.16",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 2.17 (L1) Internet Accounts (Manual)",
+      "old": "CIS2.17",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System Settings"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.2.1 (L2) Ensure Protect Mail Activity in Mail Is Enabled (Manual)",
+      "old": "CIS6.2.1",
+      "new": "CIS2.3",
+      "reason": "rule:application",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.8 (L2) Audit AutoFill (Manual)",
+      "old": "CIS6.3.8",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.3.10 (L1) Ensure Show Status Bar Is Enabled (Automated) [safari-popup-windows-audit]",
+      "old": "CIS6.3.10",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Applications"
+    },
+    {
+      "file": "macOS26/cis-macOSTahoe-policies.yaml",
+      "name": "CIS 6.5.1 (L1) Audit Passwords (Manual)",
+      "old": "CIS6.5.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Applications"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.1 UBTU-24-90890 (Automated)",
+      "old": "CISNone",
+      "new": "CIS1.1",
+      "reason": "section_map",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.18 UBTU-24-100600 (Automated)",
+      "old": "CISNone",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.19 UBTU-24-100650 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.20 UBTU-24-100660 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.27 UBTU-24-100850 (Automated)",
+      "old": "CISNone",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.50 UBTU-24-200660 (Manual)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.51 UBTU-24-200680 (Manual)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.67 UBTU-24-300024 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.77 UBTU-24-400000 (Automated)",
+      "old": "CISNone",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.78 UBTU-24-400020 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.92 UBTU-24-400360 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.99 UBTU-24-600000 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.100 UBTU-24-600010 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.130 UBTU-24-700320 (Automated)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "ubuntu24/24.04/cis-ubuntu24.04-policies.yaml",
+      "name": "CIS 1.131 UBTU-24-700400 (Manual)",
+      "old": "CISNone",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "General Information"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 28.1 (BL) Ensure 'Device Enumeration Policy' is set to 'Block all (most restrictive)' (Automated)",
+      "old": "CIS28.1",
+      "new": "CIS4.1",
+      "reason": "rule:\\bdma\\b|device installation|driver insta",
+      "category": "Dma Guard"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.10.9.1.1 (BL) Ensure 'Prevent installation of devices using drivers that match these device setup classes' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.9.1.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.10.9.1.2 (BL) Ensure 'Prevent installation of devices using drivers that match these device setup classes: Also apply to matching devices that are already installed.' is set to 'True' (checked) (Automated)",
+      "old": "CIS4.10.9.1.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.1 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.7.1.1",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.2 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key' (Automated)",
+      "old": "CIS4.11.7.1.2",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.3 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Password' is set to 'Enabled: Allow 48-digit recovery password' (Automated)",
+      "old": "CIS4.11.7.1.3",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.4 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True' (Automated)",
+      "old": "CIS4.11.7.1.4",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.5 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Configure storage of BitLocker recovery information to AD DS' is set to 'Enabled: Backup recovery passwords and key packages' (Automated)",
+      "old": "CIS4.11.7.1.5",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.6 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for fixed data drives' is set to 'Enabled: False' (Automated)",
+      "old": "CIS4.11.7.1.6",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.7 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True' (Automated)",
+      "old": "CIS4.11.7.1.7",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.1.8 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Save BitLocker recovery information to AD DS for fixed data drives' is set to 'Enabled: False' (Automated)",
+      "old": "CIS4.11.7.1.8",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.1 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.7.2.1",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.2 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key' (Automated)",
+      "old": "CIS4.11.7.2.2",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.3 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Recovery Password' is set to 'Enabled: Require 48-digit recovery password' (Automated)",
+      "old": "CIS4.11.7.2.3",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.4 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False' (Automated)",
+      "old": "CIS4.11.7.2.4",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.5 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Configure storage of BitLocker recovery information to AD DS:' is set to 'Enabled: Store recovery passwords and key packages' (Automated)",
+      "old": "CIS4.11.7.2.5",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.6 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for operating system drives' is set to 'Enabled: True' (Automated)",
+      "old": "CIS4.11.7.2.6",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.7 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True' (Automated)",
+      "old": "CIS4.11.7.2.7",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.8 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Save BitLocker recovery information to AD DS for operating system drives' is set to 'Enabled: True' (Automated)",
+      "old": "CIS4.11.7.2.8",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.10 (BL) Ensure 'Require additional authentication at startup: Configure TPM startup key and PIN:' is set to 'Enabled: Do not allow startup key and PIN with TPM' (Automated)",
+      "old": "CIS4.11.7.2.10",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.11 (BL) Ensure 'Require additional authentication at startup: Configure TPM startup key:' is set to 'Enabled: Do not allow startup key with TPM' (Automated)",
+      "old": "CIS4.11.7.2.11",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.12 (BL) Ensure 'Require additional authentication at startup: Configure TPM startup PIN:' is set to 'Enabled: Require startup PIN with TPM' (Automated)",
+      "old": "CIS4.11.7.2.12",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.13 (BL) Ensure 'Require additional authentication at startup: Configure TPM startup:' is set to 'Enabled: Do not allow TPM' (Automated)",
+      "old": "CIS4.11.7.2.13",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.14 (BL) Ensure 'Enforce drive encryption type on operating system drives: Select the encryption type: (device)' is set to 'Enabled: Used Space Only encryption' or 'Enabled: Full encryption' (Automated)",
+      "old": "CIS4.11.7.2.14",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.3.1 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.7.3.1",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.3.2 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker: Do not allow write access to devices configured in another organization' is set to 'Enabled: False' (Automated)",
+      "old": "CIS4.11.7.3.2",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.4 (BL) Ensure 'Choose drive encryption method and cipher strength (Windows 10 [Version 1511] and later): Select the encryption method for fixed data drives' is set to 'XTS-AES 128-bit (default)' or 'XTS-AES 256-bit' (Automated)",
+      "old": "CIS4.11.7.4",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.5 (BL) Ensure 'Choose drive encryption method and cipher strength (Windows 10 [Version 1511] and later): Select the encryption method for operating system drives' is set to 'XTS-AES 128-bit (default)' or 'XTS-AES 256-bit' (Automated)",
+      "old": "CIS4.11.7.5",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.6 (BL) Ensure 'Choose drive encryption method and cipher strength (Windows 10 [Version 1511] and later): Select the encryption method for removable data drives' is set to 'XTS-AES 128-bit' or higher (Automated)",
+      "old": "CIS4.11.7.6",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.11.7.2.9 (BL) Ensure 'Require additional authentication at startup' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.7.2.9",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/bl_win11_intune.yaml",
+      "name": "CIS 4.10.9.1.3 (BL) Ensure 'Prevent installation of devices using drivers that match these device setup classes: Prevent installation of devices using drivers for these device setup' is set to 'IEEE 1394 device setup classes' (Automated)",
+      "old": "CIS4.10.9.1.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 1.1 (L1) Ensure 'Allow Cortana Above Lock' is set to 'Block' (Automated)",
+      "old": "CIS1.1",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Above Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.1.3.1 (L1) Ensure 'Prevent enabling lock screen camera' is set to 'Enabled' (Automated)",
+      "old": "CIS4.1.3.1",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.1.3.2 (L1) Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled' (Automated)",
+      "old": "CIS4.1.3.2",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.4.1 (L1) Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled' (Automated)",
+      "old": "CIS4.4.1",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.4.2 (L1) Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)' (Automated)",
+      "old": "CIS4.4.2",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.4.3 (L1) Ensure 'Configure SMB v1 server' is set to 'Disabled' (Automated)",
+      "old": "CIS4.4.3",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.4.4 (L1) Ensure 'Enable Structured Exception Handling Overwrite Protection (SEHOP)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.4.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.4.5 (L1) Ensure 'WDigest Authentication' is set to 'Disabled' (Automated)",
+      "old": "CIS4.4.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.1 (L1) Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon (not recommended)' is set to 'Disabled' (Automated)",
+      "old": "CIS4.5.1",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.2 (L1) Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled' (Automated)",
+      "old": "CIS4.5.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.3 (L1) Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled' (Automated)",
+      "old": "CIS4.5.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.5 (L1) Ensure 'MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes' is set to 'Disabled' (Automated)",
+      "old": "CIS4.5.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.7 (L1) Ensure 'MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers' is set to 'Enabled' (Automated)",
+      "old": "CIS4.5.7",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.9 (L1) Ensure 'MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.5.9",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.10 (L1) Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended)' is set to 'Enabled: 5 or fewer seconds' (Automated)",
+      "old": "CIS4.5.10",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.5.13 (L1) Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less' (Automated)",
+      "old": "CIS4.5.13",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.6.4.1 (L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled' (Automated)",
+      "old": "CIS4.6.4.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.6.9.1 (L1) Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled' (Automated)",
+      "old": "CIS4.6.9.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.6.9.2 (L1) Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled' (Automated)",
+      "old": "CIS4.6.9.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.6.9.3 (L1) Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled' (Automated)",
+      "old": "CIS4.6.9.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.6.11.1 (L1) Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\", \"Require Integrity\", and \u201cRequire Privacy\u201d set for all NETLOGON and SYSVOL shares' (Automated)",
+      "old": "CIS4.6.11.1",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.6.18.1 (L1) Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 3 = Prevent Wi-Fi when on Ethernet' (Automated)",
+      "old": "CIS4.6.18.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.6.18.2 (L1) Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (Automated)",
+      "old": "CIS4.6.18.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.1 (L1) Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled' (Automated)",
+      "old": "CIS4.7.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.2 (L1) Ensure 'Configure Redirection Guard: Redirection Guard Options' is set to 'Enabled: Redirection Guard Enabled' (Automated)",
+      "old": "CIS4.7.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.3 (L1) Ensure 'Configure RPC connection settings: Protocol to use for outgoing RPC connections' is set to 'Enabled: RPC over TCP' (Automated)",
+      "old": "CIS4.7.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.4 (L1) Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default' (Automated)",
+      "old": "CIS4.7.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.5 (L1) Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher (Automated)",
+      "old": "CIS4.7.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.6 (L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP' (Automated)",
+      "old": "CIS4.7.6",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.7 (L1) Ensure 'Configure RPC over TCP port: RPC over TCP port:' is set to 'Enabled: 0' (Automated)",
+      "old": "CIS4.7.7",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.8 (L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled' (Automated)",
+      "old": "CIS4.7.8",
+      "new": "CIS4.1",
+      "reason": "rule:\\bdma\\b|device installation|driver insta",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.9 (L1) Ensure 'Manage processing of Queue-specific files: Manage processing of Queue-Specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles' (Automated)",
+      "old": "CIS4.7.9",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.10 (L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt' (Automated)",
+      "old": "CIS4.7.10",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.7.11 (L1) Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt' (Automated)",
+      "old": "CIS4.7.11",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.9.1.1 (L1) Ensure 'Turn off toast notifications on the lock screen (User)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.9.1.1",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.4.1 (L1) Ensure 'Include command line in process creation events' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.4.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.5.1 (L1) Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients' (Automated)",
+      "old": "CIS4.10.5.1",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.5.2 (L1) Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.5.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.9.2 (L1) Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.9.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.13.1 (L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical' (Automated)",
+      "old": "CIS4.10.13.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.19.1 (L1) Ensure 'Continue experiences on this device' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.19.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.19.2 (L1) Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.19.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.2 (L1) Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.5 (L1) Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.26.1 (L1) Ensure 'Block user from showing account details on sign-in' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.26.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.26.2 (L1) Ensure 'Do not display network selection UI' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.26.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.26.3 (L1) Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.26.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.26.4 (L1) Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.26.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.26.5 (L1) Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.26.5",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.26.6 (L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.26.6",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.26.7 (L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.26.7",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.29.5.1 (L1) Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.29.5.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.29.5.2 (L1) Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.29.5.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.30.1 (L1) Ensure 'Configure Offer Remote Assistance' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.30.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.30.2 (L1) Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.30.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.31.1 (L1) Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.31.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.31.2 (L1) Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (Automated)",
+      "old": "CIS4.10.31.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.44.1.1 (L1) Ensure 'Enable Windows NTP Client' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.44.1.1",
+      "new": "CIS8.4",
+      "reason": "rule:time sync|ntp\\b|chrony|timesync|time syn",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.10.44.1.2 (L1) Ensure 'Enable Windows NTP Server' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.44.1.2",
+      "new": "CIS8.4",
+      "reason": "rule:time sync|ntp\\b|chrony|timesync|time syn",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.3.1 (L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.3.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.5.1 (L1) Ensure 'Do not preserve zone information in file attachments (User)' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.5.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.5.2 (L1) Ensure 'Notify antivirus programs when opening attachments (User)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.5.2",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.6.1 (L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.6.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.6.2 (L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands' (Automated)",
+      "old": "CIS4.11.6.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.6.3 (L1) Ensure 'Turn off Autoplay' is set to 'Enabled: All drives' (Automated)",
+      "old": "CIS4.11.6.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.8.1 (L1) Ensure 'Do not display the password reveal button' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.8.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.8.2 (L1) Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.8.2",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.8.3 (L1) Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.8.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.10.1 (L1) Ensure 'Enable App Installer Experimental Features' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.10.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.10.2 (L1) Ensure 'Enable App Installer Hash Override' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.10.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.10.3 (L1) Ensure 'Enable App Installer ms-appinstaller protocol' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.10.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.1.1 (L1) Ensure 'Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.15.1.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.2.1 (L1) Ensure 'Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.15.2.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.3.1 (L1) Ensure 'Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.15.3.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.4.1 (L1) Ensure 'Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.15.4.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.1.2 (L1) Ensure 'Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater' (Automated)",
+      "old": "CIS4.11.15.1.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.3.2 (L1) Ensure 'Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater' (Automated)",
+      "old": "CIS4.11.15.3.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.4.2 (L1) Ensure 'Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater' (Automated)",
+      "old": "CIS4.11.15.4.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.15.2.2 (L1) Ensure 'Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater' (Automated)",
+      "old": "CIS4.11.15.2.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.18.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass' (Automated)",
+      "old": "CIS4.11.18.1",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.18.2 (L1) Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.18.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.18.3 (L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.18.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.18.4 (L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.18.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.27.1 (L1) Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.27.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.28.3.1 (L1) Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.28.3.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.31.1 (L1) Ensure 'Prevent users from sharing files within their profile. (User)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.31.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.3.2 (L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.3.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.3.2 (L1) Ensure 'Do not allow drive redirection' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.4.3.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.9.1 (L1) Ensure 'Always prompt for password upon connection' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.4.9.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.9.2 (L1) Ensure 'Require secure RPC communication' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.4.9.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.9.3 (L1) Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL' (Automated)",
+      "old": "CIS4.11.36.4.9.3",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.9.4 (L1) Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.4.9.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.9.5 (L1) Ensure 'Set client connection encryption level' is set to 'Enabled: High Level' (Automated)",
+      "old": "CIS4.11.36.4.9.5",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.11.1 (L1) Ensure 'Do not delete temp folders upon exit' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.36.4.11.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.37.1 (L1) Ensure 'Prevent downloading of enclosures' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.37.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.42.1 (L1) Ensure 'Turn off the offer to update to the latest version of Windows' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.42.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.50.1 (L1) Ensure 'Enable MPR notifications for the system' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.50.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.50.2 (L1) Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.50.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.55.1.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.55.1.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.55.2.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.55.2.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.55.1.2 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.55.1.2",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.55.2.3 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.55.2.3",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.55.1.3 (L1) Ensure 'Disallow Digest authentication' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.55.1.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 4.11.55.2.4 (L1) Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.55.2.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.15 (L1) Ensure 'Audit User Account Management' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.15",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.16 (L1) Ensure 'Detailed Tracking Audit PNP Activity' is set to include 'Success' (Automated)",
+      "old": "CIS6.16",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.17 (L1) Ensure 'Detailed Tracking Audit Process Creation' is set to include 'Success' (Automated)",
+      "old": "CIS6.17",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.18 (L1) Ensure 'Object Access Audit Detailed File Share' is set to include 'Failure' (Automated)",
+      "old": "CIS6.18",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.19 (L1) Ensure 'Object Access Audit Other Object Access Events' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.19",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.20 (L1) Ensure 'Object Access Audit Removable Storage' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.20",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.21 (L1) Ensure 'Policy Change Audit MPSSVC Rule Level Policy Change' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.21",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.22 (L1) Ensure 'Policy Change Audit Other Policy Change Events' is set to include 'Failure' (Automated)",
+      "old": "CIS6.22",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.23 (L1) Ensure 'Privilege Use Audit Sensitive Privilege Use' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.23",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.24 (L1) Ensure 'System Audit I Psec Driver' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.24",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.25 (L1) Ensure 'System Audit Other System Events' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.25",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.26 (L1) Ensure 'System Audit Security State Change' is set to include 'Success' (Automated)",
+      "old": "CIS6.26",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 6.27 (L1) Ensure 'System Audit System Integrity' is set to 'Success and Failure' (Automated)",
+      "old": "CIS6.27",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Auditing"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.1 (L1) Ensure 'Allow Behavior Monitoring' is set to 'Allowed' (Automated)",
+      "old": "CIS22.1",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.2 (L1) Ensure 'Allow Email Scanning' is set to 'Allowed' (Automated)",
+      "old": "CIS22.2",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.3 (L1) Ensure 'Allow Full Scan Removable Drive Scanning' is set to 'Allowed' (Automated)",
+      "old": "CIS22.3",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.4 (L1) Ensure 'Allow Realtime Monitoring' is set to 'Allowed' (Automated)",
+      "old": "CIS22.4",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.5 (L1) Ensure 'Allow scanning of all downloaded files and attachments' is set to 'Allowed' (Automated)",
+      "old": "CIS22.5",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.6 (L1) Ensure 'Allow Script Scanning' is set to 'Allowed' (Automated)",
+      "old": "CIS22.6",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.7 (L1) Ensure 'ASR: Block abuse of exploited vulnerable signed drivers' is set to 'Block` (Automated)",
+      "old": "CIS22.7",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.8 (L1) Ensure 'ASR: Block Adobe Reader from creating child processes' is set to 'Block' (Automated)",
+      "old": "CIS22.8",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.9 (L1) Ensure 'ASR: Block all Office applications from creating child processes' is set to 'Audit' or higher (Automated)",
+      "old": "CIS22.9",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.10 (L1) Ensure 'ASR: Block credential stealing from the Windows local security authority subsystem' is set to 'Block' (Automated)",
+      "old": "CIS22.10",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.11 (L1) Ensure 'ASR: Block executable content from email client and webmail' is set to 'Block' (Automated)",
+      "old": "CIS22.11",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.12 (L1) Ensure 'ASR: Block executable files from running unless they meet a prevalence, age, or trusted list criterion' is set to 'Audit' or higher (Automated)",
+      "old": "CIS22.12",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.13 (L1) Ensure 'ASR: Block execution of potentially obfuscated scripts' is set to 'Audit' or higher (Automated)",
+      "old": "CIS22.13",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.14 (L1) Ensure 'ASR: Block JavaScript or VBScript from launching downloaded executable content' is set to 'Block' (Automated)",
+      "old": "CIS22.14",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.15 (L1) Ensure 'ASR: Block Office applications from creating executable content' is set to 'Block' (Automated)",
+      "old": "CIS22.15",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.16 (L1) Ensure 'ASR: Block Office applications from injecting code into other processes' is set to 'Block' (Automated)",
+      "old": "CIS22.16",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.17 (L1) Ensure 'ASR: Block Office communication application from creating child processes' is set to 'Audit' or higher (Automated)",
+      "old": "CIS22.17",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.18 (L1) Ensure 'ASR: Block persistence through WMI event subscription' is set to 'Block' (Automated)",
+      "old": "CIS22.18",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.19 (L1) Ensure 'ASR: Block process creations originating from PSExec and WMI commands' is set to 'Audit' or higher (Automated)",
+      "old": "CIS22.19",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.20 (L1) Ensure 'ASR: Block untrusted and unsigned processes that run from USB' is set to 'Block' (Automated)",
+      "old": "CIS22.20",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.21 (L1) Ensure 'ASR: Block Win32 API calls from Office macros' is set to 'Block' (Automated)",
+      "old": "CIS22.21",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.22 (L1) Ensure 'ASR: Use advanced protection against ransomware' is set to 'Audit' or higher (Automated)",
+      "old": "CIS22.22",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.23 (L1) Ensure 'Days Until Aggressive Catchup Quick Scan' is set to '7 days' or fewer (Automated)",
+      "old": "CIS22.23",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.26 (L1) Ensure 'Enable Network Protection' is set to 'Enabled (block mode)' (Automated)",
+      "old": "CIS22.26",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.27 (L1) Ensure 'Hide Exclusions From Local Users' is set to 'Enabled' (Automated)",
+      "old": "CIS22.27",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.28 (L1) Ensure 'Oobe Enable Rtp And Sig Update' is set to 'Enabled' (Automated)",
+      "old": "CIS22.28",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.29 (L1) Ensure 'PUA Protection' is set to 'PUA Protection on' (Automated)",
+      "old": "CIS22.29",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.30 (L1) Ensure 'Quick Scan Include Exclusions' is set to '1' (Automated)",
+      "old": "CIS22.30",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 22.32 (L1) Ensure 'Remote Encryption Protection Configured State' is set to 'Audit: Generate EDR detections without blocking' or higher (Automated)",
+      "old": "CIS22.32",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 23.1 (L1) Ensure 'DO Download Mode' is NOT set to 'HTTP blended with Internet Peering' (Automated)",
+      "old": "CIS23.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Delivery Optimization"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 24.1 (L1) Ensure 'Configure System Guard Launch' is set to 'Unmanaged Enables Secure Launch if supported by hardware' (Automated)",
+      "old": "CIS24.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Device Guard"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 24.2 (L1) Ensure 'Credential Guard' is set to 'Enabled with UEFI lock' (Automated)",
+      "old": "CIS24.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Device Guard"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 24.3 (L1) Ensure 'Enable Virtualization Based Security' is set to 'Enable virtualization based security' (Automated)",
+      "old": "CIS24.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Device Guard"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 24.4 (L1) Ensure 'Require Platform Security Features' is set to 'Turns on VBS with Secure Boot' or higher (Automated)",
+      "old": "CIS24.4",
+      "new": "CIS10.1",
+      "reason": "rule:\\bsip\\b|system integrity protection|secu",
+      "category": "Device Guard"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.1 (L1) Ensure 'Device Password Enabled' is set to 'Enabled' (Automated)",
+      "old": "CIS26.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.2 (L1) Ensure 'Device Password Enabled: Alphanumeric Device Password Required' is set to 'Password or Alphanumeric PIN required' (Automated)",
+      "old": "CIS26.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.3 (L1) Ensure 'Device Password Enabled: Min Device Password Complex Characters' is set to 'Digits and lowercase letters are required' (Automated)",
+      "old": "CIS26.3",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.4 (L1) Ensure 'Device Password Enabled: Device Password Expiration' is set to '365 or fewer days, but not 0' (Automated)",
+      "old": "CIS26.4",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.5 (L1) Ensure 'Device Password Enabled: Device Password History' is set to '24 or more password(s)' (Automated)",
+      "old": "CIS26.5",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.6 (L1) Ensure 'Device Password Enabled: Max Device Password Failed Attempts' is set to '5 or fewer failed attempt(s), but not 0' (Automated)",
+      "old": "CIS26.6",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.7 (L1) Ensure 'Device Password Enabled: Max Inactivity Time Device Lock' is set to '15 or fewer minutes, but not 0' (Automated)",
+      "old": "CIS26.7",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.8 (L1) Ensure 'Device Password Enabled: Min Device Password Length' is set to '14 or more character(s)' (Automated)",
+      "old": "CIS26.8",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 26.9 (L1) Ensure 'Minimum Password Age' is set to '1 or more day(s)' (Automated)",
+      "old": "CIS26.9",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Device Lock"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 34.1 (L1) Ensure 'Allow Cortana' is set to 'Block' (Automated)",
+      "old": "CIS34.1",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "Experience"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 34.2 (L1) Ensure 'Allow Spotlight Collection (User)' is set to '0' (Automated)",
+      "old": "CIS34.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Experience"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 34.4 (L1) Ensure 'Disable Consumer Account State Content' is set to 'Enabled' (Automated)",
+      "old": "CIS34.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Experience"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 34.5 (L1) Ensure 'Do not show feedback notifications' is set to 'Feedback notifications are disabled' (Automated)",
+      "old": "CIS34.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Experience"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.1 (L1) Ensure 'Enable Domain Network Firewall' is set to 'True' (Automated)",
+      "old": "CIS38.1",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.2 (L1) Ensure 'Enable Domain Network Firewall: Default Inbound Action for Domain Profile' is set to 'Block' (Automated)",
+      "old": "CIS38.2",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.3 (L1) Ensure 'Enable Domain Network Firewall: Disable Inbound Notifications' is set to 'True' (Automated)",
+      "old": "CIS38.3",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.4 (L1) Ensure 'Enable Domain Network Firewall: Enable Log Dropped Packets' is set to 'Yes: Enable Logging Of Dropped Packets' (Automated)",
+      "old": "CIS38.4",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.5 (L1) Ensure 'Enable Domain Network Firewall: Enable Log Success Connections' is set to 'Enable Logging Of Successful Connections' (Automated)",
+      "old": "CIS38.5",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.6 (L1) Ensure 'Enable Domain Network Firewall: Log File Path' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log ' (Automated)",
+      "old": "CIS38.6",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.7 (L1) Ensure 'Enable Domain Network Firewall: Log Max File Size' is set to '16,384 KB or greater' (Automated)",
+      "old": "CIS38.7",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.8 (L1) Ensure 'Enable Private Network Firewall' is set to 'True' (Automated)",
+      "old": "CIS38.8",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.9 (L1) Ensure 'Enable Private Network Firewall: Default Inbound Action for Private Profile' is set to 'Block' (Automated)",
+      "old": "CIS38.9",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.10 (L1) Ensure 'Enable Private Network Firewall: Disable Inbound Notifications' is set to 'True' (Automated)",
+      "old": "CIS38.10",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.11 (L1) Ensure 'Enable Private Network Firewall: Enable Log Success Connections' is set to 'Enable Logging Of Successful Connections' (Automated)",
+      "old": "CIS38.11",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.12 (L1) Ensure 'Enable Private Network Firewall: Enable Log Dropped Packets' is set to 'Yes: Enable Logging Of Dropped Packets' (Automated)",
+      "old": "CIS38.12",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.13 (L1) Ensure 'Enable Private Network Firewall: Log File Path' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log' (Automated)",
+      "old": "CIS38.13",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.14 (L1) Ensure 'Enable Private Network Firewall: Log Max File Size' is set to '16,384 KB or greater' (Automated)",
+      "old": "CIS38.14",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.15 (L1) Ensure 'Enable Public Network Firewall' is set to 'True' (Automated)",
+      "old": "CIS38.15",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.16 (L1) Ensure 'Enable Public Network Firewall: Allow Local Ipsec Policy Merge' is set to 'False' (Automated)",
+      "old": "CIS38.16",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.17 (L1) Ensure 'Enable Public Network Firewall: Allow Local Policy Merge' is set to 'False' (Automated)",
+      "old": "CIS38.17",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.18 (L1) Ensure 'Enable Public Network Firewall: Default Inbound Action for Public Profile' is set to 'Block' (Automated)",
+      "old": "CIS38.18",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.19 (L1) Ensure 'Enable Public Network Firewall: Disable Inbound Notifications' is set to 'True' (Automated)",
+      "old": "CIS38.19",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.20 (L1) Ensure 'Enable Public Network Firewall: Enable Log Dropped Packets' is set to 'Yes: Enable Logging Of Dropped Packets' (Automated)",
+      "old": "CIS38.20",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.21 (L1) Ensure 'Enable Public Network Firewall: Enable Log Success Connections' is set to 'Enable Logging Of Successful Connections' (Automated)",
+      "old": "CIS38.21",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.22 (L1) Ensure 'Enable Public Network Firewall: Log File Path' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log' (Automated)",
+      "old": "CIS38.22",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 38.23 (L1) Ensure 'Enable Public Network Firewall: Log Max File Size' is set to '16,384 KB or greater' (Automated)",
+      "old": "CIS38.23",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Firewall"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 46.1 (L1) Ensure 'Enable insecure guest logons' is set to 'Disabled' (Automated)",
+      "old": "CIS46.1",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Lanman Workstation"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.1 (L1) Ensure 'Accounts: Enable Guest account status' is set to 'Disabled' (Automated)",
+      "old": "CIS49.1",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.2 (L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled' (Automated)",
+      "old": "CIS49.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.6 (L1) Ensure 'Interactive logon: Do not display last signed-in' is set to 'Enabled' (Automated)",
+      "old": "CIS49.6",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.7 (L1) Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled' (Automated)",
+      "old": "CIS49.7",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.8 (L1) Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0' (Automated)",
+      "old": "CIS49.8",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.11 (L1) Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher (Automated)",
+      "old": "CIS49.11",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.12 (L1) Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled' (Automated)",
+      "old": "CIS49.12",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.13 (L1) Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled' (Automated)",
+      "old": "CIS49.13",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.14 (L1) Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled' (Automated)",
+      "old": "CIS49.14",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.15 (L1) Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled' (Automated)",
+      "old": "CIS49.15",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.16 (L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled' (Automated)",
+      "old": "CIS49.16",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.17 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (Automated)",
+      "old": "CIS49.17",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.18 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled' (Automated)",
+      "old": "CIS49.18",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.19 (L1) Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled' (Automated)",
+      "old": "CIS49.19",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.20 (L1) Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (Automated)",
+      "old": "CIS49.20",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.21 (L1) Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Allow' (Automated)",
+      "old": "CIS49.21",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.22 (L1) Ensure 'Network Security: Allow PKU2U authentication requests' is set to 'Block' (Automated)",
+      "old": "CIS49.22",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.23 (L1) Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled' (Automated)",
+      "old": "CIS49.23",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.24 (L1) Ensure 'Network security: LAN Manager authentication level' is set to 'Send LM and NTLMv2 responses only. Refuse LM and NTLM' (Automated)",
+      "old": "CIS49.24",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.25 (L1) Ensure 'Network Security Minimum Session Security For NTLMSSP Based Clients' is set to 'Require NTLM and 128-bit encryption' (Automated)",
+      "old": "CIS49.25",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.26 (L1) Ensure 'Network Security Minimum Session Security For NTLMSSP Based Servers' is set to 'Require NTLM and 128-bit encryption' (Automated)",
+      "old": "CIS49.26",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.27 (L1) Ensure 'Network security: Restrict NTLM: Audit Incoming NTLM Traffic' is set to 'Enable auditing for all accounts' (Automated)",
+      "old": "CIS49.27",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.28 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for administrators' is set to 'Prompt for consent on the secure desktop' or higher (Automated)",
+      "old": "CIS49.28",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.29 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests' (Automated)",
+      "old": "CIS49.29",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.30 (L1) Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled' (Automated)",
+      "old": "CIS49.30",
+      "new": "CIS2.3",
+      "reason": "rule:application",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.31 (L1) Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled' (Automated)",
+      "old": "CIS49.31",
+      "new": "CIS2.3",
+      "reason": "rule:application",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.32 (L1) Ensure 'User Account Control: Use Admin Approval Mode' is set to 'Enabled' (Automated)",
+      "old": "CIS49.32",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.33 (L1) Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled' (Automated)",
+      "old": "CIS49.33",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.34 (L1) Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled' (Automated)",
+      "old": "CIS49.34",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.35 (L1) Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled' (Automated)",
+      "old": "CIS49.35",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 50.1 (L1) Ensure 'Configure Lsa Protected Process is set to 'Enabled with UEFI Lock...' (Automated)",
+      "old": "CIS50.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Security Authority"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 55.1 (L1) Ensure 'Allow apps from the Microsoft app store to auto update' is set to 'Allowed' (Automated)",
+      "old": "CIS55.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 55.2 (L1) Ensure 'Allow Game DVR' is set to 'Block' (Automated)",
+      "old": "CIS55.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 55.4 (L1) Ensure 'Block Non Admin User Install' is set to 'Block' (Automated)",
+      "old": "CIS55.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 55.6 (L1) Ensure 'MSI Allow user control over installs' is set to 'Disabled' (Automated)",
+      "old": "CIS55.6",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 55.7 (L1) Ensure 'MSI Always install with elevated privileges' is set to 'Disabled' (Automated)",
+      "old": "CIS55.7",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 55.8 (L1) Ensure 'MSI Always install with elevated privileges (User)' is set to 'Disabled' (Automated)",
+      "old": "CIS55.8",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 68.2 (L1) Ensure 'Allow Input Personalization' is set to 'Block' (Automated)",
+      "old": "CIS68.2",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "Privacy"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 68.4 (L1) Ensure 'Let Apps Activate With Voice Above Lock' is set to 'Enabled: Force Deny' (Automated)",
+      "old": "CIS68.4",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Privacy"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 72.2 (L1) Ensure 'Allow Indexing Encrypted Stores Or Items' is set to 'Block' (Automated)",
+      "old": "CIS72.2",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Search"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 72.3 (L1) Ensure 'Allow Search To Use Location' is set to 'Block' (Automated)",
+      "old": "CIS72.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Search"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 76.1.1 (L1) Ensure 'Notify Malicious' is set to 'Enabled' (Automated)",
+      "old": "CIS76.1.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Smart Screen"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 76.1.2 (L1) Ensure 'Notify Password Reuse' is set to 'Enabled' (Automated)",
+      "old": "CIS76.1.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Smart Screen"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 76.1.3 (L1) Ensure 'Notify Unsafe App' is set to 'Enabled' (Automated)",
+      "old": "CIS76.1.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Smart Screen"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 76.1.4 (L1) Ensure 'Service Enabled' is set to 'Enabled' (Automated)",
+      "old": "CIS76.1.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Smart Screen"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 79.1 (L1) Ensure 'Enable Sudo' is set to 'Sudo is disabled' (Automated)",
+      "old": "CIS79.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Sudo"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 80.3 (L1) Ensure 'Allow Telemetry' is set to 'Basic' (Automated)",
+      "old": "CIS80.3",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 80.6 (L1) Ensure 'Enable OneSettings Auditing' is set to 'Enabled' (Automated)",
+      "old": "CIS80.6",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 80.7 (L1) Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled' (Automated)",
+      "old": "CIS80.7",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 80.8 (L1) Ensure 'Limit Dump Collection' is set to 'Enabled' (Automated)",
+      "old": "CIS80.8",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.3 (L1) Ensure 'Computer Browser (Browser)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.3",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.7 (L1) Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.7",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.8 (L1) Ensure 'Infrared monitor service (irmon)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.8",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.10 (L1) Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.10",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.11 (L1) Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.11",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.13 (L1) Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.13",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.20 (L1) Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.20",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.22 (L1) Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.22",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.24 (L1) Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.24",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.26 (L1) Ensure 'Special Administration Console Helper (sacsvr)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.26",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.27 (L1) Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.27",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.28 (L1) Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.28",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.29 (L1) Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.29",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.32 (L1) Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.32",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.33 (L1) Ensure 'Windows Mobile Hotspot Service (icssvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.33",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.38 (L1) Ensure 'World Wide Web Publishing Service (W3SVC)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.38",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.39 (L1) Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.39",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.40 (L1) Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.40",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.41 (L1) Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.41",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 81.42 (L1) Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.42",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.1 (L1) Ensure 'Access Credential Manager As Trusted Caller' is set to 'No One' (Automated)",
+      "old": "CIS89.1",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.2 (L1) Ensure 'Access From Network' is set to 'Administrators, Remote Desktop Users' (Automated)",
+      "old": "CIS89.2",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.3 (L1) Ensure 'Act As Part Of The Operating System' is set to 'No One' (Automated)",
+      "old": "CIS89.3",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.4 (L1) Ensure 'Allow Local Log On' is set to 'Administrators, Users' (Automated)",
+      "old": "CIS89.4",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.5 (L1) Ensure 'Backup Files And Directories' is set to 'Administrators' (Automated)",
+      "old": "CIS89.5",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.6 (L1) Ensure 'Change System Time' is set to 'Administrators, LOCAL SERVICE' (Automated)",
+      "old": "CIS89.6",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.7 (L1) Ensure 'Create Global Objects' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (Automated)",
+      "old": "CIS89.7",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.8 (L1) Ensure 'Create Page File' is set to 'Administrators' (Automated)",
+      "old": "CIS89.8",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.9 (L1) Ensure 'Create Permanent Shared Objects' is set to 'No One' (Automated)",
+      "old": "CIS89.9",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.10 (L1) Ensure 'Create Symbolic Links' is set to 'Administrators' (Automated)",
+      "old": "CIS89.10",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.11 (L1) Ensure 'Create Token' is set to 'No One' (Automated)",
+      "old": "CIS89.11",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.12 (L1) Ensure 'Debug Programs' is set to 'Administrators' (Automated)",
+      "old": "CIS89.12",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.13 (L1) Ensure 'Deny Access From Network' to include 'Guests, Local account' (Automated)",
+      "old": "CIS89.13",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.14 (L1) Ensure 'Deny Local Log On' to include 'Guests' (Automated)",
+      "old": "CIS89.14",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.15 (L1) Ensure 'Deny Log On As Batch Job' to include 'Guests' (Automated)",
+      "old": "CIS89.15",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.16 (L1) Ensure 'Deny Log On As Service Job' to include 'Guests' (Automated)",
+      "old": "CIS89.16",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.17 (L1) Ensure 'Deny Remote Desktop Services Log On' to include 'Guests, Local account' (Automated)",
+      "old": "CIS89.17",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.18 (L1) Ensure 'Enable Delegation' is set to 'No One' (Automated)",
+      "old": "CIS89.18",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.19 (L1) Ensure 'Generate Security Audits' is set to 'LOCAL SERVICE, NETWORK SERVICE' (Automated)",
+      "old": "CIS89.19",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.20 (L1) Ensure 'Impersonate Client' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (Automated)",
+      "old": "CIS89.20",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.21 (L1) Ensure 'Increase Scheduling Priority' is set to 'Administrators, Window Manager\\Window Manager Group' (Automated)",
+      "old": "CIS89.21",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.22 (L1) Ensure 'Load Unload Device Drivers' is set to 'Administrators' (Automated)",
+      "old": "CIS89.22",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.23 (L1) Ensure 'Lock Memory' is set to 'No One' (Automated)",
+      "old": "CIS89.23",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.25 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (Automated)",
+      "old": "CIS89.25",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.26 (L1) Ensure 'Manage Volume' is set to 'Administrators' (Automated)",
+      "old": "CIS89.26",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.27 (L1) Ensure 'Modify Firmware Environment' is set to 'Administrators' (Automated)",
+      "old": "CIS89.27",
+      "new": "CIS10.1",
+      "reason": "rule:\\bsip\\b|system integrity protection|secu",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.28 (L1) Ensure 'Modify Object Label' is set to 'No One' (Automated)",
+      "old": "CIS89.28",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.29 (L1) Ensure 'Profile Single Process' is set to 'Administrators' (Automated)",
+      "old": "CIS89.29",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.30 (L1) Ensure 'Profile System Performance' is set to 'Administrators, NT SERVICE\\WdiServiceHost' (Automated)",
+      "old": "CIS89.30",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.31 (L1) Ensure 'Remote Shutdown' is set to 'Administrators' (Automated)",
+      "old": "CIS89.31",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.32 (L1) Ensure 'Replace Process Level Token' is set to 'LOCAL SERVICE, NETWORK SERVICE' (Automated)",
+      "old": "CIS89.32",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.33 (L1) Ensure 'Restore Files And Directories' is set to 'Administrators' (Automated)",
+      "old": "CIS89.33",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.34 (L1) Ensure 'Shut Down The System' is set to 'Administrators, Users' (Automated)",
+      "old": "CIS89.34",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 89.35 (L1) Ensure 'Take Ownership' is set to 'Administrators' (Automated)",
+      "old": "CIS89.35",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 90.1 (L1) Ensure 'Hypervisor Enforced Code Integrity' is set to 'Enabled with UEFI lock' (Automated)",
+      "old": "CIS90.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Virtualization Based Technology"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 90.2 (L1) Ensure 'Require UEFI Memory Attributes Table' is set to 'Require UEFI Memory Attributes Table' (Automated)",
+      "old": "CIS90.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Virtualization Based Technology"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 93.1 (L1) Ensure 'Allow Auto Connect To Wi Fi Sense Hotspots' is set to 'Block' (Automated)",
+      "old": "CIS93.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Wi-Fi Settings"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 94.1 (L1) Ensure 'Allow widgets' is set to 'Not allowed' (Automated)",
+      "old": "CIS94.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Widgets"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 96.1 (L1) Ensure 'Disallow Exploit Protection Override' is set to '(Enable)' (Automated)",
+      "old": "CIS96.1",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Windows Defender Security Center"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 97.1 (L1) Ensure 'Enable ESS with Supported Peripherals' is set to 'Enhanced sign-in security will be enabled\u2026' (Automated)",
+      "old": "CIS97.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Hello For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 97.2 (L1) Ensure 'Facial Features Use Enhanced Anti Spoofing' is set to 'true' (Automated)",
+      "old": "CIS97.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Hello For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 97.3 (L1) Ensure 'Minimum PIN Length' is set to '6 more character(s)' (Automated)",
+      "old": "CIS97.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Hello For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 97.4 (L1) Ensure 'Require Security Device' is set to 'true' (Automated)",
+      "old": "CIS97.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Hello For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 98.2 (L1) Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: but the user can't access it above the lock screen' OR 'Disabled' (Automated)",
+      "old": "CIS98.2",
+      "new": "CIS4.3",
+      "reason": "rule:screen saver|inactiv|session lock|lock s",
+      "category": "Windows Ink Workspace"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 101.1 (L1) Ensure 'Allow Clipboard Redirection' is set to 'Not allowed' (Automated)",
+      "old": "CIS101.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Sandbox"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 101.2 (L1) Ensure 'Allow Networking' is set to 'Not allowed' (Automated)",
+      "old": "CIS101.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Sandbox"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 103.1 (L1) Ensure 'Allow Auto Update' is set to 'Enabled' (Automated)",
+      "old": "CIS103.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Update For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 103.2 (L1) Ensure 'Defer Feature Updates Period in Days' is set to 'Enabled: 180 or more days' (Automated)",
+      "old": "CIS103.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Update For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 103.3 (L1) Ensure 'Defer Quality Updates Period (Days)' is set to 'Enabled: 0 days' (Automated)",
+      "old": "CIS103.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Update For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 103.4 (L1) Ensure 'Manage preview builds' is set to 'Disable Preview builds' (Automated)",
+      "old": "CIS103.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Update For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 103.5 (L1) Ensure 'Scheduled Install Day' is set to 'Every day' (Automated)",
+      "old": "CIS103.5",
+      "new": "CIS7.3",
+      "reason": "rule:software update|os update|install.*updat",
+      "category": "Windows Update For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 103.6 (L1) Ensure 'Block \"Pause Updates\" ability' is set to 'Block' (Automated)",
+      "old": "CIS103.6",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Update For Business"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 104.1 (L1) Ensure 'Require PIN For Pairing' is set to 'Enabled: Pairing ceremony for new devices will always require a PIN' OR 'All pairings will require PIN' (Automated)",
+      "old": "CIS104.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Wireless Display"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 105.1 (L1) Ensure 'Backup Directory' is set to 'Backup the password to Azure AD only' (Automated)",
+      "old": "CIS105.1",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Windows LAPS"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 105.2 (L1) Ensure 'Password Age Days' is set to 'Configured: 30 or fewer' (Automated)",
+      "old": "CIS105.2",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Windows LAPS"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 105.3 (L1) Ensure 'Password Complexity' is set to 'Large letters + small letters + numbers + special characters' (Automated)",
+      "old": "CIS105.3",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Windows LAPS"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 105.4 (L1) Ensure 'Password Length' is set to 'Configured: 15 or more' (Automated)",
+      "old": "CIS105.4",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Windows LAPS"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 105.5 (L1) Ensure 'Post-authentication actions' is set to 'Reset the password and logoff the managed account' or higher (Automated)",
+      "old": "CIS105.5",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Windows LAPS"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 105.6 (L1) Ensure 'Post Authentication Reset Delay' is set to 'Configured: 8 or fewer hours, but not 0' (Automated)",
+      "old": "CIS105.6",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows LAPS"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.3 (L1) Configure 'Accounts: Rename administrator account' (Automated)",
+      "old": "CIS49.3",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.4 (L1) Configure 'Accounts: Rename guest account' (Automated)",
+      "old": "CIS49.4",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.9 (L1) Configure 'Interactive logon: Message text for users attempting to log on' (Automated)",
+      "old": "CIS49.9",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l1_win11_intune.yaml",
+      "name": "CIS 49.10 (L1) Configure 'Interactive logon: Message title for users attempting to log on' (Automated)",
+      "old": "CIS49.10",
+      "new": "CIS5.2",
+      "reason": "rule:logon|login window|interactive logon|acc",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.5.4 (L2) Ensure 'MSS: (DisableSavePassword) Prevent the dial-up password from being saved (recommended)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.5.4",
+      "new": "CIS5.2",
+      "reason": "rule:password|passwd|lockout|pam\\b|mfa|multi-",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.5.6 (L2) Ensure 'MSS: (KeepAliveTime) How often keep- alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes (recommended)' (Automated)",
+      "old": "CIS4.5.6",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.5.8 (L2) Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled' (Automated)",
+      "old": "CIS4.5.8",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.5.11 (L2) Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3' (Automated)",
+      "old": "CIS4.5.11",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.5.12 (L2) Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3' (Automated)",
+      "old": "CIS4.5.12",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.6.8.1 (L2) Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled' (Automated)",
+      "old": "CIS4.6.8.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.6.8.2 (L2) Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled' (Automated)",
+      "old": "CIS4.6.8.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.6.17.1 (L2) Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled' (Automated)",
+      "old": "CIS4.6.17.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.6.17.2 (L2) Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled' (Automated)",
+      "old": "CIS4.6.17.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.1 (L2) Ensure 'Turn off access to the Store' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.3 (L2) Ensure 'Turn off Help Experience Improvement Program (User)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.4 (L2) Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.6 (L2) Ensure 'Turn off printing over HTTP' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.6",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.7 (L2) Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.7",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.8 (L2) Ensure 'Turn off Search Companion content file updates' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.8",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.9 (L2) Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.9",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.10 (L2) Ensure 'Turn off the \"Publish to Web\" task for files and folders' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.10",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.11 (L2) Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.11",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.12 (L2) Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.12",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.20.1.13 (L2) Ensure 'Turn off Windows Error Reporting' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.20.1.13",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.23.1 (L2) Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic' (Automated)",
+      "old": "CIS4.10.23.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.25.1 (L2) Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled' (Automated)",
+      "old": "CIS4.10.25.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.10.40.5.1 (L2) Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled' (Automated)",
+      "old": "CIS4.10.40.5.1",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.3.2 (L2) Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.3.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.28.3.2 (L2) Ensure 'Join Microsoft MAPS' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.28.3.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.28.10.1 (L2) Ensure 'Configure Watson events' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.28.10.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.35.1 (L2) Ensure 'Turn off Push To Install service' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.35.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.2.1 (L2) Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.36.4.2.1",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.3.1 (L2) Ensure 'Do not allow COM port redirection' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.4.3.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.3.3 (L2) Ensure 'Do not allow LPT port redirection' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.4.3.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.3.4 (L2) Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.36.4.3.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.3.5 (L2) Ensure 'Restrict clipboard transfer from server to client' is set to 'Enabled: Disable clipboard transfers from server to client' (Automated)",
+      "old": "CIS4.11.36.4.3.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.10.1 (L2) Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)' (Automated)",
+      "old": "CIS4.11.36.4.10.1",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.36.4.10.2 (L2) Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute' (Automated)",
+      "old": "CIS4.11.36.4.10.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.42.2 (L2) Ensure 'Turn off the Store application' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.42.2",
+      "new": "CIS2.3",
+      "reason": "rule:application",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.49.1 (L2) Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.49.1",
+      "new": "CIS9.1",
+      "reason": "rule:safari|chrome|edge|browser|internet expl",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.52.2.1 (L2) Ensure 'Prevent Codec Download (User)' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.52.2.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.54.1 (L2) Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.54.1",
+      "new": "CIS8.2",
+      "reason": "rule:audit(ing|ed)?|event log|log management|",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.54.2 (L2) Ensure 'Turn on PowerShell Transcription' is set to 'Enabled' (Automated)",
+      "old": "CIS4.11.54.2",
+      "new": "CIS2.3",
+      "reason": "rule:powershell|macro|office|script execution",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.55.2.2 (L2) Ensure 'Allow remote server management through WinRM' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.55.2.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 4.11.56.1 (L2) Ensure 'Allow Remote Shell Access' is set to 'Disabled' (Automated)",
+      "old": "CIS4.11.56.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Administrative Templates"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 22.24 (L2) Ensure 'Enable Convert Warn To Block' is set to 'Warn verdicts are converted to block' (Automated)",
+      "old": "CIS22.24",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 22.25 (L2) Ensure 'Enable File Hash Computation' is set to 'Enable' (Automated)",
+      "old": "CIS22.25",
+      "new": "CIS10.1",
+      "reason": "rule:malware|defender|antivirus|asr\\b|attack ",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 22.31 (L2) Ensure 'Remote Encryption Protection Aggressiveness' is set to 'Medium' or higher (Automated)",
+      "old": "CIS22.31",
+      "new": "CIS3.6",
+      "reason": "rule:bitlocker|filevault|dm-crypt|encrypt|cip",
+      "category": "Defender"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 34.3 (L2) Ensure 'Allow Windows Spotlight (User)' is set to 'Block' (Automated)",
+      "old": "CIS34.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Experience"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 47.1 (L2) Ensure 'Disallow KMS Client Online AVS Validation' is set to 'Allow' (Automated)",
+      "old": "CIS47.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Licensing"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 49.5 (L2) Ensure 'Devices: Prevent users from installing printer drivers when connecting to shared printers' is set to 'Enable' (Automated)",
+      "old": "CIS49.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Local Policies Security Options"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 54.1 (L2) Ensure 'Allow Message Sync' is set to 'message sync is not allowed and cannot be changed by the user.' (Automated)",
+      "old": "CIS54.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Messaging"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 55.3 (L2) Ensure 'Allow Shared User App Data' is set to 'Block' (Automated)",
+      "old": "CIS55.3",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 55.5 (L2) Ensure 'Disable Store Originated Apps' is set to 'Enabled' (Automated)",
+      "old": "CIS55.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Microsoft App Store"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 61.1 (L2) Ensure 'Disallow Cloud Notification' is set to 'Allow' (Automated)",
+      "old": "CIS61.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Notifications"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 68.1 (L2) Ensure 'Allow Cross Device Clipboard' is set to 'Block' (Automated)",
+      "old": "CIS68.1",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "Privacy"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 68.3 (L2) Ensure 'Disable Advertising ID' is set to 'Enabled' (Automated)",
+      "old": "CIS68.3",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "Privacy"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 68.5 (L2) Ensure 'Upload User Activities' is set to 'Disabled' (Automated)",
+      "old": "CIS68.5",
+      "new": "CIS4.1",
+      "reason": "rule:privacy|telemetry|diagnostic|cortana|con",
+      "category": "Privacy"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 72.1 (L2) Ensure 'Allow Cloud Search' is set to 'Not allowed' (Automated)",
+      "old": "CIS72.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Search"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 72.4 (L2) Ensure 'Allow search highlights' is set to '0' (Automated)",
+      "old": "CIS72.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Search"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 74.1 (L2) Ensure 'Allow Online Tips' is set to 'Block' (Automated)",
+      "old": "CIS74.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Settings"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 80.1 (L2) Ensure 'Allow Font Providers' is set to 'Not allowed' (Automated)",
+      "old": "CIS80.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 80.2 (L2) Ensure 'Allow Location' is set to 'Force Location Off...' (Automated)",
+      "old": "CIS80.2",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 80.4 (L2) Ensure 'Disable Enterprise Auth Proxy' is set to 'Enable' (Automated)",
+      "old": "CIS80.4",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 80.5 (L2) Ensure 'Disable One Drive File Sync' is set to 'Sync Disabled' (Automated)",
+      "old": "CIS80.5",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "System"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.1 (L2) Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.1",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.2 (L2) Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.2",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.4 (L2) Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.4",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.5 (L2) Ensure 'GameInput Service (GameInputSvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.5",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.6 (L2) Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.6",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.9 (L2) Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.9",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.12 (L2) Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.12",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.14 (L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.14",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.15 (L2) Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.15",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.16 (L2) Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.16",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.17 (L2) Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.17",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.18 (L2) Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.18",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.19 (L2) Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.19",
+      "new": "CIS4.5",
+      "reason": "rule:firewall|packet filter|network isolation",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.21 (L2) Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.21",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.23 (L2) Ensure 'Server (LanmanServer)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.23",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.25 (L2) Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed' (Automated)",
+      "old": "CIS81.25",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.30 (L2) Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.30",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.31 (L2) Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.31",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.34 (L2) Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.34",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.35 (L2) Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.35",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.36 (L2) Ensure 'Windows Remote Management (WS- Management) (WinRM)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.36",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 81.37 (L2) Ensure 'WinHTTP Web Proxy Auto-Discovery Service (WinHttpAutoProxySvc)' is set to 'Disabled' (Automated)",
+      "old": "CIS81.37",
+      "new": "CIS4.8",
+      "reason": "rule:unnecessary service|disable.*service|sec",
+      "category": "System Services"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 89.24 (L2) Ensure 'Log On As Batch Job' is set to 'Administrators' (Automated)",
+      "old": "CIS89.24",
+      "new": "CIS5.4",
+      "reason": "rule:\\broot\\b|guest account|administrator acc",
+      "category": "User Rights"
+    },
+    {
+      "file": "win11/intune/l2_win11_intune.yaml",
+      "name": "CIS 98.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Block' (Automated)",
+      "old": "CIS98.1",
+      "new": "CIS4.1",
+      "reason": "default_secure_config",
+      "category": "Windows Ink Workspace"
+    }
+  ]
+}
