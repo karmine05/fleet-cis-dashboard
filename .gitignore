@@ -1,0 +1,22 @@
+# Secrets & credentials — NEVER commit
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Docker volumes (local state only)
+postgres_data/
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,111 @@
+cis_id,cis_control,d3fend_id,d3fend_tactic,d3fend_technique,attack_id
+1.1,CIS 1.1 (L1) Ensure Apple-provided Software Updates Are Installed (Automated),D3-DA,Detect,Asset Inventory,T1082
+6.3.2,CIS 6.3.2 (L2) Audit History and Remove History Items (Manual),D3-PWD,Access Control,Password Policies,T1201
+6.3.1,CIS 6.3.1 (L1) Ensure Automatic Opening of Safe Files in Safari Is Disabled (Automated),D3-FKA,Access Control,File Encryption,T1213
+6.3.3,CIS 6.3.3 (L1) Ensure Warn When Visiting A Fraudulent Website in Safari Is Enabled ..371 (Automated),D3-FKA,Access Control,File Encryption,T1213
+5.1.2,CIS 5.1.2 (L1) Ensure System Integrity Protection Status (SIP) Is Enabled (Automated),D3-SB,Harden,Execution Prevention,T1542
+6.3.7,CIS 6.3.7 (L1) Ensure Show Full Website Address in Safari Is Enabled (Automated),D3-FKA,Access Control,File Encryption,T1213
+6.3.10,CIS 6.3.10 (L1) Ensure Show Status Bar Is Enabled (Automated),D3-FKA,Access Control,File Encryption,T1213
+6.4.1,CIS 6.4.1 (L1) Ensure Secure Keyboard Entry Terminal.app Is Enabled (Automated),D3-FKA,Access Control,File Encryption,T1213
+3.2,CIS 3.2 (L2) Ensure Security Auditing Flags For User-Attributable Events Are Configured Per Local Organizational Requirements (Automated),D3-SCA,Harden,System Configuration,T1546
+6.1.1,CIS 6.1.1 (L1) Audit Show All Filename Extensions (Manual),D3-LME,Detect,Log Management,T1005
+5.5,CIS 5.5 (L1) Ensure a Separate Timestamp Is Enabled for Each User/tty Combo (Automated),D3-LAM,Access Control,Account Management,T1078
+5.3.1,CIS 5.3.1 (L1) Ensure all user storage APFS volumes are encrypted (Manual),D3-LAM,Access Control,Account Management,T1078
+5.6,"CIS 5.6 (L1) Ensure the ""root"" Account Is Disabled (Automated)",D3-LAM,Access Control,Account Management,T1078
+5.9,CIS 5.9 (L1) Ensure the Guest Home Folder Does Not Exist (Automated),D3-LAM,Access Control,Account Management,T1078
+6.3.5,CIS 6.3.5 (L2) Audit Hide IP Address in Safari Setting (Manual),D3-LME,Detect,Log Management,T1005
+2.5.1.1,CIS 2.5.1.1 (L1) Ensure External Intelligence Extensions Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.5.1.3,CIS 2.5.1.3 (L1) Ensure Mail Summarization Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.5.1.4,CIS 2.5.1.4 (L1) Ensure Notes Summarization Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.5.1.2,CIS 2.5.1.2 (L1) Ensure Writing Tools Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+5.2.3,CIS 5.2.3 (L2) Ensure Complex Password Must Contain Alphabetic Characters Is Configured (Manual),D3-PWD,Access Control,Password Policies,T1201
+5.2.6,CIS 5.2.6 (L2) Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured (Manual),D3-PWD,Access Control,Password Policies,T1201
+5.2.1,CIS 5.2.1 (L1) Ensure Password Account Lockout Threshold Is Configured (Automated),D3-LAM,Access Control,Account Management,T1078
+5.2.2,CIS 5.2.2 (L1) Ensure Password Minimum Length Is Configured (Automated),D3-PWD,Access Control,Password Policies,T1201
+5.2.7,CIS 5.2.7 (L1) Ensure Password Age Is Configured (Automated),D3-PWD,Access Control,Password Policies,T1201
+5.2.8,CIS 5.2.8 (L1) Ensure Password History Is Set to at least 24 (Automated),D3-PWD,Access Control,Password Policies,T1201
+5.11,CIS 5.11 (L1) Ensure Logging Is Enabled for Sudo (Automated),D3-LME,Detect,Log Management,T1005
+5.4,CIS 5.4 (L1) Ensure the Sudo Timeout Period Is Set to Zero (Automated),D3-LAM,Access Control,Account Management,T1078
+3.4,CIS 3.4 (L1) Ensure Security Auditing Retention Is Enabled (Automated),D3-LME,Detect,Log Management,T1005
+3.5,CIS 3.5 (L1) Ensure Access to Audit Records Is Controlled (Automated),D3-LME,Detect,Log Management,T1005
+4.1,CIS 4.1 (L2) Ensure Bonjour Advertising Services Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+4.2,CIS 4.2 (L1) Ensure HTTP Server Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+4.3,CIS 4.3 (L1) Ensure NFS Server Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+5.1.1,CIS 5.1.1 (L1) Ensure Home Folders Are Secure (Automated),D3-LAM,Access Control,Account Management,T1078
+5.1.3,CIS 5.1.3 (L1) Ensure Apple Mobile File Integrity (AMFI) Is Enabled (Automated),D3-SB,Harden,Execution Prevention,T1542
+5.1.4,CIS 5.1.4 (L1) Ensure Signed System Volume (SSV) Is Enabled (Automated),D3-SB,Harden,Execution Prevention,T1542
+5.1.5,CIS 5.1.5 (L1) Ensure Appropriate Permissions Are Enabled for System Wide Applications (Automated),D3-FKA,Access Control,File Encryption,T1213
+5.1.6,CIS 5.1.6 (L1) Ensure No World Writable Folders Exist in the System Folder (Automated),D3-FKA,Access Control,File Encryption,T1213
+5.1.7,CIS 5.1.7 (L2) Ensure No World Writable Folders Exist in the Library Folder (Automated),D3-FKA,Access Control,File Encryption,T1213
+2.6.1.1,CIS 2.6.1.1 (L2) Ensure Location Services Is Enabled (Automated),D3-DL Prevention,Isolate,Data Loss Prevention,T1565
+2.6.1,CIS 2.6.1 (L2) Location Services (Manual),D3-DL Prevention,Isolate,Data Loss Prevention,T1565
+2.6.4,CIS 2.6.4 (L1) Ensure Limit Ad Tracking Is Enabled (Automated),D3-DL Prevention,Isolate,Data Loss Prevention,T1565
+2.6.8,CIS 2.6.8 (L1) Ensure an Administrator Password Is Required to Access System-Wide Preferences (Automated),D3-PWD,Access Control,Password Policies,T1201
+2.7.1,CIS 2.7.1 (L2) Ensure Screen Saver Corners Are Secure (Automated),D3-SCA,Harden,System Configuration,T1546
+2.8.1,CIS 2.8.1 (L1) Audit Universal Control Settings (Manual),D3-SCA,Harden,System Configuration,T1546
+2.10.2,CIS 2.10.2 (L1) Ensure Power Nap Is Disabled for Intel Macs (Automated),D3-SCA,Harden,System Configuration,T1546
+2.10.1.2,CIS 2.10.1.2 (L2) Ensure Sleep and Display Sleep Is Enabled on Apple Silicon Devices (Automated),D3-SCA,Harden,System Configuration,T1546
+2.10.3,CIS 2.10.3 (L1) Ensure Wake for Network Access Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.10.1.1,CIS 2.10.1.1 (L2) Ensure the OS Is Not Active When Resuming from Standby (Intel) (Manual),D3-SCA,Harden,System Configuration,T1546
+2.11.2,CIS 2.11.2 (L1) Ensure Require Password After Screen Saver Begins or Display Is Turned Off Is Enabled for 5 Seconds or Immediately (Automated),D3-PWD,Access Control,Password Policies,T1201
+2.6.5,CIS 2.6.5 (L1) Ensure Gatekeeper Is Enabled (Automated),D3-SB,Harden,Execution Prevention,T1542
+2.6.3.1,CIS 2.6.3.1 (L1) Ensure Share Mac Analytics Is Disabled (Automated),D3-LME,Detect,Log Management,T1005
+2.11.1,CIS 2.11.1 (L1) Ensure an Inactivity Interval of 15 Minutes Or Less for the Screen Saver Is Enabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.11.3,CIS 2.11.3 (L1) Ensure a Custom Message for the Login Screen Is Enabled (Automated),D3-LAM,Access Control,Account Management,T1078
+2.6.6,CIS 2.6.6 (L1) Ensure FileVault Is Enabled (Automated),D3-FKA,Access Control,File Encryption,T1213
+2.11.4,CIS 2.11.4 (L1) Ensure Login Window Displays as Name and Password Is Enabled (Automated),D3-PWD,Access Control,Password Policies,T1201
+2.11.5,CIS 2.11.5 (L1) Ensure Show Password Hints Is Disabled (Automated),D3-PWD,Access Control,Password Policies,T1201
+2.12.2,CIS 2.12.2 (L1) Audit Touch ID (Manual),D3-MFA,Access Control,Multi-factor Authentication,T1556
+2.13.1,CIS 2.13.1 (L1) Ensure Guest Account Is Disabled (Automated),D3-LAM,Access Control,Account Management,T1078
+2.13.2,CIS 2.13.2 (L1) Ensure Guest Access to Shared Folders Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.13.3,CIS 2.13.3 (L1) Ensure Automatic Login Is Disabled (Automated),D3-LAM,Access Control,Account Management,T1078
+2.18.1,CIS 2.18.1 (L1) Ensure On-Device Dictation Is Enabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.4.1,CIS 2.4.1 (L1) Audit Menu Bar and Control Center Icons (Manual),D3-LME,Detect,Log Management,T1005
+2.5.2.1,CIS 2.5.2.1 (L1) Ensure Siri Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.5.2.2,CIS 2.5.2.2 (L1) Ensure Listen for (Siri) Is Disabled (Manual),D3-SCA,Harden,System Configuration,T1546
+2.3.3.3,CIS 2.3.3.3 (L1) Ensure Printer Sharing Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.3.3.4,CIS 2.3.3.4 (L1) Ensure Remote Login Is Disabled (Automated),D3-LAM,Access Control,Account Management,T1078
+2.3.3.5,CIS 2.3.3.5 (L1) Ensure Remote Management Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.3.3.6,CIS 2.3.3.6 (L1) Ensure Remote Apple Events Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.3.3.7,CIS 2.3.3.7 (L1) Ensure Internet Sharing Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.3.3.8,CIS 2.3.3.8 (L2) Ensure Content Caching Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.3.3.10,CIS 2.3.3.10 (L1) Ensure Bluetooth Sharing Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.3.3.9,CIS 2.3.3.9 (L2) Ensure Media Sharing Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.3.4.1,CIS 2.3.4.1 (L1) Ensure Backup Automatically is Enabled If Time Machine Is Enabled .118 (Automated),D3-DBK,Recover,Data Backup,T1534
+2.3.4,CIS 2.3.4 (L1) Time Machine (Manual),D3-DBK,Recover,Data Backup,T1534
+1.2,CIS 1.2 (L1) Ensure Download New Updates When Available Is Enabled (Automated),D3-PM,Harden,Patch Management,T1072
+1.3,CIS 1.3 (L1) Ensure Install of macOS Updates Is Enabled (Automated),D3-PM,Harden,Patch Management,T1072
+1.4,CIS 1.4 (L1) Ensure Install Application Updates from the App Store Is Enabled (Automated),D3-PM,Harden,Patch Management,T1072
+5.10,CIS 5.10 (L1) Ensure XProtect Is Running and Updated (Automated),D3-PM,Harden,Patch Management,T1072
+1.5,CIS 1.5 (L1) Ensure Install Security Responses and System Files Is Enabled (Automated),D3-PM,Harden,Patch Management,T1072
+1.6,CIS 1.6 (L1) Ensure Software Update Deferment Is Less Than or Equal to 30 Days (Automated),D3-PM,Harden,Patch Management,T1072
+2.1.1.2,CIS 2.1.1.2 (L2) Audit iCloud Drive (Manual),D3-LAM,Access Control,Account Management,T1078
+2.1.1.1,CIS 2.1.1.1 (L2) Audit iCloud Passwords & Keychain (Manual),D3-LAM,Access Control,Account Management,T1078
+2.1.1.3,CIS 2.1.1.3 (L2) Ensure iCloud Drive Document and Desktop Sync Is Disabled (Automated),D3-LAM,Access Control,Account Management,T1078
+2.3.1.1,CIS 2.3.1.1 (L1) Ensure AirDrop Is Disabled When Not Actively Transferring Files (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.3.1.2,CIS 2.3.1.2 (L1) Ensure AirPlay Receiver Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.3.2.1,CIS 2.3.2.1 (L1) Ensure Set Time and Date Automatically Is Enabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.3.2.2,CIS 2.3.2.2 (L1) Ensure the Time Service Is Enabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.3.3.1,CIS 2.3.3.1 (L1) Ensure Screen Sharing Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.3.3.2,CIS 2.3.3.2 (L1) Ensure File Sharing Is Disabled (Automated),D3-NI,Isolate,Network Isolation,T1563
+2.1.1.4,CIS 2.1.1.4 (L2) Audit Security Keys Used With Apple Accounts (Manual),D3-LAM,Access Control,Account Management,T1078
+2.1.1.5,CIS 2.1.1.5 (L2) Audit Freeform Sync to iCloud (Manual),D3-LAM,Access Control,Account Management,T1078
+2.1.1.6,CIS 2.1.1.6 (L2) Audit Find My Mac (Manual),D3-LME,Detect,Log Management,T1005
+2.1.2,CIS 2.1.2 (L2) Audit App Store Password Settings (Manual),D3-PWD,Access Control,Password Policies,T1201
+2.3.3.11,CIS 2.3.3.11 (L2) Ensure Computer Name Does Not Contain PII or Protected Organizational Information (Manual),D3-SCA,Harden,System Configuration,T1546
+2.6.2,CIS 2.6.2 (L2) Full Disk Access (Manual),D3-SCA,Harden,System Configuration,T1546
+2.6.3.2,CIS 2.6.3.2 (L1) Ensure Improve Siri & Dictation Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.6.3.3,CIS 2.6.3.3 (L1) Ensure Improve Assistive Voice Features Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.6.3.5,CIS 2.6.3.5 (L1) Ensure Share iCloud Analytics Is Disabled (Manual),D3-LAM,Access Control,Account Management,T1078
+2.6.7,CIS 2.6.7 (L2) Audit Lockdown Mode (Manual),D3-LME,Detect,Log Management,T1005
+2.7.2,CIS 2.7.2 (L2) Audit iPhone Mirroring (Manual),D3-LME,Detect,Log Management,T1005
+2.9.1,CIS 2.9.1 (L1) Ensure Help Apple Improve Search Is Disabled (Automated),D3-SCA,Harden,System Configuration,T1546
+2.14,CIS 2.14 (L2) Game Center (Manual),D3-SCA,Harden,System Configuration,T1546
+2.15.1,CIS 2.15.1 (L1) Audit Notification Settings (Manual),D3-SCA,Harden,System Configuration,T1546
+2.16,CIS 2.16 (L2) Wallet & Apple Pay (Manual),D3-SCA,Harden,System Configuration,T1546
+2.17,CIS 2.17 (L1) Internet Accounts (Manual),D3-LAM,Access Control,Account Management,T1078
+3.6,CIS 3.6 (L2) Audit Software Inventory (Manual),D3-DA,Detect,Asset Inventory,T1082
+5.8,CIS 5.8 (L2) Ensure a Login Window Banner Exists (Automated),D3-LAM,Access Control,Account Management,T1078
+6.2.1,CIS 6.2.1 (L2) Ensure Protect Mail Activity in Mail Is Enabled (Manual),D3-FKA,Access Control,File Encryption,T1213
+6.3.8,CIS 6.3.8 (L2) Audit AutoFill (Manual),D3-SCA,Harden,System Configuration,T1546
+6.5.1,CIS 6.5.1 (L1) Audit Passwords (Manual),D3-PWD,Access Control,Password Policies,T1201

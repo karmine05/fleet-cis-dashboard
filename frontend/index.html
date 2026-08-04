@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIS Compliance Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+</head>
+
+<body>
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon">
+                    <i class="fas fa-shield-check"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>CIS</h1>
+                    <p>Compliance</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-link active" data-page="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Summary</span>
+                </a>
+                <a href="#architecture" class="nav-link" data-page="architecture">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Security Architecture</span>
+                </a>
+                <a href="#audit" class="nav-link" data-page="audit">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Compliance Audit</span>
+                </a>
+                <a href="#strategy" class="nav-link" data-page="strategy">
+                    <i class="fas fa-chess-knight"></i>
+                    <span>Executive Strategy</span>
+                </a>
+                <a href="#settings" class="nav-link" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <p class="user-name">Admin</p>
+                        <p class="user-role">Security</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-bar">
+                <div class="header-left">
+                    <h2>Security Compliance Dashboard</h2>
+                    <p class="breadcrumb">Real-time CIS Controls & D3FEND Analysis</p>
+                </div>
+                <div class="header-right">
+                    <div class="sync-status" id="sync-status-container">
+                        <i class="fas fa-sync-alt" id="sync-icon"></i>
+                        <span>Last sync: <strong id="sync-status-text">checking...</strong></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Filters -->
+            <section class="filters-bar">
+                <div class="filter-group">
+                    <label>Fleet</label>
+                    <select id="team-filter">
+                        <option value="">All Fleets</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Platform</label>
+                    <select id="platform-filter">
+                        <option value="">All Platforms</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Labels</label>
+                    <select id="label-filter">
+                        <option value="">All Labels</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>OS Version</label>
+                    <select id="os-version-filter">
+                        <option value="">All Versions</option>
+                    </select>
+                </div>
+                <button id="apply-filters" class="btn-apply">
+                    <i class="fas fa-filter"></i> Apply
+                </button>
+                <button id="reset-filters" class="btn-reset">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </section>
+
+            <!-- Dashboard Content -->
+            <div id="dashboard" class="page-content active">
+                <!-- KPI Cards -->
+                <section class="kpi-section">
+                    <div class="kpi-card compliance-card">
+                        <div class="kpi-header">
+                            <h3>Overall Compliance <i class="fas fa-info-circle info-icon"
+                                    data-help="Overall fleet health: Combined pass rate of every check on every device."></i>
+                            </h3>
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="kpi-value" id="compliance-rate">--%</div>
+                        <div class="kpi-subtitle" id="compliant-count">-- / -- Devices</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="compliance-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card risk-card">
+                        <div class="kpi-header">
+                            <h3>Risk Level</h3>
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="risk-badge" id="risk-level">--</div>
+                        <div class="kpi-subtitle">Based on violations</div>
+                    </div>
+
+                    <div class="kpi-card critical-card">
+                        <div class="kpi-header">
+                            <h3>Critical Issues</h3>
+                            <i class="fas fa-bug"></i>
+                        </div>
+                        <div class="kpi-value critical" id="critical-count">--</div>
+                        <div class="kpi-subtitle">Require attention</div>
+                    </div>
+
+                    <div class="kpi-card devices-card">
+                        <div class="kpi-header">
+                            <h3>Devices Scanned</h3>
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="kpi-value" id="device-count">--</div>
+                        <div class="kpi-subtitle">Active endpoints</div>
+                    </div>
+                </section>
+
+                <!-- Main Grid -->
+                <section class="dashboard-grid">
+                    <!-- Heatmap -->
+                    <div class="card heatmap-card">
+                        <div class="card-header">
+                            <h3>D3FEND vs CIS Compliance Matrix</h3>
+                            <span class="badge-info">Risk-Based View</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="heatmap-container" class="heatmap-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- Violations -->
+                    <div class="card violations-card">
+                        <div class="card-header">
+                            <h3>Top Violations</h3>
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="card-body">
+                            <div id="violations-list" class="violations-list"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Security Architecture Page (MITRE ATT&CK Matrix View) -->
+            <div id="architecture" class="page-content">
+                <!-- Row 1: Summary Cards -->
+                <section class="arch-summary-row">
+                    <!-- Main Compliance Gauge -->
+                    <div class="arch-main-card">
+                        <div class="compliance-gauge-container">
+                            <svg class="compliance-gauge" viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="54" stroke-width="8" fill="none" />
+                                <circle class="gauge-fill" cx="60" cy="60" r="54" stroke-width="8" fill="none"
+                                    stroke-dasharray="339.3" stroke-dashoffset="339.3" id="compliance-gauge-arc" />
+                            </svg>
+                            <div class="gauge-value" id="arch-compliance">--%</div>
+                        </div>
+                        <div class="gauge-label">Overall Compliance</div>
+                        <div class="mini-trend-bars" id="arch-mini-bars"></div>
+                    </div>
+
+                    <!-- Compliance by MITRE -->
+                    <div class="arch-summary-card">
+                        <h4>Compliance by MITRE</h4>
+                        <div class="tactic-bars" id="tactic-compliance-bars"></div>
+                    </div>
+
+                    <!-- Top 5 Weakest TTPs -->
+                    <div class="arch-summary-card">
+                        <h4>Top 5 Weakest TTPs</h4>
+                        <ul class="ttp-list weakest" id="top-weakest-list"></ul>
+                    </div>
+
+                    <!-- Top 3 Strongest TTPs -->
+                    <div class="arch-summary-card">
+                        <h4>Top 3 Strongest TTPs</h4>
+                        <ul class="ttp-list strongest" id="top-strongest-list"></ul>
+                    </div>
+
+                    <!-- Biggest 50-Day Gains -->
+                    <div class="arch-summary-card gains-card">
+                        <h4>Biggest 50-Day Gains<i class="fas fa-chevron-right"></i></h4>
+                        <ul class="change-list gains" id="gains-list"></ul>
+                    </div>
+
+                    <!-- Biggest 50-Day Losses -->
+                    <div class="arch-summary-card losses-card">
+                        <h4>Biggest 50-Day Losses<i class="fas fa-chevron-right"></i></h4>
+                        <ul class="change-list losses" id="losses-list"></ul>
+                    </div>
+                </section>
+
+                <!-- Row 2: MITRE ATT&CK Matrix -->
+                <section class="mitre-matrix-section">
+                    <div class="card mitre-card">
+                        <div class="card-header">
+                            <div class="header-left">
+                                <h3>MITRE ATT&CK Compliance Matrix</h3>
+                                <span class="badge-info">Real-Time Posture</span>
+                            </div>
+                            <div class="matrix-legend">
+                                <span class="legend-item"><span class="legend-dot excellent"></span>≥80%</span>
+                                <span class="legend-item"><span class="legend-dot good"></span>60-79%</span>
+                                <span class="legend-item"><span class="legend-dot warning"></span>40-59%</span>
+                                <span class="legend-item"><span class="legend-dot danger"></span>&lt;40%</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="mitre-matrix" class="mitre-matrix-container"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Compliance Audit Page (Evidence & Drift) -->
+            <div id="audit" class="page-content">
+                <!-- Audit Header -->
+                <section class="audit-header">
+                    <div class="audit-title-block">
+                        <p class="os-label" id="audit-platform-label">Windows</p>
+                        <h1>CIS Implementation Guide</h1>
+                    </div>
+                    <div class="audit-kpi-row">
+                        <div class="audit-kpi-card">
+                            <div class="kpi-val" id="audit-compliance-rate">--%</div>
+                            <div class="kpi-lab">Policy Completion Rate <i class="fas fa-info-circle info-icon"
+                                    data-help="Policy Remediation: Percentage of policies where 100% of devices pass."></i>
+                            </div>
+                        </div>
+                        <div class="audit-kpi-card">
+                            <div class="kpi-val highlight-pass" id="audit-pass-count">--</div>
+                            <div class="kpi-lab">Pass</div>
+                        </div>
+                        <div class="audit-kpi-card">
+                            <div class="kpi-val highlight-fail" id="audit-fail-count">--</div>
+                            <div class="kpi-lab">Fail</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Audit Main Layout -->
+                <section class="audit-main-layout">
+                    <!-- Left Sidebar -->
+                    <div class="audit-sidebar">
+                        <div class="sidebar-search">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="audit-search-input" placeholder="Search CIS Number (e.g. 1.1)...">
+                        </div>
+                        <div class="sidebar-filters">
+                            <button id="audit-filter-pass" class="btn-audit-filter">Pass</button>
+                            <button id="audit-filter-fail" class="btn-audit-filter">Fail</button>
+                        </div>
+                        <div class="audit-policy-list-header">CIS Policies</div>
+                        <div id="audit-policy-list" class="audit-policy-list">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Right Detail Panel -->
+                    <div class="audit-detail-panel">
+                        <div class="detail-section">
+                            <h3 class="section-title">Description</h3>
+                            <div id="policy-description" class="detail-content">Select a policy to view details</div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3 class="section-title">Resolution</h3>
+                            <div id="policy-resolution" class="detail-content detail-pre"></div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3 class="section-title">SQL Query</h3>
+                            <div class="code-block-container">
+                                <pre><code id="policy-query" class="language-sql"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Executive Strategy Page (CISO Command Center) -->
+            <div id="strategy" class="page-content">
+                <!-- Hero Section with Posture Gauge -->
+                <section class="strategy-hero">
+                    <div class="posture-gauge-container">
+                        <div class="posture-gauge">
+                            <svg viewBox="0 0 200 120" class="gauge-svg">
+                                <defs>
+                                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" style="stop-color:#EF4444" />
+                                        <stop offset="50%" style="stop-color:#F59E0B" />
+                                        <stop offset="100%" style="stop-color:#10B981" />
+                                    </linearGradient>
+                                </defs>
+                                <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" fill="none"
+                                    stroke="rgba(255,255,255,0.1)" stroke-width="16" stroke-linecap="round" />
+                                <path class="gauge-fill" id="gauge-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none"
+                                    stroke="url(#gaugeGradient)" stroke-width="16" stroke-linecap="round"
+                                    stroke-dasharray="251.2" stroke-dashoffset="251.2" />
+                                <circle class="gauge-needle" id="gauge-needle" cx="100" cy="100" r="8"
+                                    fill="var(--accent-blue)" />
+                            </svg>
+                            <div class="gauge-value">
+                                <span id="posture-score-value">--</span>
+                                <span class="gauge-label">Security Posture (Depth) <i
+                                        class="fas fa-info-circle info-icon"
+                                        data-help="Fleet Health: Combined pass rate of every check on every device."></i></span>
+                            </div>
+                        </div>
+                        <div class="maturity-indicator">
+                            <div class="maturity-level" id="maturity-badge">
+                                <span class="maturity-number">--</span>
+                                <span class="maturity-text">Maturity Level</span>
+                            </div>
+                            <div class="maturity-scale">
+                                <span class="scale-item" data-level="1">1</span>
+                                <span class="scale-item" data-level="2">2</span>
+                                <span class="scale-item" data-level="3">3</span>
+                                <span class="scale-item" data-level="4">4</span>
+                                <span class="scale-item" data-level="5">5</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Strategic Metrics Grid -->
+                <section class="strategy-metrics-grid">
+                    <div class="strategy-metric-card">
+                        <div class="metric-icon coverage"><i class="fas fa-shield-halved"></i></div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="coverage-value">--%</span>
+                            <span class="metric-label">Policy Coverage (Breadth) <i class="fas fa-info-circle info-icon"
+                                    data-help="Policy Coverage: Percentage of policies that have at least one passing device."></i></span>
+                        </div>
+                        <div class="metric-trend up"><i class="fas fa-arrow-trend-up"></i></div>
+                    </div>
+                    <div class="strategy-metric-card">
+                        <div class="metric-icon debt"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="debt-value">--</span>
+                            <span class="metric-label">Security Debt</span>
+                        </div>
+                        <div class="metric-trend neutral"><i class="fas fa-minus"></i></div>
+                    </div>
+                    <div class="strategy-metric-card">
+                        <div class="metric-icon risk"><i class="fas fa-triangle-exclamation"></i></div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="risk-value">--</span>
+                            <span class="metric-label">Risk Exposure</span>
+                        </div>
+                        <div class="metric-trend down"><i class="fas fa-arrow-trend-down"></i></div>
+                    </div>
+                    <div class="strategy-metric-card">
+                        <div class="metric-icon velocity"><i class="fas fa-rocket"></i></div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="velocity-value">--</span>
+                            <span class="metric-label">Remediation Velocity</span>
+                        </div>
+                        <div class="metric-trend up"><i class="fas fa-arrow-trend-up"></i></div>
+                    </div>
+                </section>
+
+                <!-- Main Dashboard Grid -->
+                <section class="strategy-dashboard-grid">
+                    <!-- Compliance Roadmap Chart -->
+                    <div class="card strategy-roadmap-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-area"></i> 12-Month Compliance Roadmap</h3>
+                            <div class="roadmap-legend">
+                                <span class="legend-item"><span class="legend-dot projected"></span>Projected</span>
+                                <span class="legend-item"><span class="legend-dot actual"></span>Actual</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="roadmap-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Fleet Leaderboard -->
+                    <div class="card strategy-leaderboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-ranking-star"></i> Fleet Leaderboard</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="team-leaderboard" class="leaderboard-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- Priority Actions -->
+                    <div class="card strategy-priorities-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-bolt"></i> Priority Actions</h3>
+                            <span class="badge-warning">Action Required</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="priority-actions" class="priorities-container"></div>
+                        </div>
+                    </div>
+
+
+                </section>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="settings" class="page-content">
+                <section class="settings-header">
+                    <h2><i class="fas fa-cog"></i> Configuration Settings</h2>
+                    <p class="settings-subtitle">Customize scoring weights and classification thresholds</p>
+                </section>
+
+                <section class="settings-grid">
+                    <!-- Impact Thresholds -->
+                    <div class="setting-card">
+                        <h3><i class="fas fa-bolt"></i> Impact Thresholds</h3>
+                        <p class="setting-desc">Configure fail count thresholds for impact classification</p>
+                        <div class="setting-row">
+                            <label>High Impact Threshold</label>
+                            <input type="number" id="config-impact-high" min="1" max="100" value="5">
+                            <span class="setting-hint">Fails > this = High</span>
+                        </div>
+                        <div class="setting-row">
+                            <label>Medium Impact Threshold</label>
+                            <input type="number" id="config-impact-medium" min="1" max="100" value="2">
+                            <span class="setting-hint">Fails > this = Medium</span>
+                        </div>
+                    </div>
+
+                    <!-- Effort Keywords -->
+                    <div class="setting-card">
+                        <h3><i class="fas fa-tags"></i> Effort Classification</h3>
+                        <p class="setting-desc">Keywords in policy names to determine effort level</p>
+                        <div class="setting-row">
+                            <label>Low Effort Keywords</label>
+                            <input type="text" id="config-effort-low" placeholder="Ensure, Set">
+                            <span class="setting-hint">Comma-separated</span>
+                        </div>
+                        <div class="setting-row">
+                            <label>High Effort Keywords</label>
+                            <input type="text" id="config-effort-high" placeholder="Manual, Review">
+                            <span class="setting-hint">Comma-separated</span>
+                        </div>
+                    </div>
+
+                    <!-- Risk Calculations -->
+                    <div class="setting-card">
+                        <h3><i class="fas fa-calculator"></i> Risk Calculations</h3>
+                        <p class="setting-desc">Multipliers for risk and security debt metrics</p>
+                        <div class="setting-row">
+                            <label>Risk Exposure Multiplier</label>
+                            <input type="number" id="config-risk-multiplier" min="0.1" max="10" step="0.1" value="2">
+                            <span class="setting-hint">fail_count × this</span>
+                        </div>
+                        <div class="setting-row">
+                            <label>Security Debt (hours/issue)</label>
+                            <input type="number" id="config-debt-hours" min="0.1" max="10" step="0.1" value="0.5">
+                            <span class="setting-hint">Hours per failing policy</span>
+                        </div>
+                    </div>
+
+                    <!-- Framework Alignment -->
+                    <div class="setting-card">
+                        <h3><i class="fas fa-layer-group"></i> Framework Alignment</h3>
+                        <p class="setting-desc">Approximate alignment multipliers based on posture</p>
+                        <div class="setting-row">
+                            <label>CIS Controls v8</label>
+                            <input type="number" id="config-framework-cis" min="0.5" max="1" step="0.01" value="0.95">
+                            <span class="setting-hint">posture × this</span>
+                        </div>
+                        <div class="setting-row">
+                            <label>NIST CSF 2.0</label>
+                            <input type="number" id="config-framework-nist" min="0.5" max="1" step="0.01" value="0.88">
+                            <span class="setting-hint">posture × this</span>
+                        </div>
+                        <div class="setting-row">
+                            <label>ISO 27001</label>
+                            <input type="number" id="config-framework-iso" min="0.5" max="1" step="0.01" value="0.82">
+                            <span class="setting-hint">posture × this</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="settings-actions">
+                    <button id="save-config" class="btn-primary"><i class="fas fa-save"></i> Save Configuration</button>
+                    <button id="reset-config" class="btn-secondary"><i class="fas fa-undo"></i> Reset to
+                        Defaults</button>
+                </section>
+            </div>
+        </main>
+    </div>
+    <!-- Global Tooltip -->
+    <div id="global-tooltip" class="global-tooltip hidden">
+        <div id="global-tooltip-content"></div>
+        <div class="global-tooltip-pointer"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

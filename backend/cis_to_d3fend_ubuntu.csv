@@ -1,0 +1,188 @@
+cis_id,cis_control,d3fend_id,d3fend_tactic,d3fend_technique,attack_id
+1.1,CIS 1.1 UBTU-24-90890 (Automated),D3-LME,Detect,Log Management,T1070
+1.2,CIS 1.2 UBTU-24-100010 (Automated),D3-LME,Detect,Log Management,T1070
+1.3,CIS 1.3 UBTU-24-100020 (Automated),D3-LME,Detect,Log Management,T1070
+1.4,CIS 1.4 UBTU-24-100030 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.5,CIS 1.5 UBTU-24-100040 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.6,CIS 1.6 UBTU-24-100100 (Automated),D3-FCSAM,Detect,File Content Scanning,T1565
+1.7,CIS 1.7 UBTU-24-100110 (Manual),D3-FCSAM,Detect,File Content Scanning,T1565
+1.8,CIS 1.8 UBTU-24-100120 (Manual),D3-FCSAM,Detect,File Content Scanning,T1565
+1.9,CIS 1.9 UBTU-24-100130 (Automated),D3-FCSAM,Detect,File Content Scanning,T1565
+1.10,CIS 1.10 UBTU-24-100200 (Automated),D3-LME,Detect,Log Management,T1070
+1.11,CIS 1.11 UBTU-24-100300 (Automated),D3-NI,Isolate,Network Isolation,T1190
+1.12,CIS 1.12 UBTU-24-100310 (Automated),D3-NI,Isolate,Network Isolation,T1190
+1.13,CIS 1.13 UBTU-24-100400 (Automated),D3-LME,Detect,Log Management,T1070
+1.14,CIS 1.14 UBTU-24-100410 (Automated),D3-LME,Detect,Log Management,T1070
+1.15,CIS 1.15 UBTU-24-100450 (Automated),D3-LME,Detect,Log Management,T1070
+1.16,CIS 1.16 UBTU-24-100500 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.17,CIS 1.17 UBTU-24-100510 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.18,CIS 1.18 UBTU-24-100600 (Automated),D3-FCSAM,Detect,File Content Scanning,T1565
+1.19,CIS 1.19 UBTU-24-100650 (Automated),D3-FCSAM,Detect,File Content Scanning,T1565
+1.20,CIS 1.20 UBTU-24-100660 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.21,CIS 1.21 UBTU-24-100700 (Automated),D3-LME,Detect,Log Management,T1070
+1.22,CIS 1.22 UBTU-24-100800 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.23,CIS 1.23 UBTU-24-100810 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.24,CIS 1.24 UBTU-24-100820 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.25,CIS 1.25 UBTU-24-100830 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.26,CIS 1.26 UBTU-24-100840 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.27,CIS 1.27 UBTU-24-100850 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.28,CIS 1.28 UBTU-24-100860 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.29,CIS 1.29 UBTU-24-100900 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.30,CIS 1.30 UBTU-24-100910 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.31,CIS 1.31 UBTU-24-101000 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.32,CIS 1.32 UBTU-24-102000 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.33,CIS 1.33 UBTU-24-102010 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.34,CIS 1.34 UBTU-24-200000 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.35,CIS 1.35 UBTU-24-200020 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.36,CIS 1.36 UBTU-24-200040 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.37,CIS 1.37 UBTU-24-200060 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.38,CIS 1.38 UBTU-24-200090 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.39,CIS 1.39 UBTU-24-200250 (Manual),D3-SCA,Harden,System Configuration,T1546
+1.40,CIS 1.40 UBTU-24-200260 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.41,CIS 1.41 UBTU-24-200280 (Automated),D3-LME,Detect,Log Management,T1070
+1.42,CIS 1.42 UBTU-24-200290 (Automated),D3-LME,Detect,Log Management,T1070
+1.43,CIS 1.43 UBTU-24-200300 (Automated),D3-LME,Detect,Log Management,T1070
+1.44,CIS 1.44 UBTU-24-200310 (Automated),D3-LME,Detect,Log Management,T1070
+1.45,CIS 1.45 UBTU-24-200320 (Automated),D3-LME,Detect,Log Management,T1070
+1.46,CIS 1.46 UBTU-24-200580 (Automated),D3-LME,Detect,Log Management,T1070
+1.47,CIS 1.47 UBTU-24-200610 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.48,CIS 1.48 UBTU-24-200640 (Manual),D3-SCA,Harden,System Configuration,T1546
+1.49,CIS 1.49 UBTU-24-200650 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.50,CIS 1.50 UBTU-24-200660 (Manual),D3-FCSAM,Detect,File Content Scanning,T1565
+1.51,CIS 1.51 UBTU-24-200680 (Manual),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.52,CIS 1.52 UBTU-24-300001 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.53,CIS 1.53 UBTU-24-300006 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.54,CIS 1.54 UBTU-24-300007 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.55,CIS 1.55 UBTU-24-300008 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.56,CIS 1.56 UBTU-24-300009 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.57,CIS 1.57 UBTU-24-300010 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.58,CIS 1.58 UBTU-24-300011 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.59,CIS 1.59 UBTU-24-300012 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.60,CIS 1.60 UBTU-24-300013 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.61,CIS 1.61 UBTU-24-300014 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.62,CIS 1.62 UBTU-24-300016 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.63,CIS 1.63 UBTU-24-300017 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.64,CIS 1.64 UBTU-24-300021 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.65,CIS 1.65 UBTU-24-300022 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.66,CIS 1.66 UBTU-24-300023 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.67,CIS 1.67 UBTU-24-300024 (Automated),D3-FCSAM,Detect,File Content Scanning,T1565
+1.68,CIS 1.68 UBTU-24-300025 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.69,CIS 1.69 UBTU-24-300026 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.70,CIS 1.70 UBTU-24-300027 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.71,CIS 1.71 UBTU-24-300028 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.72,CIS 1.72 UBTU-24-300029 (Automated),D3-LME,Detect,Log Management,T1070
+1.73,CIS 1.73 UBTU-24-300030 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.74,CIS 1.74 UBTU-24-300031 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.75,CIS 1.75 UBTU-24-300039 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.76,CIS 1.76 UBTU-24-300041 (Manual),D3-NI,Isolate,Network Isolation,T1190
+1.77,CIS 1.77 UBTU-24-400000 (Automated),D3-FCSAM,Detect,File Content Scanning,T1565
+1.78,CIS 1.78 UBTU-24-400020 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.79,CIS 1.79 UBTU-24-400030 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.80,CIS 1.80 UBTU-24-400060 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.81,CIS 1.81 UBTU-24-400110 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.82,CIS 1.82 UBTU-24-400220 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.83,CIS 1.83 UBTU-24-400260 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.84,CIS 1.84 UBTU-24-400270 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.85,CIS 1.85 UBTU-24-400280 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.86,CIS 1.86 UBTU-24-400290 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.87,CIS 1.87 UBTU-24-400300 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.88,CIS 1.88 UBTU-24-400310 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.89,CIS 1.89 UBTU-24-400320 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.90,CIS 1.90 UBTU-24-400330 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.91,CIS 1.91 UBTU-24-400340 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.92,CIS 1.92 UBTU-24-400360 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.93,CIS 1.93 UBTU-24-400370 (Manual),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.94,CIS 1.94 UBTU-24-400375 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.95,CIS 1.95 UBTU-24-400380 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.96,CIS 1.96 UBTU-24-400400 (Automated),D3-DENCR,Harden,Data Encryption,T1552
+1.97,CIS 1.97 UBTU-24-500010 (Automated),D3-LME,Detect,Log Management,T1070
+1.98,CIS 1.98 UBTU-24-500050 (Automated),D3-PWD,Access Control,Password Policies,T1201
+1.99,CIS 1.99 UBTU-24-600000 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.100,CIS 1.100 UBTU-24-600010 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.101,CIS 1.101 UBTU-24-600030 (Automated),D3-LME,Detect,Log Management,T1070
+1.102,CIS 1.102 UBTU-24-600060 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.103,CIS 1.103 UBTU-24-600070 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.104,CIS 1.104 UBTU-24-600090 (Manual),D3-DENCR,Harden,Data Encryption,T1552
+1.105,CIS 1.105 UBTU-24-600130 (Manual),D3-LAM,Access Control,Account Management,T1548
+1.106,CIS 1.106 UBTU-24-600140 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.107,CIS 1.107 UBTU-24-600150 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.108,CIS 1.108 UBTU-24-600160 (Automated),D3-LME,Detect,Log Management,T1070
+1.109,CIS 1.109 UBTU-24-600180 (Automated),D3-LME,Detect,Log Management,T1070
+1.110,CIS 1.110 UBTU-24-600190 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.112,CIS 1.112 UBTU-24-600230 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.113,CIS 1.113 UBTU-24-700010 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.114,CIS 1.114 UBTU-24-700020 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.115,CIS 1.115 UBTU-24-700030 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.116,CIS 1.116 UBTU-24-700040 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.117,CIS 1.117 UBTU-24-700050 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.118,CIS 1.118 UBTU-24-700060 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.119,CIS 1.119 UBTU-24-700070 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.120,CIS 1.120 UBTU-24-700080 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.121,CIS 1.121 UBTU-24-700090 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.122,CIS 1.122 UBTU-24-700100 (Automated),D3-LME,Detect,Log Management,T1070
+1.123,CIS 1.123 UBTU-24-700110 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.124,CIS 1.124 UBTU-24-700120 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.125,CIS 1.125 UBTU-24-700130 (Automated),D3-LME,Detect,Log Management,T1070
+1.126,CIS 1.126 UBTU-24-700140 (Automated),D3-LME,Detect,Log Management,T1070
+1.127,CIS 1.127 UBTU-24-700150 (Automated),D3-LME,Detect,Log Management,T1070
+1.128,CIS 1.128 UBTU-24-700300 (Manual),D3-SCA,Harden,System Configuration,T1546
+1.129,CIS 1.129 UBTU-24-700310 (Automated),D3-SCA,Harden,System Configuration,T1546
+1.130,CIS 1.130 UBTU-24-700320 (Automated),D3-FCSAM,Detect,File Content Scanning,T1565
+1.131,CIS 1.131 UBTU-24-700400 (Manual),D3-FCSAM,Detect,File Content Scanning,T1565
+1.132,CIS 1.132 UBTU-24-900040 (Automated),D3-LME,Detect,Log Management,T1070
+1.133,CIS 1.133 UBTU-24-900050 (Automated),D3-LME,Detect,Log Management,T1070
+1.134,CIS 1.134 UBTU-24-900060 (Automated),D3-LME,Detect,Log Management,T1070
+1.135,CIS 1.135 UBTU-24-900070 (Automated),D3-LME,Detect,Log Management,T1070
+1.136,CIS 1.136 UBTU-24-900080 (Automated),D3-LME,Detect,Log Management,T1070
+1.137,CIS 1.137 UBTU-24-900090 (Automated),D3-LME,Detect,Log Management,T1070
+1.138,CIS 1.138 UBTU-24-900100 (Automated),D3-LME,Detect,Log Management,T1070
+1.139,CIS 1.139 UBTU-24-900110 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.140,CIS 1.140 UBTU-24-900120 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.141,CIS 1.141 UBTU-24-900130 (Automated),D3-LME,Detect,Log Management,T1070
+1.142,CIS 1.142 UBTU-24-900140 (Automated),D3-LME,Detect,Log Management,T1070
+1.143,CIS 1.143 UBTU-24-900150 (Automated),D3-LME,Detect,Log Management,T1070
+1.144,CIS 1.144 UBTU-24-900160 (Automated),D3-LME,Detect,Log Management,T1070
+1.145,CIS 1.145 UBTU-24-900170 (Automated),D3-LAM,Access Control,Account Management,T1548
+1.146,CIS 1.146 UBTU-24-900180 (Automated),D3-LME,Detect,Log Management,T1070
+1.147,CIS 1.147 UBTU-24-900190 (Automated),D3-LME,Detect,Log Management,T1070
+1.148,CIS 1.148 UBTU-24-900200 (Automated),D3-LME,Detect,Log Management,T1070
+1.149,CIS 1.149 UBTU-24-900210 (Automated),D3-LME,Detect,Log Management,T1070
+1.150,CIS 1.150 UBTU-24-900220 (Automated),D3-LME,Detect,Log Management,T1070
+1.151,CIS 1.151 UBTU-24-900230 (Automated),D3-LME,Detect,Log Management,T1070
+1.152,CIS 1.152 UBTU-24-900240 (Automated),D3-LME,Detect,Log Management,T1070
+1.153,CIS 1.153 UBTU-24-900250 (Automated),D3-LME,Detect,Log Management,T1070
+1.154,CIS 1.154 UBTU-24-900260 (Automated),D3-LME,Detect,Log Management,T1070
+1.155,CIS 1.155 UBTU-24-900270 (Automated),D3-LME,Detect,Log Management,T1070
+1.156,CIS 1.156 UBTU-24-900280 (Automated),D3-LME,Detect,Log Management,T1070
+1.157,CIS 1.157 UBTU-24-900290 (Automated),D3-LME,Detect,Log Management,T1070
+1.158,CIS 1.158 UBTU-24-900300 (Automated),D3-LME,Detect,Log Management,T1070
+1.159,CIS 1.159 UBTU-24-900310 (Automated),D3-LME,Detect,Log Management,T1070
+1.160,CIS 1.160 UBTU-24-900320 (Automated),D3-LME,Detect,Log Management,T1070
+1.161,CIS 1.161 UBTU-24-900330 (Automated),D3-MFA,Access Control,Multi-factor Authentication,T1556
+1.162,CIS 1.162 UBTU-24-900340 (Automated),D3-LME,Detect,Log Management,T1070
+1.163,CIS 1.163 UBTU-24-900350 (Automated),D3-LME,Detect,Log Management,T1070
+1.164,CIS 1.164 UBTU-24-900510 (Automated),D3-LME,Detect,Log Management,T1070
+1.165,CIS 1.165 UBTU-24-900520 (Automated),D3-LME,Detect,Log Management,T1070
+1.166,CIS 1.166 UBTU-24-900540 (Automated),D3-LME,Detect,Log Management,T1070
+1.167,CIS 1.167 UBTU-24-900590 (Automated),D3-LME,Detect,Log Management,T1070
+1.168,CIS 1.168 UBTU-24-900600 (Automated),D3-LME,Detect,Log Management,T1070
+1.169,CIS 1.169 UBTU-24-900610 (Automated),D3-LME,Detect,Log Management,T1070
+1.170,CIS 1.170 UBTU-24-900730 (Automated),D3-LME,Detect,Log Management,T1070
+1.171,CIS 1.171 UBTU-24-900740 (Automated),D3-LME,Detect,Log Management,T1070
+1.172,CIS 1.172 UBTU-24-900750 (Automated),D3-LME,Detect,Log Management,T1070
+1.173,CIS 1.173 UBTU-24-900920 (Manual),D3-LME,Detect,Log Management,T1070
+1.174,CIS 1.174 UBTU-24-900950 (Manual),D3-LME,Detect,Log Management,T1070
+1.175,CIS 1.175 UBTU-24-900960 (Manual),D3-LME,Detect,Log Management,T1070
+1.176,CIS 1.176 UBTU-24-900980 (Automated),D3-LME,Detect,Log Management,T1070
+1.177,CIS 1.177 UBTU-24-901220 (Automated),D3-LME,Detect,Log Management,T1070
+1.178,CIS 1.178 UBTU-24-901230 (Automated),D3-LME,Detect,Log Management,T1070
+1.179,CIS 1.179 UBTU-24-901240 (Automated),D3-LME,Detect,Log Management,T1070
+1.180,CIS 1.180 UBTU-24-901250 (Automated),D3-LME,Detect,Log Management,T1070
+1.181,CIS 1.181 UBTU-24-901260 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.182,CIS 1.182 UBTU-24-901270 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.183,CIS 1.183 UBTU-24-901280 (Automated),D3-LAM,Access Control,Account Management,T1078
+1.184,CIS 1.184 UBTU-24-901300 (Automated),D3-LME,Detect,Log Management,T1070
+1.185,CIS 1.185 UBTU-24-901310 (Automated),D3-LME,Detect,Log Management,T1070
+1.186,CIS 1.186 UBTU-24-901350 (Automated),D3-LME,Detect,Log Management,T1070
+1.187,CIS 1.187 UBTU-24-901380 (Automated),D3-LME,Detect,Log Management,T1070
+1.188,CIS 1.188 UBTU-24-909000 (Automated),D3-LME,Detect,Log Management,T1070

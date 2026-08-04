@@ -1,0 +1,86 @@
+{
+    "T1005": {
+        "name": "Data from Local System",
+        "tactic": "Collection"
+    },
+    "T1072": {
+        "name": "Software Deployment Tools",
+        "tactic": "Execution"
+    },
+    "T1078": {
+        "name": "Valid Accounts",
+        "tactic": "Initial Access"
+    },
+    "T1082": {
+        "name": "System Information Discovery",
+        "tactic": "Discovery"
+    },
+    "T1201": {
+        "name": "Password Policy Discovery",
+        "tactic": "Discovery"
+    },
+    "T1213": {
+        "name": "Data from Information Repositories",
+        "tactic": "Collection"
+    },
+    "T1534": {
+        "name": "Internal Spearphishing",
+        "tactic": "Initial Access"
+    },
+    "T1542": {
+        "name": "Pre-OS Boot",
+        "tactic": "Persistence"
+    },
+    "T1546": {
+        "name": "Event Triggered Execution",
+        "tactic": "Persistence"
+    },
+    "T1556": {
+        "name": "Modify Authentication Process",
+        "tactic": "Credential Access"
+    },
+    "T1563": {
+        "name": "Remote Service Session Hijacking",
+        "tactic": "Lateral Movement"
+    },
+    "T1565": {
+        "name": "Data Manipulation",
+        "tactic": "Impact"
+    },
+    "T1589": {
+        "name": "Gather Victim Identity Information",
+        "tactic": "Reconnaissance"
+    },
+    "T1070": {
+        "name": "Indicator Removal on Host",
+        "tactic": "Defense Evasion"
+    },
+    "T1110": {
+        "name": "Brute Force",
+        "tactic": "Credential Access"
+    },
+    "T1190": {
+        "name": "Exploit Public-Facing Application",
+        "tactic": "Initial Access"
+    },
+    "T1552": {
+        "name": "Unsecured Credentials",
+        "tactic": "Credential Access"
+    },
+    "T1134": {
+        "name": "Access Token Manipulation",
+        "tactic": "Privilege Escalation"
+    },
+    "T1548": {
+        "name": "Abuse Elevation Control Mechanism",
+        "tactic": "Privilege Escalation"
+    },
+    "T1059": {
+        "name": "Command and Scripting Interpreter",
+        "tactic": "Execution"
+    },
+    "T1595": {
+        "name": "Active Scanning",
+        "tactic": "Reconnaissance"
+    }
+}
