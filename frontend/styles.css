@@ -582,8 +582,20 @@ html, body {
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr);
     gap: var(--space-lg);
+    align-items: start;
+}
+
+/* Heat map uses full card width; prevent grid blowout */
+.heatmap-card {
+    min-width: 0;
+}
+
+@media (min-width: 1600px) {
+    .dashboard-grid {
+        grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+    }
 }
 
 .card {
@@ -643,51 +655,343 @@ html, body {
 
 /* ═══════════════════ HEATMAP ═══════════════════ */
 
+.heatmap-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 420px;
+}
+
+.heatmap-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-xl);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-tertiary);
+}
+
+.heatmap-toolbar-left,
+.heatmap-toolbar-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-md);
+}
+
+.heatmap-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+}
+
+.heatmap-filter-field label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.heatmap-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.heatmap-input-wrap i {
+    position: absolute;
+    left: 10px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+
+.heatmap-input-wrap input {
+    width: 180px;
+    max-width: 100%;
+    height: 34px;
+    padding: 0 12px 0 30px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.heatmap-input-wrap input:focus {
+    outline: none;
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 2px var(--brand-glow);
+}
+
+.heatmap-input-wrap input::placeholder {
+    color: var(--text-disabled);
+    font-family: Inter, sans-serif;
+}
+
+.heatmap-group-toggle {
+    display: inline-flex;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.heatmap-group-btn {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    padding: 0 12px;
+    height: 34px;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+    min-width: 72px;
+}
+
+.heatmap-group-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.heatmap-group-btn.active {
+    background: var(--brand-soft);
+    color: var(--brand-500);
+    box-shadow: inset 0 0 0 1px var(--brand-border);
+}
+
+.heatmap-group-btn:focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: -2px;
+    z-index: 1;
+}
+
+.btn-heatmap-clear {
+    appearance: none;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 150ms ease;
+}
+
+.btn-heatmap-clear:hover {
+    border-color: var(--brand-border);
+    color: var(--brand-500);
+    background: var(--brand-soft);
+}
+
+.heatmap-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    align-self: center;
+}
+
+.heatmap-body {
+    flex: 1;
+    min-height: 0;
+}
+
 .heatmap-container {
-    overflow-x: auto;
+    overflow: auto;
+    max-height: min(70vh, 640px);
+    min-height: 280px;
+    padding: 4px;
+    width: 100%;
 }
 
 .heatmap-container::-webkit-scrollbar {
-    height: 4px;
+    height: 6px;
+    width: 6px;
 }
 
 .heatmap-container::-webkit-scrollbar-thumb {
     background: var(--border-default);
-    border-radius: 2px;
+    border-radius: 3px;
 }
 
-.heatmap-grid, .d3fend-matrix {
-    border-collapse: separate;
-    border-spacing: 3px;
+.heatmap-empty {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 48px 24px;
+    font-size: 13px;
+}
+
+/* Column matrix — fills available width on wide screens */
+.d3fend-matrix {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-md);
+    width: max-content;
+    min-width: 100%;
+    padding-bottom: var(--space-sm);
+}
+
+.d3fend-matrix.d3fend-matrix-fill {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
-.heatmap-grid th, .d3fend-matrix th {
+.d3fend-column {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 72px;
+    flex: 1 1 0;
+}
+
+.d3fend-matrix-fill .d3fend-column {
+    max-width: 100%;
+}
+
+.d3fend-matrix-fill .d3fend-content.grid-view {
+    width: 100%;
+    justify-content: stretch;
+}
+
+.d3fend-matrix-fill .d3fend-header-title {
+    max-width: 100%;
+}
+
+.d3fend-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 44px;
+    padding: 8px 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.d3fend-header.compact {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.d3fend-header-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.d3fend-header-meta {
     font-size: 10px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    font-family: 'JetBrains Mono', monospace;
     color: var(--text-tertiary);
-    padding: var(--space-sm) var(--space-xs);
-    text-align: center;
-    border-bottom: 1px solid var(--border-subtle);
 }
 
-.heatmap-grid td, .d3fend-matrix td {
-    padding: var(--space-sm);
-    text-align: center;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 500;
-    transition: all 120ms ease;
-    cursor: default;
+.d3fend-content.grid-view {
+    display: grid;
+    grid-template-columns: repeat(4, 18px);
+    gap: 3px;
+    justify-content: start;
 }
 
-.heatmap-cell, .d3fend-heatmap-cell {
-    min-width: 60px;
+/* Square heat cells — contribution-graph style */
+.d3fend-heatmap-cell {
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+    padding: 0;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 150ms ease, box-shadow 150ms ease, outline-color 150ms ease;
+    touch-action: manipulation;
+    position: relative;
+    font: inherit;
+    line-height: 1;
+    color: inherit;
+    background: #2a2b35;
 }
 
-/* Heatmap color coding */
+.d3fend-heatmap-cell:hover,
+.d3fend-heatmap-cell:focus-visible {
+    transform: scale(1.18);
+    z-index: 2;
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 1px;
+    box-shadow: var(--shadow-md);
+}
+
+.d3fend-heatmap-cell:focus-visible {
+    outline-color: var(--info);
+}
+
+/* Labels hidden in dense heat map — details via tooltip / aria-label */
+.d3fend-cell-id {
+    display: none;
+}
+
+/* Discrete pass-rate fills (color + class for non-color meaning via tooltip/aria) */
+.d3fend-heatmap-cell.rate-excellent {
+    background: #22c55e;
+    border-color: rgba(34, 197, 94, 0.45);
+}
+.d3fend-heatmap-cell.rate-good {
+    background: #4ade80;
+    border-color: rgba(74, 222, 128, 0.4);
+}
+.d3fend-heatmap-cell.rate-warning {
+    background: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.45);
+}
+.d3fend-heatmap-cell.rate-danger {
+    background: #ef4444;
+    border-color: rgba(239, 68, 68, 0.45);
+}
+.d3fend-heatmap-cell.rate-empty {
+    background: #2a2b35;
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.d3fend-heatmap-cell.rate-empty .d3fend-cell-id {
+    color: var(--text-tertiary);
+}
+
+/* Shared rate / status color classes (lists, badges, MITRE matrix) */
 .rate-excellent, .excellent { background: var(--success-soft); color: var(--success); border: 1px solid var(--success-border); }
 .rate-good, .good { background: rgba(34, 197, 94, 0.06); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.12); }
 .rate-warning, .warning { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-border); }
@@ -701,6 +1005,36 @@ html, body {
 .high { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger-border); }
 .medium { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-border); }
 .low { background: var(--success-soft); color: var(--success); border: 1px solid var(--success-border); }
+
+@media (max-width: 900px) {
+    .heatmap-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .heatmap-toolbar-left,
+    .heatmap-toolbar-right {
+        width: 100%;
+    }
+    .heatmap-input-wrap input {
+        width: 100%;
+    }
+    .heatmap-filter-field {
+        flex: 1;
+        min-width: 140px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .d3fend-heatmap-cell,
+    .heatmap-group-btn,
+    .btn-heatmap-clear {
+        transition: none;
+    }
+    .d3fend-heatmap-cell:hover,
+    .d3fend-heatmap-cell:focus-visible {
+        transform: none;
+    }
+}
 
 /* ═══════════════════ VIOLATIONS LIST ═══════════════════ */
 
@@ -966,10 +1300,10 @@ html, body {
     border-radius: 2px;
 }
 
-.legend-dot.excellent { background: var(--success); }
-.legend-dot.good { background: #86efac; }
-.legend-dot.warning { background: var(--warning); }
-.legend-dot.danger { background: var(--brand-500); }
+.legend-dot.excellent { background: #22c55e; }
+.legend-dot.good { background: #4ade80; }
+.legend-dot.warning { background: #f59e0b; }
+.legend-dot.danger { background: #ef4444; }
 
 .mitre-matrix-container {
     overflow-x: auto;
@@ -1983,7 +2317,7 @@ html, body {
     border-color: var(--border-default);
 }
 
-/* ═══════════════════ D3FEND CARDS ═══════════════════ */
+/* ═══════════════════ D3FEND CARDS (legacy card layout) ═══════════════════ */
 
 .d3fend-card {
     background: var(--bg-tertiary);
@@ -1997,22 +2331,6 @@ html, body {
     border-color: var(--border-default);
 }
 
-.d3fend-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-sm);
-}
-
-.d3fend-cell-id {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--brand-500);
-    font-weight: 600;
-}
-
-.d3fend-content { }
-
 .d3fend-tech {
     font-size: 13px;
     font-weight: 500;
@@ -2023,19 +2341,6 @@ html, body {
     font-size: 12px;
     color: var(--text-tertiary);
     margin-top: 2px;
-}
-
-.d3fend-column {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-}
-
-/* ═══════════════════ DISTRIBUTION / MINI GRIDS ═══════════════════ */
-
-.grid-view {
-    display: grid;
-    gap: var(--space-sm);
 }
 
 .compact {

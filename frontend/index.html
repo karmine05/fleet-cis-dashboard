@@ -121,13 +121,13 @@
                 <section class="kpi-section">
                     <div class="kpi-card compliance-card">
                         <div class="kpi-header">
-                            <h3>Overall Compliance <i class="fas fa-info-circle info-icon"
-                                    data-help="Overall fleet health: Combined pass rate of every check on every device."></i>
+                            <h3>Policy Pass Rate <i class="fas fa-info-circle info-icon"
+                                    data-help="Pass result rows ÷ all policy result rows across filtered hosts. Not the same as fully-compliant devices."></i>
                             </h3>
                             <i class="fas fa-shield-alt"></i>
                         </div>
                         <div class="kpi-value" id="compliance-rate">--%</div>
-                        <div class="kpi-subtitle" id="compliant-count">-- / -- Devices</div>
+                        <div class="kpi-subtitle" id="policy-pass-detail">-- pass / -- fail checks</div>
                         <div class="progress-bar">
                             <div class="progress-fill" id="compliance-bar" style="width: 0%"></div>
                         </div>
@@ -135,20 +135,24 @@
 
                     <div class="kpi-card risk-card">
                         <div class="kpi-header">
-                            <h3>Risk Level</h3>
+                            <h3>Risk Level <i class="fas fa-info-circle info-icon"
+                                    data-help="Derived from policy pass rate bands: &lt;50% CRITICAL, &lt;70% HIGH, &lt;85% MEDIUM, else LOW."></i>
+                            </h3>
                             <i class="fas fa-fire"></i>
                         </div>
                         <div class="risk-badge" id="risk-level">--</div>
-                        <div class="kpi-subtitle">Based on violations</div>
+                        <div class="kpi-subtitle" id="device-compliance-sub">-- / -- fully compliant</div>
                     </div>
 
                     <div class="kpi-card critical-card">
                         <div class="kpi-header">
-                            <h3>Critical Issues</h3>
+                            <h3>Open Failures <i class="fas fa-info-circle info-icon"
+                                    data-help="Count of failing policy-result rows. Distinct failing policies shown below."></i>
+                            </h3>
                             <i class="fas fa-bug"></i>
                         </div>
                         <div class="kpi-value critical" id="critical-count">--</div>
-                        <div class="kpi-subtitle">Require attention</div>
+                        <div class="kpi-subtitle" id="failing-policies-sub">-- distinct policies</div>
                     </div>
 
                     <div class="kpi-card devices-card">
@@ -157,7 +161,7 @@
                             <i class="fas fa-server"></i>
                         </div>
                         <div class="kpi-value" id="device-count">--</div>
-                        <div class="kpi-subtitle">Active endpoints</div>
+                        <div class="kpi-subtitle">Active endpoints in filter</div>
                     </div>
                 </section>
 
@@ -166,11 +170,64 @@
                     <!-- Heatmap -->
                     <div class="card heatmap-card">
                         <div class="card-header">
-                            <h3>D3FEND vs CIS Compliance Matrix</h3>
-                            <span class="badge-info">Risk-Based View</span>
+                            <div class="header-left">
+                                <h3>D3FEND vs CIS Compliance Matrix</h3>
+                                <span class="badge-info">Heat Map</span>
+                            </div>
+                            <div class="matrix-legend" id="heatmap-legend">
+                                <span class="legend-item"><span class="legend-dot danger"></span>High risk</span>
+                                <span class="legend-item"><span class="legend-dot warning"></span>Med</span>
+                                <span class="legend-item"><span class="legend-dot good"></span>Low</span>
+                                <span class="legend-item"><span class="legend-dot excellent"></span>Minimal</span>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div id="heatmap-container" class="heatmap-container"></div>
+                        <div class="heatmap-toolbar">
+                            <div class="heatmap-toolbar-left">
+                                <div class="heatmap-filter-field">
+                                    <label for="heatmap-cis-filter">CIS Safeguard</label>
+                                    <div class="heatmap-input-wrap">
+                                        <i class="fas fa-search" aria-hidden="true"></i>
+                                        <input type="search" id="heatmap-cis-filter"
+                                            placeholder="e.g. 1.1, 5.2…"
+                                            autocomplete="off"
+                                            aria-label="Filter by CIS Safeguard ID">
+                                    </div>
+                                </div>
+                                <div class="heatmap-filter-field">
+                                    <label for="heatmap-mitre-filter">MITRE Technique</label>
+                                    <div class="heatmap-input-wrap">
+                                        <i class="fas fa-crosshairs" aria-hidden="true"></i>
+                                        <input type="search" id="heatmap-mitre-filter"
+                                            list="heatmap-mitre-options"
+                                            placeholder="e.g. T1070, T1546…"
+                                            autocomplete="off"
+                                            aria-label="Filter by MITRE ATT&CK Technique">
+                                        <datalist id="heatmap-mitre-options"></datalist>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="heatmap-toolbar-right">
+                                <div class="heatmap-group-toggle" role="group" aria-label="Group heat map by">
+                                    <button type="button" class="heatmap-group-btn active" data-group="d3fend"
+                                        aria-pressed="true" title="Group by D3FEND tactic">D3FEND</button>
+                                    <button type="button" class="heatmap-group-btn" data-group="mitre"
+                                        aria-pressed="false" title="Group by MITRE technique">MITRE</button>
+                                    <button type="button" class="heatmap-group-btn" data-group="cis"
+                                        aria-pressed="false" title="Group by CIS control family (single platform only)"
+                                        id="heatmap-group-cis">CIS Family</button>
+                                    <button type="button" class="heatmap-group-btn" data-group="platform"
+                                        aria-pressed="false" title="Group by host platform">Platform</button>
+                                </div>
+                                <button type="button" id="heatmap-clear-filters" class="btn-heatmap-clear"
+                                    title="Clear heat map filters" aria-label="Clear heat map filters">
+                                    <i class="fas fa-times" aria-hidden="true"></i> Clear
+                                </button>
+                                <span class="heatmap-count" id="heatmap-count" aria-live="polite"></span>
+                            </div>
+                        </div>
+                        <div class="card-body heatmap-body">
+                            <div id="heatmap-container" class="heatmap-container"
+                                aria-label="D3FEND versus CIS compliance heat map"></div>
                         </div>
                     </div>
 

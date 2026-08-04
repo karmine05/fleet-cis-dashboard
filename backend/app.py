@@ -145,26 +145,98 @@ def load_d3fend_mapping():
 
 D3FEND_MAPPING, D3FEND_TECHNIQUES = load_d3fend_mapping()
 
+# Host/policy platform values → mapping CSV keys (cis_to_d3fend_<key>.csv)
+PLATFORM_ALIASES = {
+    'linux': 'ubuntu',
+    'ubuntu': 'ubuntu',
+    'darwin': 'darwin',
+    'macos': 'darwin',
+    'mac': 'darwin',
+    'windows': 'windows',
+    'win32': 'windows',
+    'win': 'windows',
+}
+
+# Non-canonical mapping labels → D3FEND tactic vocabulary
+TACTIC_NORMALIZE = {
+    'access control': 'Harden',
+    'recover': 'Restore',
+    'restore': 'Restore',
+    'model': 'Model',
+    'harden': 'Harden',
+    'detect': 'Detect',
+    'isolate': 'Isolate',
+    'deceive': 'Deceive',
+    'evict': 'Evict',
+}
+
+# ATT&CK techniques with more than this many CIS cells are flagged as coarse
+COARSE_ATTACK_THRESHOLD = 40
+
+
+def normalize_platform(platform):
+    """Map host/policy platform strings to D3FEND CSV keys."""
+    if not platform:
+        return ''
+    key = str(platform).strip().lower()
+    return PLATFORM_ALIASES.get(key, key)
+
+
+def normalize_d3fend_tactic(tactic):
+    """Normalize mapping CSV tactics to D3FEND vocabulary."""
+    if not tactic:
+        return 'Unmapped'
+    raw = str(tactic).strip()
+    return TACTIC_NORMALIZE.get(raw.lower(), raw)
+
+
+def mapping_confidence(entry):
+    """high | medium | unmapped based on D3FEND + ATT&CK fields present."""
+    if not entry:
+        return 'unmapped'
+    d3_id = (entry.get('d3fend_id') or '').strip()
+    d3_tech = (entry.get('d3fend_technique') or '').strip()
+    attack = (entry.get('attack_id') or '').strip()
+    has_d3 = bool(d3_id and d3_id not in ('N/A',) and d3_tech and d3_tech != 'Unmapped')
+    has_atk = bool(attack and attack not in ('Unmapped', 'N/A', ''))
+    if has_d3 and has_atk:
+        return 'high'
+    if has_d3 or has_atk:
+        return 'medium'
+    return 'unmapped'
+
 
 def get_d3fend_entry(cis_id, platform=''):
     """
     Look up a CIS ID in the platform-specific D3FEND mapping.
 
-    When platform is known (e.g. 'darwin', 'linux', 'windows'), only that
-    platform's file is consulted — no cross-platform bleed.
-
-    When platform is unknown or not provided, search all loaded platform dicts
-    and return the first match found (deterministic: alphabetical platform order).
+    When platform is known, only that platform's file is consulted.
+    When unknown, search all platform dicts (sorted) and return first match.
     """
-    if platform and platform in D3FEND_MAPPING:
-        return D3FEND_MAPPING[platform].get(cis_id, {})
+    plat = normalize_platform(platform)
+    if plat and plat in D3FEND_MAPPING:
+        return D3FEND_MAPPING[plat].get(cis_id, {}) or {}
 
-    # No platform specified: search all platforms in sorted order
-    for plat in sorted(D3FEND_MAPPING.keys()):
-        entry = D3FEND_MAPPING[plat].get(cis_id)
+    # No platform: search all platforms deterministically
+    for p in sorted(D3FEND_MAPPING.keys()):
+        entry = D3FEND_MAPPING[p].get(cis_id)
         if entry:
             return entry
     return {}
+
+
+def enrich_mapping(cis_id, platform=''):
+    """Return mapping fields with normalized tactic + confidence."""
+    entry = get_d3fend_entry(cis_id, platform)
+    raw_tactic = (entry.get('d3fend_tactic') or '').strip() or 'Unmapped'
+    return {
+        'd3fend_id': entry.get('d3fend_id') or 'N/A',
+        'd3fend_technique': entry.get('d3fend_technique') or 'Unmapped',
+        'd3fend_tactic': normalize_d3fend_tactic(raw_tactic),
+        'd3fend_tactic_raw': raw_tactic,
+        'attack_id': entry.get('attack_id') or 'Unmapped',
+        'mapping_confidence': mapping_confidence(entry),
+    }
 
 # --- Configuration Management ---
 def get_config(key, default):
@@ -556,16 +628,29 @@ def get_compliance_summary():
         failed = policy_stats.get('fail', 0)
         total_pol = passed + failed
         pass_rate = (passed / total_pol * 100) if total_pol > 0 else 0
+
+        # Distinct policies with ≥1 fail (not row-inflated "critical" count)
+        cur.execute(f"""
+            SELECT COUNT(DISTINCT policy_id) as n
+            FROM policy_results
+            WHERE status = 'fail' AND host_id IN ({h_query})
+        """, params)
+        failing_policies = cur.fetchone()['n'] or 0
         
         return jsonify({
             "total_devices": total_dev,
+            # Fully compliant = zero failing checks on the device
             "compliant_devices": compliant_dev,
+            "fully_compliant_devices": compliant_dev,
             "non_compliant_devices": non_compliant_dev,
+            # policy_pass_rate = pass result rows / all result rows (NOT device compliance)
             "compliance_percentage": pass_rate,
+            "policy_pass_rate": pass_rate,
             "total_policies": total_pol,
             "policies_passed": passed,
             "policies_failed": failed,
-            "policy_pass_rate": pass_rate,
+            "open_failures": failed,
+            "failing_policies_count": failing_policies,
             "total_policy_results": total_pol
         })
 
@@ -614,58 +699,99 @@ def get_safeguard_compliance():
 
 @app.route('/api/heatmap-data', methods=['GET'])
 def get_heatmap_data():
+    """
+    Heat map grain: (host.platform, cis_control) — never collapse CIS IDs across OS.
+    risk_score = fail_hosts / fleet_size * 100 (fleet exposure, not in-control pass rate alone).
+    """
     h_query, params = get_filtered_hosts_subquery()
-    
+    filter_platform = request.args.get('platform', '')
+
     query = f"""
-        SELECT 
+        SELECT
+            platform,
             cis_control,
             COUNT(*) as total_count,
             SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count
         FROM (
-            SELECT 
-                p.cis_control, 
-                pr.host_id, 
+            SELECT
+                h.platform,
+                p.cis_control,
+                pr.host_id,
                 SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
             FROM policy_results pr
             JOIN cis_policies p ON pr.policy_id = p.policy_id
-            WHERE pr.host_id IN ({h_query}) AND p.cis_control IS NOT NULL
-            GROUP BY p.cis_control, pr.host_id
+            JOIN fleet_hosts h ON pr.host_id = h.host_id
+            WHERE pr.host_id IN ({h_query})
+              AND p.cis_control IS NOT NULL
+              AND h.platform IS NOT NULL
+            GROUP BY h.platform, p.cis_control, pr.host_id
         ) sq
-        GROUP BY cis_control
+        GROUP BY platform, cis_control
     """
-    
+
     with db.get_db_cursor() as cur:
+        # Fleet size in current filter (denominator for exposure)
+        cur.execute(f"SELECT COUNT(*) as n FROM ({h_query}) hosts", params)
+        fleet_size = cur.fetchone()['n'] or 0
+
         cur.execute(query, params)
         rows = cur.fetchall()
-        
-        cis_stats = {}
-        for row in rows:
-            cis_id = row['cis_control'] or 'Unknown'
-            if cis_id not in cis_stats:
-                cis_stats[cis_id] = {'pass': 0, 'total': 0}
-            
-            cis_stats[cis_id]['total'] += row['total_count']
-            cis_stats[cis_id]['pass'] += row['pass_count']
 
-        platform = request.args.get('platform', '')
         heatmap_data = []
-        for cis_id in sorted(cis_stats.keys()):
-            stats = cis_stats[cis_id]
-            mapping = get_d3fend_entry(cis_id, platform)
+        attack_counts = {}
+
+        for row in rows:
+            host_plat = row['platform'] or 'unknown'
+            cis_id = row['cis_control'] or 'Unknown'
+            total = int(row['total_count'] or 0)
+            passed = int(row['pass_count'] or 0)
+            fail_hosts = max(0, total - passed)
+            pass_rate = (passed / total * 100) if total else 0.0
+            # Exposure: share of filtered fleet failing this control
+            risk_score = (fail_hosts / fleet_size * 100) if fleet_size else 0.0
+
+            mapping = enrich_mapping(cis_id, host_plat)
+            attack_id = mapping['attack_id']
+            if attack_id and attack_id not in ('Unmapped', 'N/A'):
+                attack_counts[attack_id] = attack_counts.get(attack_id, 0) + 1
 
             heatmap_data.append({
                 "cis_id": cis_id,
-                "pass": stats['pass'],
-                "total": stats['total'],
-                "d3fend_id": mapping.get('d3fend_id', 'N/A'),
-                "d3fend_technique": mapping.get('d3fend_technique', 'Unmapped'),
-                "d3fend_tactic": mapping.get('d3fend_tactic', 'Unmapped'),
-                "attack_id": mapping.get('attack_id', 'Unmapped')
+                "platform": host_plat,
+                "key": f"{host_plat}:{cis_id}",
+                "pass": passed,
+                "total": total,
+                "fail": fail_hosts,
+                "pass_rate": round(pass_rate, 1),
+                "risk_score": round(risk_score, 1),
+                "fleet_size": fleet_size,
+                "d3fend_id": mapping['d3fend_id'],
+                "d3fend_technique": mapping['d3fend_technique'],
+                "d3fend_tactic": mapping['d3fend_tactic'],
+                "d3fend_tactic_raw": mapping['d3fend_tactic_raw'],
+                "attack_id": attack_id,
+                "mapping_confidence": mapping['mapping_confidence'],
             })
-                
+
+        heatmap_data.sort(key=lambda x: (x['platform'], x['cis_id']))
+
+        coarse_techniques = sorted(
+            aid for aid, n in attack_counts.items() if n >= COARSE_ATTACK_THRESHOLD
+        )
+        # Annotate coarse mapping on cells
+        for item in heatmap_data:
+            item['mapping_coarse'] = item['attack_id'] in coarse_techniques
+
+        platforms_present = sorted({i['platform'] for i in heatmap_data})
+
         return jsonify({
             "heatmap": heatmap_data,
-            "total_controls": len(heatmap_data)
+            "total_controls": len(heatmap_data),
+            "fleet_size": fleet_size,
+            "platforms": platforms_present,
+            "multi_platform": len(platforms_present) > 1,
+            "coarse_techniques": coarse_techniques,
+            "filter_platform": filter_platform or None,
         })
 
 @app.route('/api/strategy', methods=['GET'])
@@ -705,13 +831,23 @@ def get_strategy():
         elif posture_score > 25: maturity = 2
         else: maturity = 1
 
-        # 6. Roadmap (Simulated)
+        # 6. Roadmap — projected targets only; actual only for current month (no fabricated history)
         roadmap = []
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         current_month_idx = datetime.now().month - 1
         for i, m in enumerate(months):
-            projected = min(95, 40 + i * 5)
-            actual = round(posture_score) if i == current_month_idx else (projected - 5 if i < current_month_idx else None)
+            # Linear target path from current posture toward 95% by year end
+            remaining = max(1, 11 - current_month_idx)
+            if i < current_month_idx:
+                projected = None  # no fake past
+                actual = None
+            elif i == current_month_idx:
+                projected = round(posture_score)
+                actual = round(posture_score)
+            else:
+                steps = i - current_month_idx
+                projected = min(95, round(posture_score + steps * (95 - posture_score) / remaining))
+                actual = None
             roadmap.append({"month": m, "projected": projected, "actual": actual})
 
         # 7. Team Leaderboard
@@ -805,132 +941,108 @@ def get_strategy():
 @app.route('/api/architecture', methods=['GET'])
 def get_architecture():
     h_query, params = get_filtered_hosts_subquery()
-    platform = request.args.get('platform', '')
 
     with db.get_db_cursor() as cur:
-        # Get host-level compliance per cis_control
+        # Host-level compliance per (platform, cis_control) — no cross-OS collapse
         cur.execute(f"""
-            SELECT 
+            SELECT
+                platform,
                 cis_control,
                 SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count,
                 COUNT(*) as total_count
             FROM (
-                SELECT 
-                    p.cis_control, 
-                    pr.host_id, 
+                SELECT
+                    h.platform,
+                    p.cis_control,
+                    pr.host_id,
                     SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
                 FROM policy_results pr
                 JOIN cis_policies p ON pr.policy_id = p.policy_id
-                WHERE pr.host_id IN ({h_query}) AND p.cis_control IS NOT NULL
-                GROUP BY p.cis_control, pr.host_id
+                JOIN fleet_hosts h ON pr.host_id = h.host_id
+                WHERE pr.host_id IN ({h_query})
+                  AND p.cis_control IS NOT NULL
+                  AND h.platform IS NOT NULL
+                GROUP BY h.platform, p.cis_control, pr.host_id
             ) sq
-            GROUP BY cis_control
+            GROUP BY platform, cis_control
         """, params)
         rows = cur.fetchall()
 
-        # Aggregation Structures
-        cis_stats = {} # cis_id -> {pass: 0, total: 0}
-        mitre_stats = {} # attack_id -> {pass: 0, total: 0}
-        d3fend_tech_stats = {} # technique_name -> {pass: 0, total: 0}
-        tactic_stats = {} # tactic_name -> {pass: 0, total: 0} for MITRE tactics
+        mitre_stats = {}
+        d3fend_tech_stats = {}
+        tactic_stats = {}
 
         total_checks = 0
         total_passed = 0
 
         for row in rows:
             cis_id = row['cis_control']
-            if not cis_id: continue
+            host_plat = row['platform']
+            if not cis_id:
+                continue
 
             count = row['total_count']
             pass_count = row['pass_count']
-
-            # Global Stats
             total_checks += count
             total_passed += pass_count
 
-            # CIS Stats
-            if cis_id not in cis_stats: cis_stats[cis_id] = {'pass': 0, 'total': 0}
-            cis_stats[cis_id]['total'] += count
-            cis_stats[cis_id]['pass'] += pass_count
+            mapping = enrich_mapping(cis_id, host_plat)
 
-            # Map to Frameworks
-            mapping = get_d3fend_entry(cis_id, platform)
-            if mapping:
-                
-                # 1. D3FEND Technique Stats (for Weakest/Strongest)
-                d3_tech = mapping.get('d3fend_technique')
-                if d3_tech:
-                    if d3_tech not in d3fend_tech_stats: d3fend_tech_stats[d3_tech] = {'pass': 0, 'total': 0}
-                    d3fend_tech_stats[d3_tech]['total'] += count
-                    d3fend_tech_stats[d3_tech]['pass'] += pass_count
+            d3_tech = mapping.get('d3fend_technique')
+            if d3_tech and d3_tech != 'Unmapped':
+                if d3_tech not in d3fend_tech_stats:
+                    d3fend_tech_stats[d3_tech] = {'pass': 0, 'total': 0}
+                d3fend_tech_stats[d3_tech]['total'] += count
+                d3fend_tech_stats[d3_tech]['pass'] += pass_count
 
-                # 2. MITRE Stats
-                attack_id = mapping.get('attack_id')
-                if attack_id and attack_id in MITRE_DATA:
-                    meta = MITRE_DATA[attack_id]
-                    tactic = meta['tactic']
-                    
-                    # Attack ID Stats
-                    if attack_id not in mitre_stats: mitre_stats[attack_id] = {'pass': 0, 'total': 0, 'name': meta['name'], 'tactic': tactic}
-                    mitre_stats[attack_id]['total'] += count
-                    mitre_stats[attack_id]['pass'] += pass_count
-                    
-                    # Tactic Stats
-                    if tactic not in tactic_stats: tactic_stats[tactic] = {'pass': 0, 'total': 0}
-                    tactic_stats[tactic]['total'] += count
-                    tactic_stats[tactic]['pass'] += pass_count
-                    
-        # --- Check for empty results ---
+            attack_id = mapping.get('attack_id')
+            if attack_id and attack_id in MITRE_DATA:
+                meta = MITRE_DATA[attack_id]
+                tactic = meta['tactic']
+                if attack_id not in mitre_stats:
+                    mitre_stats[attack_id] = {
+                        'pass': 0, 'total': 0,
+                        'name': meta['name'], 'tactic': tactic
+                    }
+                mitre_stats[attack_id]['total'] += count
+                mitre_stats[attack_id]['pass'] += pass_count
+                if tactic not in tactic_stats:
+                    tactic_stats[tactic] = {'pass': 0, 'total': 0}
+                tactic_stats[tactic]['total'] += count
+                tactic_stats[tactic]['pass'] += pass_count
+
         if total_checks == 0:
-             return jsonify({
+            return jsonify({
                 "overall_compliance": 0,
                 "compliance_by_tactic": {},
                 "top_5_weakest": [],
                 "top_3_strongest": [],
+                "biggest_gains": [],
+                "biggest_losses": [],
+                "history_available": False,
                 "mitre_matrix": []
             })
-            
-        # --- Format Outputs ---
 
-        # 1. Overall Score
         overall_score = (total_passed / total_checks * 100)
 
-        # 2. Compliance by Tactic (Summary Bars)
         comp_by_tactic = {}
         for tactic, stats in tactic_stats.items():
             if stats['total'] > 0:
                 comp_by_tactic[tactic] = round(stats['pass'] / stats['total'] * 100)
-        
-        # 3. Top Weakest/Strongest D3FEND Techniques
+
         tech_list = []
         for name, stats in d3fend_tech_stats.items():
             if stats['total'] > 0:
                 rate = round(stats['pass'] / stats['total'] * 100)
                 tech_list.append({'name': name, 'rate': rate})
-        
-        tech_list.sort(key=lambda x: x['rate']) # Ascending (Weakest first)
+
+        tech_list.sort(key=lambda x: x['rate'])
         top_weakest = tech_list[:5]
         top_strongest = sorted(tech_list, key=lambda x: x['rate'], reverse=True)[:3]
 
-        # 4. Biggest Gains/Losses (Simulated if no history)
+        # No historical store yet — do not invent gains/losses
         gains = []
         losses = []
-        
-        if tech_list:
-            # Pick random techniques to verify UI
-            available = list(tech_list)
-            # Use a fixed seed or simple deterministic way if possible, but random is fine for simulation
-            random.shuffle(available)
-            
-            # Generate Gains
-            for t in available[:3]:
-                change = f"+{random.randint(5, 15)}%"
-                gains.append({'name': t['name'], 'change': change})
-                
-            # Generate Losses
-            for t in available[3:6]:
-                change = f"-{random.randint(3, 12)}%"
-                losses.append({'name': t['name'], 'change': change})
 
         # 5. MITRE Matrix (Grouped by Tactic)
         # Expected: [{tactic: "Initial Access", rate: 50, techniques: [{id: T1078, name:..., rate:..}]}]
@@ -973,9 +1085,10 @@ def get_architecture():
             "top_3_strongest": top_strongest,
             "biggest_gains": gains,
             "biggest_losses": losses,
+            "history_available": False,
             "mitre_matrix": mitre_matrix
         })
-        
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     debug_mode = os.environ.get('FLASK_1_DEBUG', '0') == '1'

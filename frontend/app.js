@@ -281,112 +281,397 @@ function showError(message) {
     setTimeout(() => banner.remove(), 8000);
 }
 
-// Update metrics (KPI cards)
+// Update metrics (KPI cards) — honest labels, no conflated "compliance"
 function updateMetrics(summary) {
-    const rate = summary.compliance_percentage || 0;
-    const compliant = summary.compliant_devices || 0;
+    if (!summary) return;
+
+    const rate = summary.policy_pass_rate ?? summary.compliance_percentage ?? 0;
+    const compliant = summary.fully_compliant_devices ?? summary.compliant_devices ?? 0;
     const total = summary.total_devices || 0;
-    const failed = summary.policies_failed || 0;
+    const openFailures = summary.open_failures ?? summary.policies_failed ?? 0;
+    const failingPolicies = summary.failing_policies_count;
+    const passed = summary.policies_passed ?? 0;
+    const failed = summary.policies_failed ?? openFailures;
 
     const rateEl = document.getElementById('compliance-rate');
-    const countEl = document.getElementById('compliant-count');
+    const policyDetailEl = document.getElementById('policy-pass-detail');
     const barEl = document.getElementById('compliance-bar');
     const deviceCountEl = document.getElementById('device-count');
     const criticalCountEl = document.getElementById('critical-count');
+    const failingPolEl = document.getElementById('failing-policies-sub');
     const riskLevelEl = document.getElementById('risk-level');
+    const deviceSubEl = document.getElementById('device-compliance-sub');
 
     if (rateEl) rateEl.textContent = `${Math.round(rate)}%`;
-    if (countEl) countEl.textContent = `${compliant} / ${total} Devices`;
+    if (policyDetailEl) policyDetailEl.textContent = `${passed.toLocaleString()} pass / ${failed.toLocaleString()} fail checks`;
     if (barEl) barEl.style.width = `${rate}%`;
     if (deviceCountEl) deviceCountEl.textContent = total;
-    if (criticalCountEl) criticalCountEl.textContent = failed;
+    if (criticalCountEl) criticalCountEl.textContent = openFailures.toLocaleString();
+    if (failingPolEl) {
+        failingPolEl.textContent = failingPolicies != null
+            ? `${failingPolicies.toLocaleString()} distinct policies`
+            : 'Open fail result rows';
+    }
+    if (deviceSubEl) deviceSubEl.textContent = `${compliant} / ${total} fully compliant`;
 
-    // Risk level
     let riskLevel = 'LOW';
-    // Edge case: no summary data
-    if (!summary) {
-        riskLevel = 'UNAVAILABLE';
-    }
-    // Edge case: no devices
-    else if (total === 0) {
-        riskLevel = 'UNAVAILABLE';
-    }
-    // Edge case: no policy results (mapping not possible)
-    else if (summary.total_policy_results === 0) {
-        riskLevel = 'HIGH';
-    }
-    // Normal calculation
+    if (total === 0) riskLevel = 'UNAVAILABLE';
+    else if ((summary.total_policy_results || 0) === 0) riskLevel = 'HIGH';
     else if (rate < 50) riskLevel = 'CRITICAL';
     else if (rate < 70) riskLevel = 'HIGH';
     else if (rate < 85) riskLevel = 'MEDIUM';
 
-    if (riskLevelEl) riskLevelEl.textContent = riskLevel;
+    if (riskLevelEl) {
+        riskLevelEl.textContent = riskLevel;
+        riskLevelEl.className = 'risk-badge ' + riskLevel.toLowerCase();
+    }
 }
 
-// Update heatmap
-// Update heatmap (D3FEND Matrix)
-function updateHeatmap(data) {
-    const container = document.getElementById('heatmap-container');
-    const heatmapData = data.heatmap || [];
+// ─── Heat map state ───────────────────────────────────────────
+let heatmapRawData = [];
+let heatmapMeta = { multi_platform: false, fleet_size: 0, platforms: [], coarse_techniques: [] };
+let heatmapGroupBy = 'd3fend'; // d3fend | mitre | cis | platform
+let heatmapCisFilter = '';
+let heatmapMitreFilter = '';
+let heatmapListenersBound = false;
+let heatmapResizeObserver = null;
 
-    if (heatmapData.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">No heatmap data available</p>';
+const D3FEND_TACTIC_ORDER = [
+    'Model', 'Harden', 'Detect', 'Isolate', 'Deceive', 'Evict', 'Restore', 'Unmapped'
+];
+
+function passRateOf(item) {
+    if (item && typeof item.pass_rate === 'number') return item.pass_rate;
+    if (!item || !item.total) return 0;
+    return (item.pass / item.total) * 100;
+}
+
+function riskScoreOf(item) {
+    if (item && typeof item.risk_score === 'number') return item.risk_score;
+    // Fallback: invert pass rate if risk not provided
+    return 100 - passRateOf(item);
+}
+
+/** Color by fleet exposure risk (higher = worse). */
+function riskClass(riskScore, total) {
+    if (!total) return 'rate-empty';
+    if (riskScore >= 40) return 'rate-danger';
+    if (riskScore >= 20) return 'rate-warning';
+    if (riskScore >= 5) return 'rate-good';
+    return 'rate-excellent';
+}
+
+/** @deprecated pass-rate coloring — prefer riskClass */
+function rateClass(passRate, total) {
+    if (!total) return 'rate-empty';
+    if (passRate >= 80) return 'rate-excellent';
+    if (passRate >= 60) return 'rate-good';
+    if (passRate >= 40) return 'rate-warning';
+    return 'rate-danger';
+}
+
+function escapeAttr(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function cisFamilyKey(cisId) {
+    const raw = String(cisId || 'Unknown');
+    const match = raw.match(/^(\d+)/);
+    return match ? match[1] : raw.split('.')[0] || 'Other';
+}
+
+function groupKeyForItem(item, mode) {
+    if (mode === 'mitre') {
+        const id = (item.attack_id || '').trim();
+        if (!id || id === 'Unmapped' || id === 'N/A') return 'Unmapped';
+        return id;
+    }
+    if (mode === 'cis') {
+        // Prefix platform when multi-OS so families don't collide
+        const fam = `CIS ${cisFamilyKey(item.cis_id)}`;
+        if (heatmapMeta.multi_platform && item.platform) {
+            return `${item.platform} · ${fam}`;
+        }
+        return fam;
+    }
+    if (mode === 'platform') {
+        return item.platform || 'unknown';
+    }
+    return item.d3fend_tactic || 'Unmapped';
+}
+
+function groupLabelMeta(key, items, mode) {
+    const avgRisk = items.length
+        ? Math.round(items.reduce((s, i) => s + riskScoreOf(i), 0) / items.length)
+        : 0;
+    if (mode === 'd3fend' || mode === 'platform') {
+        return { title: key, meta: `${items.length} · risk ${avgRisk}%` };
+    }
+    if (mode === 'mitre') {
+        const coarse = heatmapMeta.coarse_techniques?.includes(key) ? ' · coarse' : '';
+        return { title: key, meta: `${items.length}${coarse}` };
+    }
+    return { title: key, meta: `${items.length}` };
+}
+
+function sortGroupKeys(keys, mode) {
+    if (mode === 'd3fend') {
+        return [...keys].sort((a, b) => {
+            const ia = D3FEND_TACTIC_ORDER.indexOf(a);
+            const ib = D3FEND_TACTIC_ORDER.indexOf(b);
+            return (ia > -1 ? ia : 99) - (ib > -1 ? ib : 99) || a.localeCompare(b);
+        });
+    }
+    if (mode === 'cis') {
+        return [...keys].sort((a, b) => {
+            const na = parseInt(String(a).replace(/\D/g, ''), 10);
+            const nb = parseInt(String(b).replace(/\D/g, ''), 10);
+            if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+            return a.localeCompare(b);
+        });
+    }
+    if (mode === 'platform') {
+        return [...keys].sort((a, b) => a.localeCompare(b));
+    }
+    return [...keys].sort((a, b) => {
+        if (a === 'Unmapped') return 1;
+        if (b === 'Unmapped') return -1;
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+}
+
+/** Compute cell size + columns so the matrix fills container width. */
+function computeHeatmapLayout(container, groupCount, maxItemsInGroup) {
+    const width = Math.max(container.clientWidth || 600, 320);
+    const gap = 12;
+    const colGap = 3;
+    const usable = width - gap * Math.max(groupCount - 1, 0) - 8;
+    const colWidth = Math.max(72, Math.floor(usable / Math.max(groupCount, 1)));
+
+    // Prefer square cells that fill column width; clamp for touch targets
+    let cell = Math.floor((colWidth - 8) / Math.max(4, Math.ceil(Math.sqrt(maxItemsInGroup || 1))));
+    cell = Math.max(12, Math.min(28, cell));
+
+    const cellsPerRow = Math.max(2, Math.floor((colWidth - 4) / (cell + colGap)));
+    return { cell, cellsPerRow, colWidth };
+}
+
+function filterHeatmapData(data) {
+    const cisQ = heatmapCisFilter.trim().toLowerCase();
+    const mitreQ = heatmapMitreFilter.trim().toLowerCase();
+
+    return data.filter(item => {
+        if (cisQ) {
+            const id = String(item.cis_id || '').toLowerCase();
+            if (!id.includes(cisQ)) return false;
+        }
+        if (mitreQ) {
+            const attack = String(item.attack_id || '').toLowerCase();
+            const tech = String(item.d3fend_technique || '').toLowerCase();
+            if (!attack.includes(mitreQ) && !tech.includes(mitreQ)) return false;
+        }
+        return true;
+    });
+}
+
+function populateMitreDatalist(data) {
+    const list = document.getElementById('heatmap-mitre-options');
+    if (!list) return;
+    const ids = [...new Set(
+        data.map(i => (i.attack_id || '').trim())
+            .filter(id => id && id !== 'Unmapped' && id !== 'N/A')
+    )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    list.innerHTML = DOMPurify.sanitize(ids.map(id => `<option value="${escapeAttr(id)}"></option>`).join(''));
+}
+
+function bindHeatmapControls() {
+    if (heatmapListenersBound) return;
+    heatmapListenersBound = true;
+
+    const cisInput = document.getElementById('heatmap-cis-filter');
+    const mitreInput = document.getElementById('heatmap-mitre-filter');
+    const clearBtn = document.getElementById('heatmap-clear-filters');
+    const groupBtns = document.querySelectorAll('.heatmap-group-btn');
+
+    let debounceTimer = null;
+    const rerender = () => renderHeatmapMatrix();
+
+    const onFilterInput = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            heatmapCisFilter = cisInput?.value || '';
+            heatmapMitreFilter = mitreInput?.value || '';
+            rerender();
+        }, 180);
+    };
+
+    cisInput?.addEventListener('input', onFilterInput);
+    mitreInput?.addEventListener('input', onFilterInput);
+
+    clearBtn?.addEventListener('click', () => {
+        heatmapCisFilter = '';
+        heatmapMitreFilter = '';
+        if (cisInput) cisInput.value = '';
+        if (mitreInput) mitreInput.value = '';
+        rerender();
+        cisInput?.focus();
+    });
+
+    groupBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            heatmapGroupBy = btn.dataset.group || 'd3fend';
+            groupBtns.forEach(b => {
+                const active = b === btn;
+                b.classList.toggle('active', active);
+                b.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            rerender();
+        });
+    });
+
+    // Re-layout on container resize (wide screens fill width)
+    const container = document.getElementById('heatmap-container');
+    if (container && typeof ResizeObserver !== 'undefined') {
+        let roTimer = null;
+        heatmapResizeObserver = new ResizeObserver(() => {
+            clearTimeout(roTimer);
+            roTimer = setTimeout(() => renderHeatmapMatrix(), 80);
+        });
+        heatmapResizeObserver.observe(container);
+    }
+    window.addEventListener('resize', () => {
+        clearTimeout(bindHeatmapControls._rt);
+        bindHeatmapControls._rt = setTimeout(() => renderHeatmapMatrix(), 120);
+    });
+}
+
+function updateHeatmap(data) {
+    heatmapRawData = data?.heatmap || [];
+    heatmapMeta = {
+        multi_platform: !!data?.multi_platform,
+        fleet_size: data?.fleet_size || 0,
+        platforms: data?.platforms || [],
+        coarse_techniques: data?.coarse_techniques || []
+    };
+    bindHeatmapControls();
+    populateMitreDatalist(heatmapRawData);
+
+    // CIS family only fully meaningful on single platform — still allowed with platform prefix
+    const cisBtn = document.getElementById('heatmap-group-cis');
+    if (cisBtn) {
+        cisBtn.title = heatmapMeta.multi_platform
+            ? 'Group by CIS family (prefixed by platform — filter to one OS for cleaner families)'
+            : 'Group by CIS control family';
+    }
+
+    renderHeatmapMatrix();
+}
+
+function renderHeatmapMatrix() {
+    const container = document.getElementById('heatmap-container');
+    const countEl = document.getElementById('heatmap-count');
+    if (!container) return;
+
+    const filtered = filterHeatmapData(heatmapRawData);
+
+    if (countEl) {
+        const total = heatmapRawData.length;
+        const platNote = heatmapMeta.multi_platform
+            ? ` · ${heatmapMeta.platforms.length} OS`
+            : '';
+        countEl.textContent = filtered.length === total
+            ? `${total} controls${platNote}`
+            : `${filtered.length} / ${total}${platNote}`;
+    }
+
+    if (heatmapRawData.length === 0) {
+        container.innerHTML = '<p class="heatmap-empty">No heatmap data available</p>';
         return;
     }
 
-    // Group by D3FEND Tactic -> Technique
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="heatmap-empty">No controls match the current filters</p>';
+        return;
+    }
+
     const groups = {};
-    const tactics = ['Model', 'Harden', 'Detect', 'Isolate', 'Deceive', 'Evict', 'Restore'];
-
-    heatmapData.forEach(item => {
-        const tactic = item.d3fend_tactic || 'Unmapped';
-        if (!groups[tactic]) groups[tactic] = [];
-        groups[tactic].push(item);
+    filtered.forEach(item => {
+        const key = groupKeyForItem(item, heatmapGroupBy);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
     });
 
-    let html = '<div class="d3fend-matrix">';
-
-    // Render columns (Compact D3FEND Matrix)
-    const sortedTactics = Object.keys(groups).sort((a, b) => {
-        const idxA = tactics.indexOf(a);
-        const idxB = tactics.indexOf(b);
-        return (idxA > -1 ? idxA : 99) - (idxB > -1 ? idxB : 99);
+    // Worst fleet risk first
+    Object.values(groups).forEach(list => {
+        list.sort((a, b) =>
+            riskScoreOf(b) - riskScoreOf(a) ||
+            String(a.cis_id).localeCompare(String(b.cis_id), undefined, { numeric: true })
+        );
     });
 
-    sortedTactics.forEach(tactic => {
+    const sortedKeys = sortGroupKeys(Object.keys(groups), heatmapGroupBy);
+    const maxItems = Math.max(...sortedKeys.map(k => groups[k].length), 1);
+    const layout = computeHeatmapLayout(container, sortedKeys.length, maxItems);
+
+    container.style.setProperty('--cell-size', `${layout.cell}px`);
+
+    let html = '<div class="d3fend-matrix d3fend-matrix-fill">';
+
+    sortedKeys.forEach(key => {
+        const items = groups[key];
+        const { title, meta } = groupLabelMeta(key, items, heatmapGroupBy);
+        const cols = layout.cellsPerRow;
+
         html += `
-            <div class="d3fend-column">
-                <div class="d3fend-header compact">${tactic}</div>
-                <div class="d3fend-content grid-view">
+            <div class="d3fend-column" data-group="${escapeAttr(key)}" style="flex: 1 1 ${layout.colWidth}px; min-width: ${Math.min(layout.colWidth, 120)}px;">
+                <div class="d3fend-header compact" title="${escapeAttr(title)}">
+                    <span class="d3fend-header-title">${escapeAttr(title)}</span>
+                    <span class="d3fend-header-meta">${escapeAttr(meta)}</span>
+                </div>
+                <div class="d3fend-content grid-view" style="grid-template-columns: repeat(${cols}, minmax(${layout.cell}px, 1fr));">
         `;
 
-        groups[tactic].forEach(item => {
-            const passRate = item.total > 0 ? (item.pass / item.total * 100) : 0;
-            const hue = Math.round(passRate * 1.2);
-            const color = `hsla(${hue}, 70%, 55%, 0.85)`;
-
-            // Detailed Tooltip Content - using literal newlines for CSS content:attr()
-            const tooltipTitle = `Technique: ${item.d3fend_technique}`;
-            const tooltipMeta = `CIS ${item.cis_id} | ATT&CK ${item.attack_id || 'N/A'}`;
-            const tooltipStats = `Pass Rate: ${Math.round(passRate)}% (${item.pass}/${item.total})`;
-
-            // String with literal newlines for CSS attr processing
-            const fullTooltip = `${tooltipTitle}\n${tooltipMeta}\n${tooltipStats}`;
+        items.forEach(item => {
+            const risk = riskScoreOf(item);
+            const passRate = passRateOf(item);
+            const rateCls = riskClass(risk, item.total);
+            const coarse = item.mapping_coarse ? ' · coarse map' : '';
+            const conf = item.mapping_confidence ? ` · map ${item.mapping_confidence}` : '';
+            const tooltip = [
+                `CIS ${item.cis_id} (${item.platform || 'os?'})`,
+                `D3FEND: ${item.d3fend_technique || 'Unmapped'} (${item.d3fend_tactic || '—'})`,
+                `MITRE: ${item.attack_id || 'N/A'}${coarse}${conf}`,
+                `In-scope pass: ${Math.round(passRate)}% (${item.pass}/${item.total})`,
+                `Fleet risk: ${Math.round(risk)}% (${item.fail ?? (item.total - item.pass)} fails / ${item.fleet_size || heatmapMeta.fleet_size || '?'} hosts)`
+            ].join('\n');
+            const aria = `CIS ${item.cis_id} ${item.platform || ''}, fleet risk ${Math.round(risk)} percent`;
 
             html += `
-                <div class="d3fend-heatmap-cell" 
-                     style="background-color: ${color};" 
-                     data-tooltip="${fullTooltip}">
-                    <span class="d3fend-cell-id">${item.cis_id}</span>
-                </div>
+                <button type="button"
+                    class="d3fend-heatmap-cell ${rateCls}"
+                    style="width: ${layout.cell}px; height: ${layout.cell}px; min-width: ${layout.cell}px; min-height: ${layout.cell}px;"
+                    data-tooltip="${escapeAttr(tooltip)}"
+                    data-cis-id="${escapeAttr(item.cis_id)}"
+                    data-platform="${escapeAttr(item.platform || '')}"
+                    data-attack-id="${escapeAttr(item.attack_id || '')}"
+                    aria-label="${escapeAttr(aria)}">
+                    <span class="d3fend-cell-id">${escapeAttr(item.cis_id)}</span>
+                </button>
             `;
         });
 
-        html += `</div></div>`;
+        html += '</div></div>';
     });
 
     html += '</div>';
-    container.innerHTML = DOMPurify.sanitize(html);
+    container.innerHTML = DOMPurify.sanitize(html, {
+        ADD_ATTR: ['aria-label', 'data-tooltip', 'data-cis-id', 'data-attack-id', 'data-platform', 'style']
+    });
 }
 
 // Update violations list
@@ -395,8 +680,11 @@ function updateViolations(data) {
     if (!container) return;
     const safeguards = data.safeguards || [];
 
-    // Sort by failure count
-    const sorted = [...safeguards].sort((a, b) => b.fail - a.fail).slice(0, 10);
+    // Sort by failure count; show pass rate so identical fail counts still differentiate
+    const sorted = [...safeguards]
+        .filter(s => (s.fail || 0) > 0)
+        .sort((a, b) => (b.fail - a.fail) || ((a.pass_rate || 0) - (b.pass_rate || 0)))
+        .slice(0, 10);
 
     if (sorted.length === 0) {
         container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No violations found</p>';
@@ -405,10 +693,12 @@ function updateViolations(data) {
 
     let html = '';
     sorted.forEach(s => {
+        const rate = Math.round(s.pass_rate || 0);
+        const control = s.control ? ` · ${s.control}` : '';
         html += `
             <div class="violation-item">
-                <span class="violation-name">${s.name}</span>
-                <span class="violation-count">${s.fail} failures</span>
+                <span class="violation-name" title="${escapeAttr(s.name)}">${s.name}</span>
+                <span class="violation-count">${s.fail} hosts · ${rate}% pass${control}</span>
             </div>
         `;
     });
@@ -529,26 +819,36 @@ async function populateArchitecturePage(heatmapData, summary) {
             `).join(''));
         }
 
-        // 6. Biggest Gains
+        // 6–7. Gains / Losses — only when real history exists (never fabricate)
         const gainsList = document.getElementById('gains-list');
-        if (gainsList && data.biggest_gains) {
-            gainsList.innerHTML = DOMPurify.sanitize(data.biggest_gains.map(g => `
-                <li>
-                    <span class="change-name" title="${g.name}">${g.name}</span>
-                    <span class="change-value gain">${g.change}</span>
-                </li>
-            `).join('')) || '<li><span class="change-name">No recent gains</span></li>';
-        }
-
-        // 7. Biggest Losses
         const lossesList = document.getElementById('losses-list');
-        if (lossesList && data.biggest_losses) {
-            lossesList.innerHTML = DOMPurify.sanitize(data.biggest_losses.map(l => `
-                <li>
-                    <span class="change-name" title="${l.name}">${l.name}</span>
-                    <span class="change-value loss">${l.change}</span>
-                </li>
-            `).join('')) || '<li><span class="change-name">No recent losses</span></li>';
+        const noHistory = data.history_available === false ||
+            !(data.biggest_gains && data.biggest_gains.length) ||
+            !(data.biggest_losses && data.biggest_losses.length);
+
+        if (gainsList) {
+            if (noHistory || !data.biggest_gains?.length) {
+                gainsList.innerHTML = '<li><span class="change-name">No historical trend data yet</span></li>';
+            } else {
+                gainsList.innerHTML = DOMPurify.sanitize(data.biggest_gains.map(g => `
+                    <li>
+                        <span class="change-name" title="${g.name}">${g.name}</span>
+                        <span class="change-value gain">${g.change}</span>
+                    </li>
+                `).join(''));
+            }
+        }
+        if (lossesList) {
+            if (noHistory || !data.biggest_losses?.length) {
+                lossesList.innerHTML = '<li><span class="change-name">No historical trend data yet</span></li>';
+            } else {
+                lossesList.innerHTML = DOMPurify.sanitize(data.biggest_losses.map(l => `
+                    <li>
+                        <span class="change-name" title="${l.name}">${l.name}</span>
+                        <span class="change-value loss">${l.change}</span>
+                    </li>
+                `).join(''));
+            }
         }
 
         // 8. Render MITRE ATT&CK Matrix
@@ -599,13 +899,7 @@ function renderMitreMatrix(matrixData) {
     });
 
     container.innerHTML = DOMPurify.sanitize(html);
-
-    // Attach tooltip handlers
-    container.querySelectorAll('.mitre-technique-cell').forEach(cell => {
-        cell.addEventListener('mouseenter', showGlobalTooltip);
-        cell.addEventListener('mouseleave', hideGlobalTooltip);
-        cell.addEventListener('mousemove', moveGlobalTooltip);
-    });
+    // Tooltips use document-level handlers in setupTooltip()
 }
 
 // 2. COMPLIANCE AUDIT (Enhanced View)
@@ -793,23 +1087,25 @@ async function populateStrategyPage(summary, heatmapData) {
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Projected',
+                            label: 'Projected target',
                             data: projectedData,
                             borderColor: 'rgba(59, 130, 246, 0.5)',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             borderDash: [5, 5],
-                            fill: true,
-                            tension: 0.4
+                            fill: false,
+                            tension: 0.3,
+                            spanGaps: true
                         },
                         {
-                            label: 'Actual',
+                            label: 'Actual (measured)',
                             data: actualData,
                             borderColor: '#10B981',
                             backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 4,
-                            pointBackgroundColor: '#10B981'
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#10B981',
+                            spanGaps: false
                         }
                     ]
                 },
@@ -882,20 +1178,18 @@ async function populateStrategyPage(summary, heatmapData) {
     }
 }
 
-// Utility for Matrix Rendering
+// Utility for Matrix Rendering (compact D3FEND heat map in secondary containers)
 function renderD3FENDMatrix(containerId, data) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // Safety check for data structure
     const heatmapData = (data && data.heatmap) ? data.heatmap : (Array.isArray(data) ? data : []);
 
     if (heatmapData.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No mapping data</p>';
+        container.innerHTML = '<p class="heatmap-empty">No mapping data</p>';
         return;
     }
 
-    const tactics = ['Model', 'Harden', 'Detect', 'Isolate', 'Deceive', 'Evict', 'Restore'];
     const groups = {};
     heatmapData.forEach(item => {
         const tactic = item.d3fend_tactic || 'Unmapped';
@@ -903,20 +1197,28 @@ function renderD3FENDMatrix(containerId, data) {
         groups[tactic].push(item);
     });
 
+    const sortedTactics = sortGroupKeys(Object.keys(groups), 'd3fend');
     let html = '<div class="d3fend-matrix">';
-    tactics.forEach(tactic => {
-        if (!groups[tactic]) return;
-        html += `<div class="d3fend-column"><div class="d3fend-header compact">${tactic}</div><div class="d3fend-content grid-view">`;
-        groups[tactic].forEach(item => {
-            const passRate = item.total > 0 ? (item.pass / item.total * 100) : 0;
-            const hue = Math.round(passRate * 1.2);
-            const color = `hsla(${hue}, 70%, 55%, 0.85)`;
-            html += `<div class="d3fend-heatmap-cell" style="background-color: ${color};" data-tooltip="CIS ${item.cis_id}: ${item.d3fend_technique}"></div>`;
+    sortedTactics.forEach(tactic => {
+        const items = groups[tactic];
+        html += `<div class="d3fend-column">
+            <div class="d3fend-header compact">
+                <span class="d3fend-header-title">${escapeAttr(tactic)}</span>
+                <span class="d3fend-header-meta">${items.length}</span>
+            </div>
+            <div class="d3fend-content grid-view">`;
+        items.forEach(item => {
+            const passRate = passRateOf(item);
+            const rateCls = rateClass(passRate, item.total);
+            const tooltip = `CIS ${item.cis_id}: ${item.d3fend_technique || 'Unmapped'} · ${Math.round(passRate)}%`;
+            html += `<button type="button" class="d3fend-heatmap-cell ${rateCls}" data-tooltip="${escapeAttr(tooltip)}" aria-label="${escapeAttr(tooltip)}">
+                <span class="d3fend-cell-id">${escapeAttr(item.cis_id)}</span>
+            </button>`;
         });
-        html += `</div></div>`;
+        html += '</div></div>';
     });
     html += '</div>';
-    container.innerHTML = DOMPurify.sanitize(html);
+    container.innerHTML = DOMPurify.sanitize(html, { ADD_ATTR: ['aria-label', 'data-tooltip'] });
 }
 
 // ===== SETTINGS PAGE =====

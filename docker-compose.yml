@@ -31,13 +31,14 @@ services:
       dockerfile: Dockerfile.backend
     image: fleet-cis-dashboard-backend
     ports:
-      - "5001:5001"
+      # Host 5002 avoids clash with other local services on 5001
+      - "5002:5001"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
       - REDIS_URL=redis://redis:6379/0
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
-      - ALLOWED_ORIGINS=http://localhost:8081
+      - ALLOWED_ORIGINS=http://localhost:8081,http://localhost:8082
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
     depends_on:
       db:
@@ -68,7 +69,8 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "8081:80"
+      # Host 8082 avoids local port clashes with 8081
+      - "8082:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./frontend:/usr/share/nginx/html:ro
