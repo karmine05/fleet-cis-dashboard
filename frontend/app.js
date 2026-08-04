@@ -400,17 +400,20 @@ function groupLabelMeta(key, items, mode) {
     const avgRisk = items.length
         ? Math.round(items.reduce((s, i) => s + riskScoreOf(i), 0) / items.length)
         : 0;
+    // Column headers: IDs / short labels only — full names live in cell tooltips
     if (mode === 'safeguard') {
-        const title = items[0]?.safeguard_title || key;
-        const short = title.length > 28 ? title.slice(0, 26) + '…' : title;
-        return { title: key, meta: `${items.length} · ${short}` };
+        return { title: key, meta: `${items.length}` };
     }
-    if (mode === 'd3fend' || mode === 'platform' || mode === 'category') {
-        return { title: key, meta: `${items.length} · risk ${avgRisk}%` };
+    if (mode === 'category') {
+        // Prefer short id-like slug; category strings are long — truncate hard
+        const short = key.length > 18 ? key.slice(0, 16) + '…' : key;
+        return { title: short, meta: `${items.length}` };
+    }
+    if (mode === 'd3fend' || mode === 'platform') {
+        return { title: key, meta: `${items.length}` };
     }
     if (mode === 'mitre') {
-        const coarse = heatmapMeta.coarse_techniques?.includes(key) ? ' · coarse' : '';
-        return { title: key || 'Unmapped', meta: `${items.length}${coarse}` };
+        return { title: key || 'Unmapped', meta: `${items.length}` };
     }
     return { title: key, meta: `${items.length}` };
 }
@@ -625,9 +628,20 @@ function renderHeatmapMatrix() {
         const { title, meta } = groupLabelMeta(key, items, heatmapGroupBy);
         const cols = layout.cellsPerRow;
 
+        // Full label on hover only (e.g. safeguard title / category name)
+        const headerHover = (() => {
+            if (heatmapGroupBy === 'safeguard' && items[0]?.safeguard_title) {
+                return `${key} — ${items[0].safeguard_title} (${items.length})`;
+            }
+            if (heatmapGroupBy === 'category') {
+                return `${key} (${items.length})`;
+            }
+            return `${title} (${meta})`;
+        })();
+
         html += `
             <div class="d3fend-column" data-group="${escapeAttr(key)}" style="flex: 1 1 ${layout.colWidth}px; min-width: ${Math.min(layout.colWidth, 120)}px;">
-                <div class="d3fend-header compact" title="${escapeAttr(title)}">
+                <div class="d3fend-header compact" title="${escapeAttr(headerHover)}">
                     <span class="d3fend-header-title">${escapeAttr(title)}</span>
                     <span class="d3fend-header-meta">${escapeAttr(meta)}</span>
                 </div>
