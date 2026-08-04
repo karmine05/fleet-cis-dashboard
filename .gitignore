@@ -1,9 +1,16 @@
 # Secrets & credentials — NEVER commit
 .env
+secrets/
 
-# OS junk
-.DS_Store
-Thumbs.db
+# Databases
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+backend.log
+sync.log
 
 # Python
 __pycache__/
@@ -13,10 +20,28 @@ dist/
 build/
 .eggs/
 *.egg
+*$py.class
+.venv/
+env/
+venv/
+ENV/
 
 # Docker volumes (local state only)
 postgres_data/
 
+# Node/JS (Vite)
+node_modules/
+.vite/
+
 # IDE
 .vscode/
 .idea/
+CLAUDE.md
+.serena/
+
+# Docs (local plans, not upstream)
+docs/plans/
+
+# OS junk
+.DS_Store
+Thumbs.db
