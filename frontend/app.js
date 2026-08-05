@@ -883,11 +883,22 @@ async function populateArchitecturePage(heatmapData, summary) {
             gaugeValue.style.color = color;
         }
 
-        // 2. Mini trend bars (simulated)
+        // 2. Mini trend bars — only when backend provides history (never fabricate)
         const miniBars = document.getElementById('arch-mini-bars');
         if (miniBars) {
-            const barHeights = [12, 14, 11, 16, 15, 18];
-            miniBars.innerHTML = DOMPurify.sanitize(barHeights.map(h => `<div class="bar" style="height: ${h}px;"></div>`).join(''));
+            const series = Array.isArray(data.trend_series) ? data.trend_series : [];
+            if (series.length && data.history_available) {
+                const max = Math.max(...series.map(Number), 1);
+                miniBars.innerHTML = DOMPurify.sanitize(
+                    series.map(v => {
+                        const h = Math.max(4, Math.round((Number(v) / max) * 18));
+                        return `<div class="bar" style="height: ${h}px;"></div>`;
+                    }).join('')
+                );
+            } else {
+                miniBars.innerHTML = '';
+                miniBars.classList.add('hidden');
+            }
         }
 
         // 3. Compliance by MITRE Tactic bars
@@ -1187,7 +1198,16 @@ async function populateStrategyPage(summary, heatmapData) {
         document.getElementById('coverage-value').textContent = `${data.compliance_coverage || 0}%`;
         document.getElementById('debt-value').textContent = data.security_debt || '--';
         document.getElementById('risk-value').textContent = data.risk_exposure || 0;
-        document.getElementById('velocity-value').textContent = `${data.remediation_velocity || 0}`;
+        // Velocity requires history; do not show fabricated 0
+        const velEl = document.getElementById('velocity-value');
+        if (velEl) {
+            velEl.textContent = (data.velocity_available && data.remediation_velocity != null)
+                ? `${data.remediation_velocity}`
+                : '—';
+            velEl.title = data.velocity_available
+                ? 'Remediation velocity'
+                : 'No historical snapshots yet — velocity unavailable';
+        }
 
         // 4. Compliance Roadmap Chart (Chart.js) — height constrained by .strategy-chart-body
         const ctx = document.getElementById('roadmap-chart');

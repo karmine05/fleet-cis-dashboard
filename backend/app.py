@@ -59,9 +59,6 @@ basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 load_dotenv(os.path.join(basedir, '.env'))
 
 
-# Note: random is used inline for simulated historical data.
-import random 
-
 app = Flask(__name__)
 # Enable CORS for restricted domains
 allowed_origins = os.environ.get('ALLOWED_ORIGINS', os.environ.get('FRONTEND_URL', 'http://localhost:8081')).split(',')
@@ -70,19 +67,13 @@ CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 # Initialize DB Pool
 db.get_db_pool()
 
-# D3FEND Mapping
-
-
-# D3FEND Mapping
-
-# Load MITRE Data from JSON
+# Load MITRE Data from JSON (technique id → name + tactic for architecture matrix)
 MITRE_DATA = {}
 def load_mitre_data():
     global MITRE_DATA
     mitre_file = os.path.join(os.path.dirname(__file__), 'mitre_data.json')
     if os.path.exists(mitre_file):
         try:
-            import json
             with open(mitre_file, 'r') as f:
                 MITRE_DATA = json.load(f)
         except Exception as e:
@@ -90,154 +81,12 @@ def load_mitre_data():
 
 load_mitre_data()
 
-def _load_csv_into_dict(filepath, techniques_set):
-    """Load a D3FEND CSV file into a dict keyed by cis_id."""
-    result = {}
-    import csv
-    with open(filepath, 'r') as f:
-        reader = csv.DictReader(f, skipinitialspace=True)
-        if reader.fieldnames:
-            reader.fieldnames = [name.strip() for name in reader.fieldnames]
-        for row in reader:
-            row = {k.strip(): v.strip() for k, v in row.items()}
-            cis_id = row.get('cis_id', '').strip()
-            if cis_id:
-                result[cis_id] = {
-                    'd3fend_id':        row.get('d3fend_id', '').strip(),
-                    'd3fend_technique':  row.get('d3fend_technique', '').strip(),
-                    'd3fend_tactic':     row.get('d3fend_tactic', '').strip(),
-                    'attack_id':         row.get('attack_id', '').strip(),
-                }
-                if result[cis_id]['d3fend_id']:
-                    techniques_set.add(result[cis_id]['d3fend_id'])
-    return result
-
-def load_d3fend_mapping():
-    """
-    Load per-platform D3FEND mapping files.
-
-    Discovers all cis_to_d3fend_<platform>.csv files in the backend directory
-    and loads each into its own independent dict. Each file is the authoritative
-    source for its platform — there is no shared default that bleeds across
-    platforms. Maintainers edit only the relevant platform file.
-
-    Returns:
-        mapping_by_platform: {'darwin': {...}, 'linux': {...}, 'windows': {...}, ...}
-        d3fend_techniques:    sorted list of all unique D3FEND IDs across all files
-    """
-    techniques = set()
-    base_dir = os.path.dirname(__file__)
-    mapping_by_platform = {}
-
-    import glob
-    platform_files = glob.glob(os.path.join(base_dir, 'cis_to_d3fend_*.csv'))
-    if not platform_files:
-        logger.warning("No per-platform D3FEND mapping files found (cis_to_d3fend_<platform>.csv)")
-
-    for filepath in platform_files:
-        platform_name = os.path.basename(filepath).replace('cis_to_d3fend_', '').replace('.csv', '')
-        try:
-            mapping_by_platform[platform_name] = _load_csv_into_dict(filepath, techniques)
-            logger.info(f"Loaded D3FEND mapping: {len(mapping_by_platform[platform_name])} entries for platform='{platform_name}'")
-        except Exception as e:
-            logger.warning(f"Could not load D3FEND mapping for platform '{platform_name}': {e}")
-
-    return mapping_by_platform, sorted(list(techniques))
-
-D3FEND_MAPPING, D3FEND_TECHNIQUES = load_d3fend_mapping()
-
-# Host/policy platform values → mapping CSV keys (cis_to_d3fend_<key>.csv)
-PLATFORM_ALIASES = {
-    'linux': 'ubuntu',
-    'ubuntu': 'ubuntu',
-    'darwin': 'darwin',
-    'macos': 'darwin',
-    'mac': 'darwin',
-    'windows': 'windows',
-    'win32': 'windows',
-    'win': 'windows',
-}
-
-# Non-canonical mapping labels → D3FEND tactic vocabulary
-TACTIC_NORMALIZE = {
-    'access control': 'Harden',
-    'recover': 'Restore',
-    'restore': 'Restore',
-    'model': 'Model',
-    'harden': 'Harden',
-    'detect': 'Detect',
-    'isolate': 'Isolate',
-    'deceive': 'Deceive',
-    'evict': 'Evict',
-}
-
 # ATT&CK techniques with more than this many CIS cells are flagged as coarse
 COARSE_ATTACK_THRESHOLD = 40
 
-
-def normalize_platform(platform):
-    """Map host/policy platform strings to D3FEND CSV keys."""
-    if not platform:
-        return ''
-    key = str(platform).strip().lower()
-    return PLATFORM_ALIASES.get(key, key)
-
-
-def normalize_d3fend_tactic(tactic):
-    """Normalize mapping CSV tactics to D3FEND vocabulary."""
-    if not tactic:
-        return 'Unmapped'
-    raw = str(tactic).strip()
-    return TACTIC_NORMALIZE.get(raw.lower(), raw)
-
-
-def mapping_confidence(entry):
-    """high | medium | unmapped based on D3FEND + ATT&CK fields present."""
-    if not entry:
-        return 'unmapped'
-    d3_id = (entry.get('d3fend_id') or '').strip()
-    d3_tech = (entry.get('d3fend_technique') or '').strip()
-    attack = (entry.get('attack_id') or '').strip()
-    has_d3 = bool(d3_id and d3_id not in ('N/A',) and d3_tech and d3_tech != 'Unmapped')
-    has_atk = bool(attack and attack not in ('Unmapped', 'N/A', ''))
-    if has_d3 and has_atk:
-        return 'high'
-    if has_d3 or has_atk:
-        return 'medium'
-    return 'unmapped'
-
-
-def get_d3fend_entry(cis_id, platform=''):
-    """
-    Look up a CIS ID in the platform-specific D3FEND mapping.
-
-    When platform is known, only that platform's file is consulted.
-    When unknown, search all platform dicts (sorted) and return first match.
-    """
-    plat = normalize_platform(platform)
-    if plat and plat in D3FEND_MAPPING:
-        return D3FEND_MAPPING[plat].get(cis_id, {}) or {}
-
-    # No platform: search all platforms deterministically
-    for p in sorted(D3FEND_MAPPING.keys()):
-        entry = D3FEND_MAPPING[p].get(cis_id)
-        if entry:
-            return entry
-    return {}
-
-
-def enrich_mapping(cis_id, platform=''):
-    """Return mapping fields with normalized tactic + confidence."""
-    entry = get_d3fend_entry(cis_id, platform)
-    raw_tactic = (entry.get('d3fend_tactic') or '').strip() or 'Unmapped'
-    return {
-        'd3fend_id': entry.get('d3fend_id') or 'N/A',
-        'd3fend_technique': entry.get('d3fend_technique') or 'Unmapped',
-        'd3fend_tactic': normalize_d3fend_tactic(raw_tactic),
-        'd3fend_tactic_raw': raw_tactic,
-        'attack_id': entry.get('attack_id') or 'Unmapped',
-        'mapping_confidence': mapping_confidence(entry),
-    }
+# Legacy cis_to_d3fend_*.csv loaders were removed: runtime mapping uses
+# policy_catalog (safeguard_d3fend.json + tight policy-name rules).
+# See docs/mapping-policy.md — bulk CSV ATT&CK import is forbidden.
 
 # --- Configuration Management ---
 def get_config(key, default):
@@ -917,9 +766,9 @@ def get_strategy():
         elif security_debt_hours < 40: security_debt = f"{int(security_debt_hours / 8)}d"
         else: security_debt = f"{int(security_debt_hours / 40)}w"
 
-        # 5. Velocity
-        velocity = round(posture_score * 0.12, 1)
-        
+        # 5. Velocity — no historical store; do not invent a fake rate
+        velocity = None
+
         # Maturity
         if posture_score > 90: maturity = 5
         elif posture_score > 75: maturity = 4
@@ -966,8 +815,8 @@ def get_strategy():
             team_stats.append({
                 "name": team_name,
                 "score": score,
-                "trend": "stable", # Placeholder for trend logic
-                "delta": 0
+                "trend": "unknown",  # no snapshot history yet
+                "delta": None
             })
         
         # Sort by score descending and assign rank
@@ -1029,6 +878,7 @@ def get_strategy():
             "risk_exposure": risk_exposure,
             "security_debt": security_debt,
             "remediation_velocity": velocity,
+            "velocity_available": False,
             "roadmap": roadmap,
             "team_leaderboard": team_stats,
             "priorities": priorities
@@ -1080,7 +930,7 @@ def get_architecture():
             resolved = policy_catalog.resolve_policy_safeguards(
                 row.get('policy_name') or '',
                 db_sids=row.get('cis_safeguard_ids') or [],
-                platform=row.get('platform') or '',
+                platform=row.get('host_platform') or '',
             )
             primary = resolved.get('primary') or ''
             mapping = policy_catalog.mapping_for_policy(

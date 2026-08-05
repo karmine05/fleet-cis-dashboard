@@ -36,8 +36,14 @@ Especially sensitive: CIS4.1 (large policy volume) — always multi-map.
 
 1. CIS Controls v8.1 safeguard intent + curated multi-map (`safeguard_d3fend.json`)
 2. MITRE D3FEND related-attack edges (when D3FEND technique is solid)
-3. Policy-name rules in `policy_catalog.py` (high precision only)
+3. Policy-**name** rules in `policy_catalog.py` (high precision only — match the policy title, never `cis_category` / `cis_subcategory` UI labels such as “Privacy & Security” or “Safari”)
 4. CIS Navigator / CTID methodology for revisions
+
+### Rule anti-patterns (do not reintroduce)
+
+- Matching keyword rules against category/subcategory fields (poison whole OS sections)
+- Bare `encrypt` regex (matches **unencrypted**)
+- Broad keywords like bare `network` or bare `privacy`
 
 ## CIS4.1 is not a dump bucket
 

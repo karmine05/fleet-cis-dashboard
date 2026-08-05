@@ -47,7 +47,8 @@ RULES: list[tuple[str, list[str]]] = [
     (r"file integrity|aide\b|\bfim\b|integrity check",
      ["CIS3.3", "CIS3.4", "CIS8.2"]),
     # Encryption (before "password" on BitLocker password prompts)
-    (r"bitlocker|filevault|dm-crypt|encrypt|cipher|apfs.*encrypt|volume.*encrypt",
+    # Never match bare "encrypt" — it false-positives on "unencrypted".
+    (r"bitlocker|filevault|dm-crypt|\bencrypted\b|\bencryption\b|\bcipher\b|apfs.*encrypt|volume.*encrypt",
      ["CIS3.6", "CIS3.11"] if "CIS3.11" in OFFICIAL_IDS else ["CIS3.6"]),
     # Patch / updates
     (r"software update|os update|install.*update|patch|security response|auto-?download.*update|auto update|defer (feature|quality) update|pause updates",
@@ -165,7 +166,7 @@ def is_bad_official(sg: str, blob: str) -> bool:
         ):
             return True
     # CIS5.x account tags on pure encryption without account language
-    if sg.startswith("CIS5.") and re.search(r"encrypt|bitlocker|filevault|apfs", blob):
+    if sg.startswith("CIS5.") and re.search(r"\bencrypted\b|\bencryption\b|bitlocker|filevault|apfs", blob):
         if not re.search(r"password|account|user|authent|logon", blob):
             return True
     # CIS4.1 is process/govern ("secure configuration *process*"), not OS setting dumps.

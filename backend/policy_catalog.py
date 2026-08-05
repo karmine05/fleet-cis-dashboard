@@ -221,17 +221,21 @@ def mapping_for_safeguard(safeguard_id: str) -> Dict[str, Any]:
     return _unmapped(sid)
 
 
-# Per-policy refinements (first match wins). Keep patterns tight — broad
-# keywords like bare "network" poison whole groups when mis-applied.
+# Per-policy refinements (first match wins). Match POLICY NAME only —
+# never category/subcategory (those labels are OS-benchmark UI sections
+# like "Privacy & Security" / "Safari" and poison whole groups).
 # Tuple: (d3fend_id, tactic, technique, attack_ids_list, confidence, status)
 _POLICY_CAT_RULES = [
     (r"\bsip\b|system integrity protection|secure boot|gatekeeper|xprotect",
      ("D3-SCA", "Harden", "System Integrity", ["T1542", "T1562"], "high", "mapped")),
-    (r"bitlocker|filevault|dm-crypt|encrypt(ed|ion)?|cipher",
+    # Do NOT use bare "encrypt" — it matches "unencrypted" (false positive).
+    (r"\bbitlocker\b|\bfilevault\b|\bdm-crypt\b|\bencrypted\b|\bencryption\b|\bcipher\b",
      ("D3-FE", "Harden", "Data Encryption", ["T1005", "T1530", "T1552"], "high", "mapped")),
-    (r"software update|os update|install.*update|security response|patch management",
+    (r"software update|os update|install.*update|security response|patch management|download new updates",
      ("D3-SU", "Harden", "Software Update", ["T1190", "T1210", "T1068"], "high", "mapped")),
-    (r"password policy|passwd|lockout|pam\b|mfa|multi-factor|password (age|length|complex|history)",
+    (r"password policy|passwd|lockout|pam\b|mfa|multi-factor|"
+     r"password (age|length|complex|history|account)|"
+     r"complex password|password must|password minimum|password (is |are )?configured",
      ("D3-UAP", "Harden", "Authentication Hardening", ["T1078", "T1110", "T1556"], "high", "mapped")),
     (r"screen saver|inactiv(e|ity)|session lock|lock screen|above lock|cortana above",
      ("D3-SCA", "Harden", "Session Lock", ["T1078", "T1021"], "high", "mapped")),
@@ -243,11 +247,15 @@ _POLICY_CAT_RULES = [
      ("D3-LME", "Detect", "Log Management", ["T1070", "T1562"], "high", "mapped")),
     (r"malware|windows defender|antivirus|\basr\b|attack surface|smartscreen",
      ("D3-PMAD", "Detect", "Malware Detection", ["T1204", "T1059", "T1105"], "medium", "mapped")),
-    (r"\bsafari\b|\bchrome\b|\bedge\b|internet explorer|browser",
+    # Require browser product in the *name*, not benchmark subcategory "Safari".
+    (r"\bsafari\b|\bchrome\b|\bedge\b|internet explorer|\bbrowser\b",
      ("D3-SCA", "Harden", "Browser Hardening", ["T1189", "T1204", "T1566"], "medium", "mapped")),
-    (r"backup|shadow copy|file history|time machine",
+    (r"\bbackup\b|shadow copy|file history|time machine",
      ("D3-BA", "Restore", "Backup", ["T1490", "T1486"], "high", "mapped")),
-    (r"privacy|telemetry|diagnostic data|advertising id|analytics",
+    # Name-only privacy signals — not the OS section "Privacy & Security".
+    (r"\btelemetry\b|diagnostic data|advertising id|ad tracking|analytics|"
+     r"share mac analytics|location services|limit ad tracking|"
+     r"improve siri|share with app developers",
      ("D3-SCA", "Harden", "Privacy Configuration", ["T1518", "T1082"], "medium", "mapped")),
 ]
 
@@ -261,33 +269,46 @@ def mapping_for_policy(
     """
     Policy-level D3FEND + ATT&CK mapping.
 
-    Precedence:
-      1. Tight policy-name category rules (refine D3FEND + attack_ids)
-      2. Safeguard-level curated map
+    Precedence (docs/mapping-policy.md):
+      1. Safeguard-level curated map (safeguard_d3fend.json)
+      2. Tight policy-NAME rules only (refine when name is more specific)
       3. Unmapped / needs_review
+
+    cis_category / cis_subcategory are accepted for API compatibility but
+    must not drive keyword rules (benchmark UI labels are too broad).
     """
-    blob = f"{policy_name} {cis_category} {cis_subcategory}".lower()
+    _ = (cis_category, cis_subcategory)  # reserved; do not match against
+    name_blob = (policy_name or "").lower()
     base = mapping_for_safeguard(safeguard_id) if safeguard_id else _unmapped(safeguard_id)
+    base_status = (base.get("mapping_status") or "").lower()
+    base_has_map = base_status == "mapped" and bool(base.get("attack_ids") or base.get("attack_id"))
 
     for pat, (d3, tac, tech, atks, conf, status) in _POLICY_CAT_RULES:
-        if re.search(pat, blob):
-            ids = _normalize_attack_ids(atks)
-            # Prefer rule techniques; if empty fall back to safeguard
-            if not ids:
-                ids = list(base.get("attack_ids") or [])
-            return _finalize_mapping({
-                **base,
-                "d3fend_id": d3,
-                "d3fend_tactic": tac,
-                "d3fend_technique": tech,
-                "attack_ids": ids,
-                "attack_id": ids[0] if ids else "",
-                "mapping_confidence": conf,
-                "mapping_status": status if ids else "needs_review",
-                "mapping_source": "policy_category_rules",
-                "mapping_rationale": f"Policy name rule matched; primary techniques {', '.join(ids) or 'none'}",
-                "cis_safeguard_id": safeguard_id or base.get("cis_safeguard_id", ""),
-            }, safeguard_id or base.get("cis_safeguard_id", ""))
+        if not re.search(pat, name_blob):
+            continue
+        ids = _normalize_attack_ids(atks)
+        if not ids:
+            ids = list(base.get("attack_ids") or [])
+        # Refine: name rule may specialize D3FEND technique; keep multi-map
+        # attack_ids when rule set is a subset/empty and base is solid.
+        if base_has_map and not ids:
+            ids = list(base.get("attack_ids") or [])
+        return _finalize_mapping({
+            **base,
+            "d3fend_id": d3,
+            "d3fend_tactic": tac,
+            "d3fend_technique": tech,
+            "attack_ids": ids,
+            "attack_id": ids[0] if ids else "",
+            "mapping_confidence": conf,
+            "mapping_status": status if ids else "needs_review",
+            "mapping_source": "policy_name_rules" if not base_has_map else "policy_name_rules+safeguard",
+            "mapping_rationale": (
+                f"Policy name rule matched on title; techniques "
+                f"{', '.join(ids) or 'none'}"
+            ),
+            "cis_safeguard_id": safeguard_id or base.get("cis_safeguard_id", ""),
+        }, safeguard_id or base.get("cis_safeguard_id", ""))
 
     if safeguard_id:
         return base

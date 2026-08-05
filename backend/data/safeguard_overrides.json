@@ -3193,14 +3193,14 @@
   },
   "CIS 4.11.55.1.2 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled' (Automated)": {
     "cis_safeguard_ids": [
-      "CIS3.6"
+      "CIS4.5"
     ],
     "benchmark_section": "4.11.55.1.2",
     "cis_category": "Administrative Templates"
   },
   "CIS 4.11.55.2.3 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled' (Automated)": {
     "cis_safeguard_ids": [
-      "CIS3.6"
+      "CIS4.5"
     ],
     "benchmark_section": "4.11.55.2.3",
     "cis_category": "Administrative Templates"
@@ -3977,7 +3977,7 @@
   },
   "CIS 49.14 (L1) Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled' (Automated)": {
     "cis_safeguard_ids": [
-      "CIS3.6"
+      "CIS5.2"
     ],
     "benchmark_section": "49.14",
     "cis_category": "Local Policies Security Options"
