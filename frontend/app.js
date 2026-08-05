@@ -1082,9 +1082,9 @@ async function populateStrategyPage(summary, heatmapData) {
         document.getElementById('coverage-value').textContent = `${data.compliance_coverage || 0}%`;
         document.getElementById('debt-value').textContent = data.security_debt || '--';
         document.getElementById('risk-value').textContent = data.risk_exposure || 0;
-        document.getElementById('velocity-value').textContent = `${data.remediation_velocity || 0}/wk`;
+        document.getElementById('velocity-value').textContent = `${data.remediation_velocity || 0}`;
 
-        // 4. Compliance Roadmap Chart (Chart.js)
+        // 4. Compliance Roadmap Chart (Chart.js) — height constrained by .strategy-chart-body
         const ctx = document.getElementById('roadmap-chart');
         if (ctx) {
             const roadmap = data.roadmap || [];
@@ -1092,7 +1092,6 @@ async function populateStrategyPage(summary, heatmapData) {
             const projectedData = roadmap.map(r => r.projected);
             const actualData = roadmap.map(r => r.actual);
 
-            // Destroy previous chart if exists
             if (roadmapChart) {
                 roadmapChart.destroy();
             }
@@ -1110,7 +1109,9 @@ async function populateStrategyPage(summary, heatmapData) {
                             borderDash: [5, 5],
                             fill: false,
                             tension: 0.3,
-                            spanGaps: true
+                            spanGaps: true,
+                            pointRadius: 2,
+                            borderWidth: 2
                         },
                         {
                             label: 'Actual (measured)',
@@ -1119,22 +1120,32 @@ async function populateStrategyPage(summary, heatmapData) {
                             backgroundColor: 'rgba(16, 185, 129, 0.2)',
                             fill: false,
                             tension: 0,
-                            pointRadius: 5,
+                            pointRadius: 3,
                             pointBackgroundColor: '#10B981',
-                            spanGaps: false
+                            spanGaps: false,
+                            borderWidth: 2
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: { top: 4, right: 8, bottom: 0, left: 0 }
+                    },
                     plugins: {
                         legend: { display: false }
                     },
                     scales: {
                         x: {
                             grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: 'rgba(255,255,255,0.6)' }
+                            ticks: {
+                                color: 'rgba(255,255,255,0.6)',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8,
+                                font: { size: 10 }
+                            }
                         },
                         y: {
                             min: 0,
@@ -1142,7 +1153,9 @@ async function populateStrategyPage(summary, heatmapData) {
                             grid: { color: 'rgba(255,255,255,0.05)' },
                             ticks: {
                                 color: 'rgba(255,255,255,0.6)',
-                                callback: v => v + '%'
+                                callback: v => v + '%',
+                                font: { size: 10 },
+                                maxTicksLimit: 5
                             }
                         }
                     }

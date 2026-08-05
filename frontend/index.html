@@ -384,11 +384,11 @@
 
             <!-- Executive Strategy Page (CISO Command Center) -->
             <div id="strategy" class="page-content">
-                <!-- Hero Section with Posture Gauge -->
+                <!-- Compact hero: gauge + maturity + KPI strip -->
                 <section class="strategy-hero">
                     <div class="posture-gauge-container">
                         <div class="posture-gauge">
-                            <svg viewBox="0 0 200 120" class="gauge-svg">
+                            <svg viewBox="0 0 200 120" class="gauge-svg" aria-hidden="true">
                                 <defs>
                                     <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                                         <stop offset="0%" style="stop-color:#EF4444" />
@@ -401,96 +401,91 @@
                                 <path class="gauge-fill" id="gauge-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none"
                                     stroke="url(#gaugeGradient)" stroke-width="16" stroke-linecap="round"
                                     stroke-dasharray="251.2" stroke-dashoffset="251.2" />
-                                <circle class="gauge-needle" id="gauge-needle" cx="100" cy="100" r="8"
+                                <circle class="gauge-needle" id="gauge-needle" cx="100" cy="100" r="6"
                                     fill="var(--accent-blue)" />
                             </svg>
                             <div class="gauge-value">
-                                <span id="posture-score-value">--</span>
-                                <span class="gauge-label">Security Posture (Depth) <i
-                                        class="fas fa-info-circle info-icon"
-                                        data-help="Fleet Health: Combined pass rate of every check on every device."></i></span>
+                                <span id="posture-score-value" class="gauge-score">--</span>
+                                <span class="gauge-label">Posture
+                                    <i class="fas fa-info-circle info-icon"
+                                        data-help="Fleet health: combined pass rate of every check on every device."></i>
+                                </span>
                             </div>
                         </div>
                         <div class="maturity-indicator">
                             <div class="maturity-level" id="maturity-badge">
                                 <span class="maturity-number">--</span>
-                                <span class="maturity-text">Maturity Level</span>
+                                <span class="maturity-text">Maturity</span>
                             </div>
-                            <div class="maturity-scale">
-                                <span class="scale-item" data-level="1">1</span>
-                                <span class="scale-item" data-level="2">2</span>
-                                <span class="scale-item" data-level="3">3</span>
-                                <span class="scale-item" data-level="4">4</span>
-                                <span class="scale-item" data-level="5">5</span>
+                            <div class="maturity-scale" role="list" aria-label="Maturity scale 1 to 5">
+                                <span class="scale-item" data-level="1" role="listitem">1</span>
+                                <span class="scale-item" data-level="2" role="listitem">2</span>
+                                <span class="scale-item" data-level="3" role="listitem">3</span>
+                                <span class="scale-item" data-level="4" role="listitem">4</span>
+                                <span class="scale-item" data-level="5" role="listitem">5</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="strategy-metrics-grid">
+                        <div class="strategy-metric-card">
+                            <div class="metric-icon coverage"><i class="fas fa-shield-halved"></i></div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="coverage-value">--%</span>
+                                <span class="metric-label">Coverage
+                                    <i class="fas fa-info-circle info-icon"
+                                        data-help="Share of policies with at least one passing device."></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="strategy-metric-card">
+                            <div class="metric-icon debt"><i class="fas fa-hourglass-half"></i></div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="debt-value">--</span>
+                                <span class="metric-label">Security Debt</span>
+                            </div>
+                        </div>
+                        <div class="strategy-metric-card">
+                            <div class="metric-icon risk"><i class="fas fa-triangle-exclamation"></i></div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="risk-value">--</span>
+                                <span class="metric-label">Risk Exposure</span>
+                            </div>
+                        </div>
+                        <div class="strategy-metric-card">
+                            <div class="metric-icon velocity"><i class="fas fa-rocket"></i></div>
+                            <div class="metric-content">
+                                <span class="metric-value" id="velocity-value">--</span>
+                                <span class="metric-label">Remediation / wk</span>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- Strategic Metrics Grid -->
-                <section class="strategy-metrics-grid">
-                    <div class="strategy-metric-card">
-                        <div class="metric-icon coverage"><i class="fas fa-shield-halved"></i></div>
-                        <div class="metric-content">
-                            <span class="metric-value" id="coverage-value">--%</span>
-                            <span class="metric-label">Policy Coverage (Breadth) <i class="fas fa-info-circle info-icon"
-                                    data-help="Policy Coverage: Percentage of policies that have at least one passing device."></i></span>
-                        </div>
-                        <div class="metric-trend up"><i class="fas fa-arrow-trend-up"></i></div>
-                    </div>
-                    <div class="strategy-metric-card">
-                        <div class="metric-icon debt"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="metric-content">
-                            <span class="metric-value" id="debt-value">--</span>
-                            <span class="metric-label">Security Debt</span>
-                        </div>
-                        <div class="metric-trend neutral"><i class="fas fa-minus"></i></div>
-                    </div>
-                    <div class="strategy-metric-card">
-                        <div class="metric-icon risk"><i class="fas fa-triangle-exclamation"></i></div>
-                        <div class="metric-content">
-                            <span class="metric-value" id="risk-value">--</span>
-                            <span class="metric-label">Risk Exposure</span>
-                        </div>
-                        <div class="metric-trend down"><i class="fas fa-arrow-trend-down"></i></div>
-                    </div>
-                    <div class="strategy-metric-card">
-                        <div class="metric-icon velocity"><i class="fas fa-rocket"></i></div>
-                        <div class="metric-content">
-                            <span class="metric-value" id="velocity-value">--</span>
-                            <span class="metric-label">Remediation Velocity</span>
-                        </div>
-                        <div class="metric-trend up"><i class="fas fa-arrow-trend-up"></i></div>
-                    </div>
-                </section>
-
-                <!-- Main Dashboard Grid -->
+                <!-- Main: roadmap + compact leaderboard -->
                 <section class="strategy-dashboard-grid">
-                    <!-- Compliance Roadmap Chart -->
                     <div class="card strategy-roadmap-card">
                         <div class="card-header">
-                            <h3><i class="fas fa-chart-area"></i> 12-Month Compliance Roadmap</h3>
+                            <h3><i class="fas fa-chart-area"></i> Compliance Roadmap</h3>
                             <div class="roadmap-legend">
-                                <span class="legend-item"><span class="legend-dot projected"></span>Projected</span>
+                                <span class="legend-item"><span class="legend-dot projected"></span>Target</span>
                                 <span class="legend-item"><span class="legend-dot actual"></span>Actual</span>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <canvas id="roadmap-chart"></canvas>
+                        <div class="card-body strategy-chart-body">
+                            <canvas id="roadmap-chart" aria-label="Compliance roadmap chart"></canvas>
                         </div>
                     </div>
 
-                    <!-- Fleet Leaderboard -->
                     <div class="card strategy-leaderboard-card">
                         <div class="card-header">
-                            <h3><i class="fas fa-ranking-star"></i> Fleet Leaderboard</h3>
+                            <h3><i class="fas fa-ranking-star"></i> Fleets</h3>
                         </div>
                         <div class="card-body">
                             <div id="team-leaderboard" class="leaderboard-container"></div>
                         </div>
                     </div>
 
-                    <!-- Priority Actions -->
                     <div class="card strategy-priorities-card">
                         <div class="card-header">
                             <h3><i class="fas fa-bolt"></i> Priority Actions</h3>
@@ -500,8 +495,6 @@
                             <div id="priority-actions" class="priorities-container"></div>
                         </div>
                     </div>
-
-
                 </section>
             </div>
 
