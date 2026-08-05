@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.svg" alt="Fleet CIS logo" width="120" height="120">
+  <img src="docs/images/logo.png" alt="Fleet CIS logo" width="96">
 </p>
 
 <h1 align="center">Fleet CIS Compliance Dashboard</h1>
@@ -46,34 +46,24 @@ Built for auditors, SOC teams, security engineers, and leadership — one source
 
 ## Platform tour
 
-Animated walkthrough of every major surface:
-
 <p align="center">
-  <img src="docs/images/demo-tour.gif" alt="Fleet CIS platform tour — Summary, Architecture, Audit, Strategy, Settings" width="720">
+  <img src="docs/images/demo-tour.gif" alt="Fleet CIS platform tour" width="680">
 </p>
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="docs/images/01-summary.png" alt="Security Posture Summary" width="100%"><br>
-      <sub><b>Summary</b> — KPIs, heat map, top violations</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="docs/images/02-architecture.png" alt="Security Architecture" width="100%"><br>
-      <sub><b>Architecture</b> — gauge + ATT&amp;CK matrix</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <img src="docs/images/03-audit.png" alt="Compliance Audit" width="100%"><br>
-      <sub><b>Audit</b> — failed policies, remediation, SQL</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="docs/images/04-strategy.png" alt="Executive Strategy" width="100%"><br>
-      <sub><b>Strategy</b> — debt, roadmap, priorities</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/images/01-summary.png" alt="Summary — KPIs, heat map, top violations" width="48%">
+  <img src="docs/images/02-architecture.png" alt="Architecture — gauge + ATT&CK matrix" width="48%">
+</p>
+<p align="center">
+  <img src="docs/images/03-audit.png" alt="Audit — failed policies, remediation, SQL" width="48%">
+  <img src="docs/images/04-strategy.png" alt="Strategy — debt, roadmap, priorities" width="48%">
+</p>
+
+<p align="center">
+  <sub>
+    <b>Summary</b> · <b>Architecture</b> · <b>Audit</b> · <b>Strategy</b>
+  </sub>
+</p>
 
 ---
 

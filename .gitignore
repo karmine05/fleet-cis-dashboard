@@ -41,7 +41,10 @@ CLAUDE.md
 .planning/*
 
 # Local-only (not for public GitHub)
-docs/
+# Keep docs/images tracked for README screenshots
+docs/*
+!docs/images/
+!docs/images/**
 tests/
 .planning/
 
