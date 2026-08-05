@@ -759,6 +759,7 @@ def get_heatmap_data():
 
         heatmap_data = []
         attack_counts = {}
+        status_counts = {}
         catalog_hits = 0
         safeguard_hits = 0
 
@@ -770,30 +771,46 @@ def get_heatmap_data():
             pass_rate = (passed / total * 100) if total else 0.0
             risk_score = (fail_hosts / fleet_size * 100) if fleet_size else 0.0
 
-            sids = row['cis_safeguard_ids'] or []
-            if isinstance(sids, str):
-                sids = [sids]
-            primary_sg = policy_catalog.primary_safeguard(list(sids)) if sids else ''
+            name = row.get('policy_name') or ''
+            resolved = policy_catalog.resolve_policy_safeguards(
+                name,
+                db_sids=row.get('cis_safeguard_ids') or [],
+                platform=host_plat or row.get('policy_platform') or '',
+            )
+            sids = list(resolved.get('cis_safeguard_ids') or [])
+            primary_sg = resolved.get('primary') or ''
+            cis_category = resolved.get('cis_category') or row.get('cis_category') or ''
+            cis_subcategory = resolved.get('cis_subcategory') or row.get('cis_subcategory') or ''
 
             # Policy-level D3FEND (category/name) with safeguard fallback
             if primary_sg:
                 safeguard_hits += 1
             mapping = policy_catalog.mapping_for_policy(
-                policy_name=row.get('policy_name') or '',
-                cis_category=row.get('cis_category') or '',
-                cis_subcategory=row.get('cis_subcategory') or '',
+                policy_name=name,
+                cis_category=cis_category,
+                cis_subcategory=cis_subcategory,
                 safeguard_id=primary_sg,
             )
 
-            if row.get('catalog_matched'):
+            if resolved.get('catalog_matched') or row.get('catalog_matched'):
                 catalog_hits += 1
 
-            attack_id = (mapping.get('attack_id') or '').strip()
-            if attack_id and attack_id not in ('Unmapped', 'N/A'):
-                attack_counts[attack_id] = attack_counts.get(attack_id, 0) + 1
+            attack_ids = list(mapping.get('attack_ids') or [])
+            if not attack_ids:
+                primary = (mapping.get('attack_id') or '').strip()
+                if primary and primary not in ('Unmapped', 'N/A'):
+                    attack_ids = [primary]
+            attack_id = attack_ids[0] if attack_ids else ''
+            for aid in attack_ids:
+                if aid and aid not in ('Unmapped', 'N/A'):
+                    attack_counts[aid] = attack_counts.get(aid, 0) + 1
 
-            section = row['cis_control'] or ''
-            name = row['policy_name'] or ''
+            mapping_status = mapping.get('mapping_status') or (
+                'mapped' if attack_id else 'unmapped'
+            )
+            status_counts[mapping_status] = status_counts.get(mapping_status, 0) + 1
+
+            section = row['cis_control'] or resolved.get('benchmark_section') or ''
             heatmap_data.append({
                 "policy_id": row['policy_id'],
                 "policy_name": name,
@@ -804,8 +821,8 @@ def get_heatmap_data():
                 "platform": host_plat,
                 "benchmark": row.get('benchmark') or '',
                 "control_slug": row.get('control_slug') or '',
-                "cis_category": row.get('cis_category') or '',
-                "cis_subcategory": row.get('cis_subcategory') or '',
+                "cis_category": cis_category,
+                "cis_subcategory": cis_subcategory,
                 "framework": row.get('framework') or '',
                 "level": row.get('level') or '',
                 "key": f"{host_plat}:{row['policy_id']}",
@@ -819,17 +836,20 @@ def get_heatmap_data():
                 "d3fend_technique": mapping.get('d3fend_technique') or 'Unmapped',
                 "d3fend_tactic": mapping.get('d3fend_tactic') or 'Unmapped',
                 "attack_id": attack_id or '',
+                "attack_ids": attack_ids,
                 "mapping_confidence": mapping.get('mapping_confidence') or 'unmapped',
+                "mapping_status": mapping_status,
                 "mapping_source": mapping.get('mapping_source') or 'none',
+                "mapping_rationale": mapping.get('mapping_rationale') or '',
                 # Prefer fleet_policies category label over official CIS Controls title
                 # (benchmark tags reuse CIS* ids that are not always Controls v8.1 semantics)
                 "safeguard_title": (
-                    row.get('cis_category')
+                    cis_category
                     or mapping.get('title')
                     or mapping.get('safeguard_title')
                     or primary_sg
                 ),
-                "catalog_matched": bool(row.get('catalog_matched')),
+                "catalog_matched": bool(resolved.get('catalog_matched') or row.get('catalog_matched')),
             })
 
         heatmap_data.sort(key=lambda x: (x['platform'], x['cis_safeguard_id'], x['policy_name']))
@@ -842,6 +862,15 @@ def get_heatmap_data():
 
         platforms_present = sorted({i['platform'] for i in heatmap_data if i['platform']})
         stats = policy_catalog.catalog_stats()
+        total_rows = max(len(heatmap_data), 1)
+        attack_coverage = {
+            "by_status": status_counts,
+            "pct_mapped": round(100.0 * status_counts.get("mapped", 0) / total_rows, 1),
+            "pct_not_applicable": round(100.0 * status_counts.get("not_applicable", 0) / total_rows, 1),
+            "pct_needs_review": round(100.0 * status_counts.get("needs_review", 0) / total_rows, 1),
+            "pct_unmapped": round(100.0 * status_counts.get("unmapped", 0) / total_rows, 1),
+            "unique_techniques": len(attack_counts),
+        }
 
         return jsonify({
             "heatmap": heatmap_data,
@@ -851,6 +880,7 @@ def get_heatmap_data():
             "multi_platform": len(platforms_present) > 1,
             "coarse_techniques": coarse_techniques,
             "filter_platform": filter_platform or None,
+            "attack_coverage": attack_coverage,
             "catalog": {
                 **stats,
                 "matched_rows": catalog_hits,
@@ -1047,14 +1077,16 @@ def get_architecture():
             total_checks += count
             total_passed += pass_count
 
-            sids = row['cis_safeguard_ids'] or []
-            if isinstance(sids, str):
-                sids = [sids]
-            primary = policy_catalog.primary_safeguard(list(sids)) if sids else ''
+            resolved = policy_catalog.resolve_policy_safeguards(
+                row.get('policy_name') or '',
+                db_sids=row.get('cis_safeguard_ids') or [],
+                platform=row.get('platform') or '',
+            )
+            primary = resolved.get('primary') or ''
             mapping = policy_catalog.mapping_for_policy(
                 policy_name=row.get('policy_name') or '',
-                cis_category=row.get('cis_category') or '',
-                cis_subcategory='',
+                cis_category=resolved.get('cis_category') or row.get('cis_category') or '',
+                cis_subcategory=resolved.get('cis_subcategory') or '',
                 safeguard_id=primary,
             )
 
@@ -1065,8 +1097,16 @@ def get_architecture():
                 d3fend_tech_stats[d3_tech]['total'] += count
                 d3fend_tech_stats[d3_tech]['pass'] += pass_count
 
-            attack_id = (mapping.get('attack_id') or '').strip()
-            if attack_id and attack_id in MITRE_DATA:
+            attack_ids = list(mapping.get('attack_ids') or [])
+            if not attack_ids:
+                primary = (mapping.get('attack_id') or '').strip()
+                if primary:
+                    attack_ids = [primary]
+            # Count each technique once per policy check volume (primary weight for multi-map)
+            seen_tactics = set()
+            for attack_id in attack_ids:
+                if not attack_id or attack_id not in MITRE_DATA:
+                    continue
                 meta = MITRE_DATA[attack_id]
                 tactic = meta['tactic']
                 if attack_id not in mitre_stats:
@@ -1076,10 +1116,13 @@ def get_architecture():
                     }
                 mitre_stats[attack_id]['total'] += count
                 mitre_stats[attack_id]['pass'] += pass_count
-                if tactic not in tactic_stats:
-                    tactic_stats[tactic] = {'pass': 0, 'total': 0}
-                tactic_stats[tactic]['total'] += count
-                tactic_stats[tactic]['pass'] += pass_count
+                # Tactic rollup once per policy (avoid multi-counting same check)
+                if tactic not in seen_tactics:
+                    seen_tactics.add(tactic)
+                    if tactic not in tactic_stats:
+                        tactic_stats[tactic] = {'pass': 0, 'total': 0}
+                    tactic_stats[tactic]['total'] += count
+                    tactic_stats[tactic]['pass'] += pass_count
 
         if total_checks == 0:
             return jsonify({

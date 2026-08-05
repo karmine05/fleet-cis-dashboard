@@ -441,7 +441,10 @@ function groupKeyForItem(item, mode) {
         return item.cis_category || item.cis_subcategory || 'Uncategorized';
     }
     if (mode === 'mitre') {
-        const id = (item.attack_id || '').trim();
+        const status = (item.mapping_status || '').toLowerCase();
+        if (status === 'not_applicable') return 'No ATT&CK link';
+        if (status === 'needs_review') return 'Needs review';
+        const id = (item.attack_id || (item.attack_ids && item.attack_ids[0]) || '').trim();
         if (!id || id === 'Unmapped' || id === 'N/A') return 'Unmapped';
         return id;
     }
@@ -491,9 +494,16 @@ function sortGroupKeys(keys, mode) {
     if (mode === 'platform' || mode === 'category') {
         return [...keys].sort((a, b) => a.localeCompare(b));
     }
+    const mitreTail = new Set(['Unmapped', 'Needs review', 'No ATT&CK link']);
     return [...keys].sort((a, b) => {
-        if (a === 'Unmapped') return 1;
-        if (b === 'Unmapped') return -1;
+        const aTail = mitreTail.has(a);
+        const bTail = mitreTail.has(b);
+        if (aTail && !bTail) return 1;
+        if (bTail && !aTail) return -1;
+        if (aTail && bTail) {
+            const order = ['Needs review', 'No ATT&CK link', 'Unmapped'];
+            return order.indexOf(a) - order.indexOf(b);
+        }
         return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
 }
@@ -530,8 +540,9 @@ function filterHeatmapData(data) {
         }
         if (mitreQ) {
             const attack = String(item.attack_id || '').toLowerCase();
+            const attacks = (item.attack_ids || []).join(' ').toLowerCase();
             const tech = String(item.d3fend_technique || '').toLowerCase();
-            if (!attack.includes(mitreQ) && !tech.includes(mitreQ)) return false;
+            if (!attack.includes(mitreQ) && !attacks.includes(mitreQ) && !tech.includes(mitreQ)) return false;
         }
         return true;
     });
@@ -540,11 +551,21 @@ function filterHeatmapData(data) {
 function populateMitreDatalist(data) {
     const list = document.getElementById('heatmap-mitre-options');
     if (!list) return;
-    const ids = [...new Set(
-        data.map(i => (i.attack_id || '').trim())
-            .filter(id => id && id !== 'Unmapped' && id !== 'N/A')
-    )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    list.innerHTML = DOMPurify.sanitize(ids.map(id => `<option value="${escapeAttr(id)}"></option>`).join(''));
+    const ids = new Set();
+    data.forEach(i => {
+        (i.attack_ids || []).forEach(a => {
+            const t = String(a || '').trim();
+            if (t && t !== 'Unmapped' && t !== 'N/A') ids.add(t);
+        });
+        const one = String(i.attack_id || '').trim();
+        if (one && one !== 'Unmapped' && one !== 'N/A') ids.add(one);
+    });
+    list.innerHTML = DOMPurify.sanitize(
+        [...ids]
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+            .map(id => `<option value="${escapeAttr(id)}"></option>`)
+            .join('')
+    );
 }
 
 function bindHeatmapControls() {
@@ -617,11 +638,25 @@ function updateHeatmap(data) {
         platforms: data?.platforms || [],
         coarse_techniques: data?.coarse_techniques || [],
         catalog: data?.catalog || {},
+        attack_coverage: data?.attack_coverage || {},
         identity: data?.identity || ''
     };
     bindHeatmapControls();
     populateMitreDatalist(heatmapRawData);
     renderHeatmapMatrix();
+    updateAttackCoverageChip(heatmapMeta.attack_coverage);
+}
+
+function updateAttackCoverageChip(cov) {
+    const el = document.getElementById('attack-coverage-chip');
+    if (!el || !cov) return;
+    const mapped = cov.pct_mapped != null ? cov.pct_mapped : '—';
+    const review = cov.pct_needs_review != null ? cov.pct_needs_review : 0;
+    const unmapped = cov.pct_unmapped != null ? cov.pct_unmapped : 0;
+    const tech = cov.unique_techniques != null ? cov.unique_techniques : '—';
+    el.textContent = `ATT&CK ${mapped}% mapped · ${tech} techniques`;
+    el.title = `Mapped ${mapped}% · Needs review ${review}% · Unmapped ${unmapped}% · N/A ${cov.pct_not_applicable || 0}%`;
+    el.classList.remove('hidden');
 }
 
 function renderHeatmapMatrix() {
@@ -634,15 +669,23 @@ function renderHeatmapMatrix() {
     if (countEl) {
         const total = heatmapRawData.length;
         const cat = heatmapMeta.catalog || {};
+        const cov = heatmapMeta.attack_coverage || {};
         const matched = cat.matched_rows != null ? cat.matched_rows : total;
         const platNote = heatmapMeta.multi_platform
             ? ` · ${heatmapMeta.platforms.length} OS`
             : '';
+        const mapNote = cov.pct_mapped != null ? ` · ATT&CK ${cov.pct_mapped}%` : '';
         const tagNote = heatmapMeta.identity === 'fleet_policies_tags' ? ' · tags' : '';
         countEl.textContent = filtered.length === total
-            ? `${total} policies${platNote}${tagNote}`
-            : `${filtered.length} / ${total}${platNote}`;
-        countEl.title = `Catalog matched ${matched}/${cat.total_rows || total}; safeguard-mapped ${cat.safeguard_mapped_rows || '—'}`;
+            ? `${total} policies${platNote}${mapNote}${tagNote}`
+            : `${filtered.length} / ${total}${platNote}${mapNote}`;
+        countEl.title = [
+            `Catalog matched ${matched}/${cat.total_rows || total}`,
+            `safeguard-mapped ${cat.safeguard_mapped_rows || '—'}`,
+            cov.pct_mapped != null
+                ? `ATT&CK mapped ${cov.pct_mapped}% · review ${cov.pct_needs_review || 0}% · unmapped ${cov.pct_unmapped || 0}%`
+                : ''
+        ].filter(Boolean).join('; ');
     }
 
     if (heatmapRawData.length === 0) {
@@ -708,17 +751,24 @@ function renderHeatmapMatrix() {
             const passRate = passRateOf(item);
             const rateCls = riskClass(risk, item.total);
             const conf = item.mapping_confidence ? item.mapping_confidence : 'unmapped';
+            const status = item.mapping_status || (item.attack_id ? 'mapped' : 'unmapped');
             const sg = item.cis_safeguard_id || 'CISNone';
             const pname = item.policy_name || `CIS ${item.cis_id || '?'}`;
+            const atkList = (item.attack_ids && item.attack_ids.length)
+                ? item.attack_ids.join(', ')
+                : (item.attack_id || '');
             const tooltip = [
                 pname,
                 `Safeguard: ${sg}${item.safeguard_title ? ' — ' + item.safeguard_title : ''}`,
                 `Section: ${item.cis_section || item.cis_id || '—'} · ${item.platform || 'os?'} · ${item.benchmark || ''}`,
                 `Category: ${item.cis_category || '—'}`,
                 `D3FEND: ${item.d3fend_technique || 'Unmapped'} (${item.d3fend_tactic || '—'}) [${conf}]`,
-                item.attack_id ? `MITRE: ${item.attack_id}${item.mapping_coarse ? ' (coarse)' : ''}` : 'MITRE: (none)',
+                atkList
+                    ? `MITRE: ${atkList}${item.mapping_coarse ? ' (coarse primary)' : ''} · ${status}`
+                    : `MITRE: (none) · ${status}`,
+                item.mapping_rationale ? `Why: ${item.mapping_rationale}` : '',
                 `Pass: ${Math.round(passRate)}% (${item.pass}/${item.total}) · Fleet risk: ${Math.round(risk)}%`
-            ].join('\n');
+            ].filter(Boolean).join('\n');
             const aria = `${pname}, safeguard ${sg}, fleet risk ${Math.round(risk)} percent`;
 
             html += `

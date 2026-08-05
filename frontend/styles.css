@@ -914,6 +914,19 @@ html, body {
     align-self: center;
 }
 
+.attack-coverage-chip {
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--brand-border);
+    background: var(--brand-soft);
+    color: var(--brand-500);
+    font-size: 10px;
+}
+
+.attack-coverage-chip.hidden {
+    display: none;
+}
+
 .heatmap-body {
     flex: 1;
     min-height: 0;

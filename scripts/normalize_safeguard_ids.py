@@ -37,25 +37,30 @@ OFFICIAL_IDS = set(OFFICIAL.keys()) | {
 OFFICIAL_IDS = {s for s in OFFICIAL_IDS if _CONTROLS_SHAPE.match(s)}
 
 # First match wins. Prefer specific technical signals over broad category titles.
+# IMPORTANT: CIS4.1 is a *Govern process* control ("Establish and Maintain a Secure
+# Configuration Process"). Individual OS/GPO checks must NOT dump into CIS4.1 —
+# use CIS4.8 (disable unnecessary), CIS4.6 (manage assets/software), CIS10.x, etc.
 RULES: list[tuple[str, list[str]]] = [
     # Integrity / SIP / secure boot — before "authentication" in parent titles
-    (r"\bsip\b|system integrity protection|secure boot|gatekeeper|xprotect|firmware",
-     ["CIS10.1", "CIS4.1", "CIS2.3"]),
+    (r"\bsip\b|system integrity protection|secure boot|gatekeeper|xprotect|firmware|uefi lock",
+     ["CIS10.5", "CIS10.1", "CIS4.8"]),
     (r"file integrity|aide\b|\bfim\b|integrity check",
      ["CIS3.3", "CIS3.4", "CIS8.2"]),
     # Encryption (before "password" on BitLocker password prompts)
     (r"bitlocker|filevault|dm-crypt|encrypt|cipher|apfs.*encrypt|volume.*encrypt",
      ["CIS3.6", "CIS3.11"] if "CIS3.11" in OFFICIAL_IDS else ["CIS3.6"]),
     # Patch / updates
-    (r"software update|os update|install.*update|patch|security response|auto-?download.*update",
+    (r"software update|os update|install.*update|patch|security response|auto-?download.*update|auto update|defer (feature|quality) update|pause updates",
      ["CIS7.3", "CIS7.4", "CIS7.1"]),
     # Authn / passwords / lockout (after encryption)
-    (r"password|passwd|lockout|pam\b|mfa|multi-factor|authenticator|kerberos|ntlm|smart.?card",
-     ["CIS5.2", "CIS4.3", "CIS5.4"]),
-    (r"logon|login window|interactive logon|account lock",
-     ["CIS5.2", "CIS4.3"]),
-    # Network
+    (r"password|passwd|lockout|pam\b|mfa|multi-factor|authenticator|kerberos|ntlm|smart.?card|wdigest",
+     ["CIS5.2", "CIS6.5", "CIS4.3"]),
+    (r"logon|login window|interactive logon|account lock|lsa protected|authentication protocol|rpc (connection|listener).*auth",
+     ["CIS5.2", "CIS5.4", "CIS4.3"]),
+    # Network / firewall / lateral
     (r"firewall|packet filter|network isolation|ipsec|network protection|rdp|remote desktop|\bssh\b|\bsmb\b|port filter",
+     ["CIS4.5", "CIS4.4", "CIS12.1"]),
+    (r"ip source routing|icmp redirect|netbios|network bridge|internet connection sharing|non-domain network|network selection ui|digitally sign (communications|microsoft network)|connection sharing",
      ["CIS4.5", "CIS4.4", "CIS12.1"]),
     # Logging / audit
     (r"audit(ing|ed)?|event log|log management|syslog|journald|auditd|logging",
@@ -68,37 +73,49 @@ RULES: list[tuple[str, list[str]]] = [
     # Session lock
     (r"screen saver|inactiv|session lock|lock screen|above lock|device lock|require password after",
      ["CIS4.3"]),
-    # Malware
-    (r"malware|defender|antivirus|asr\b|attack surface|smartscreen|exploit guard",
-     ["CIS10.1", "CIS10.2", "CIS10.3"]),
+    # Malware / anti-exploitation (SEHOP, SafeDll, ASR)
+    (r"malware|defender|antivirus|asr\b|attack surface|smartscreen|exploit guard|"
+     r"sehop|structured exception|safe ?dll|data execution prevention|\bdep\b|cfg\b|control flow guard",
+     ["CIS10.5", "CIS10.1", "CIS10.2"]),
     # Backup
     (r"backup|restore|recovery|shadow copy",
      ["CIS11.2", "CIS11.1", "CIS11.3", "CIS11.4"]),
-    # Browser
-    (r"safari|chrome|edge|browser|internet explorer",
-     ["CIS9.1", "CIS9.2", "CIS4.1"]),
-    # Removable media / DMA / drivers
+    # Browser / email clients
+    (r"safari|chrome|edge|browser|internet explorer|email client",
+     ["CIS9.1", "CIS9.2", "CIS4.8"]),
+    # Removable media / DMA / drivers / device install
     (r"removable|usb\b|external media",
-     ["CIS10.3", "CIS4.1"]),
-    (r"\bdma\b|device installation|driver install",
-     ["CIS4.1"]),
-    # Privacy / consumer fluff
-    (r"privacy|telemetry|diagnostic|cortana|consumer experience|advertising|spotlight suggestions",
-     ["CIS4.1"]),
+     ["CIS10.3", "CIS4.8"]),
+    (r"\bdma\b|device (installation|enumeration)|driver (install|match)|prevent installation of devices",
+     ["CIS4.8", "CIS10.3", "CIS4.6"]),
+    # Privacy / location / Siri / analytics / consumer telemetry — NOT CIS4.1 process
+    (r"privacy|telemetry|diagnostic|cortana|consumer experience|advertising|spotlight suggestions|"
+     r"location service|ad tracking|analytics|siri|dictation|assistive voice|share with app|"
+     r"icloud analytics|mac analytics|improve siri|on-device dictation|limit ad tracking|"
+     r"bonjour advertising|share mac analytics",
+     ["CIS4.8", "CIS4.6", "CIS3.3"]),
+    # Sharing services (AirDrop, screen sharing, etc.)
+    (r"airdrop|airplay|screen sharing|file sharing|printer sharing|bluetooth sharing|"
+     r"internet sharing|remote (login|management|apple|assistance)|content caching|media sharing|bonjour",
+     ["CIS4.8", "CIS4.5"]),
     # Scripting
     (r"powershell|macro|office|script execution",
-     ["CIS2.3", "CIS4.1"]),
+     ["CIS2.3", "CIS2.5", "CIS4.8"]),
     # Inventory
     (r"inventory|asset inventory",
      ["CIS1.1", "CIS1.2"]),
     # Data protection generic
     (r"data protection|sensitive data|pii",
      ["CIS3.3", "CIS3.4", "CIS3.1"]),
-    # Secure configuration / services
-    (r"unnecessary service|disable.*service|secure configuration|harden",
-     ["CIS4.8", "CIS4.1"] if "CIS4.8" in OFFICIAL_IDS else ["CIS4.1"]),
+    # Delivery optimization / peering
+    (r"download mode|delivery optimization|http blended|internet peer",
+     ["CIS4.8", "CIS9.1"]),
+    # Secure configuration / disable unnecessary services (implementation checks)
+    (r"unnecessary service|disable.*service|secure configuration|harden|"
+     r"ubtu-\d+|ensure .+ is set to|ensure .+ is (enabled|disabled)",
+     ["CIS4.8", "CIS4.6"]),
     (r"application",
-     ["CIS2.3", "CIS2.1", "CIS4.1"]),
+     ["CIS2.3", "CIS2.1", "CIS4.8"]),
 ]
 
 
@@ -151,6 +168,17 @@ def is_bad_official(sg: str, blob: str) -> bool:
     if sg.startswith("CIS5.") and re.search(r"encrypt|bitlocker|filevault|apfs", blob):
         if not re.search(r"password|account|user|authent|logon", blob):
             return True
+    # CIS4.1 is process/govern ("secure configuration *process*"), not OS setting dumps.
+    # Individual Ensure/GPO/UBTU checks, privacy/location/Siri, drivers, etc. are wrong here.
+    if sg == "CIS4.1":
+        if re.search(
+            r"ensure|set to|enabled|disabled|ubtu-|location|siri|analytics|dictation|"
+            r"bonjour|tracking|telemetry|privacy|device enumeration|driver|"
+            r"sehop|wdigest|mss:|network|firewall|password|session|patch|update|"
+            r"advertising|share mac|ad tracking",
+            blob,
+        ):
+            return True
     return False
 
 
@@ -181,7 +209,9 @@ def choose_safeguards(name: str, tags: dict, slug_map: dict) -> tuple[list[str],
             if parent in OFFICIAL_IDS:
                 return [parent], "section_map_parent"
 
-    return ["CIS4.1"], "default_secure_config"
+    # Default implementation hardening → disable unnecessary features/services
+    # (CIS4.8), never CIS4.1 process control.
+    return ["CIS4.8"], "default_disable_unnecessary"
 
 
 def load_slug_map(fp_root: Path) -> dict:
@@ -372,8 +402,12 @@ def rebuild_safeguard_d3fend(catalog: dict) -> dict:
         "13": "Protect", "14": "Protect", "15": "Identify", "16": "Protect",
         "17": "Respond", "18": "Protect",
     }
+    # attack_id left empty here — multi-technique fill is applied by
+    # scripts/apply_attack_maps.py after normalize (preserves curated maps).
     SG_OVERRIDE = {
-        "CIS4.1": ("D3-SCA", "Harden", "Protective Configuration", "", "medium"),
+        "CIS4.1": ("D3-AMI", "Model", "Governance Policy", "", "medium"),
+        "CIS4.6": ("D3-SCA", "Harden", "Protective Configuration", "", "medium"),
+        "CIS4.8": ("D3-SCA", "Harden", "Protective Configuration", "", "medium"),
         "CIS4.4": ("D3-NI", "Isolate", "Network Isolation", "T1021", "high"),
         "CIS4.5": ("D3-NI", "Isolate", "Network Isolation", "T1021", "high"),
         "CIS4.3": ("D3-SCA", "Harden", "Session Lock", "T1078", "high"),
@@ -392,6 +426,7 @@ def rebuild_safeguard_d3fend(catalog: dict) -> dict:
         "CIS5.4": ("D3-UAP", "Harden", "Account Hardening", "T1078", "high"),
         "CIS10.1": ("D3-PMAD", "Detect", "Malware Detection", "T1204", "medium"),
         "CIS10.2": ("D3-PMAD", "Detect", "Malware Detection", "T1204", "medium"),
+        "CIS10.5": ("D3-SCA", "Harden", "Anti-Exploitation", "T1204", "high"),
         "CIS11.1": ("D3-BA", "Restore", "Backup", "T1490", "high"),
         "CIS11.2": ("D3-BA", "Restore", "Backup", "T1490", "high"),
         "CIS1.1": ("D3-AI", "Model", "Asset Inventory", "T1082", "high"),

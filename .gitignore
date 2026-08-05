@@ -38,6 +38,8 @@ node_modules/
 .idea/
 CLAUDE.md
 .serena/
+.planning/*
+docs/*
 
 # Docs (local plans, not upstream)
 docs/plans/
