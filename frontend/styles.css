@@ -131,44 +131,69 @@ html, body {
 
 .sidebar::-webkit-scrollbar { width: 0; }
 
-.sidebar-header {
+/* Product brand block */
+.sidebar-brand {
     display: flex;
     align-items: center;
     gap: var(--space-md);
     padding: var(--space-xl) var(--space-xl) var(--space-lg);
     border-bottom: 1px solid var(--border-subtle);
     margin-bottom: var(--space-sm);
+    text-decoration: none;
+    color: inherit;
+    flex-shrink: 0;
+    transition: background 120ms ease;
 }
 
-.logo-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+.sidebar-brand:hover {
+    background: var(--bg-hover);
+}
+
+.brand-mark {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
     border-radius: var(--radius-md);
+    box-shadow: var(--shadow-glow);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
-    color: white;
-    box-shadow: var(--shadow-glow);
-    flex-shrink: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 60%);
 }
 
-.logo-text h1 {
+.brand-logo-img {
+    width: 40px;
+    height: 40px;
+    display: block;
+}
+
+.brand-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.brand-name {
     font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
     color: var(--text-primary);
-    line-height: 1.2;
+    line-height: 1.15;
 }
 
-.logo-text p {
+.brand-tag {
     font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.8px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
     color: var(--text-tertiary);
     text-transform: uppercase;
+    white-space: nowrap;
 }
+
+/* Legacy class aliases (if any residual markup) */
+.sidebar-header { display: contents; }
+.logo-icon, .logo-text { display: none; }
 
 .sidebar-nav {
     display: flex;
@@ -277,31 +302,114 @@ html, body {
     background: var(--bg-root);
 }
 
-/* ── Top Bar ── */
+/* ── Top Bar / product banner ── */
 
 .top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-lg) var(--space-2xl);
+    gap: var(--space-lg);
+    padding: var(--space-md) var(--space-2xl);
     border-bottom: 1px solid var(--border-subtle);
-    background: var(--bg-primary);
+    background:
+        linear-gradient(90deg, rgba(229, 57, 53, 0.08) 0%, transparent 28%),
+        linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
     min-height: var(--topbar-height);
     flex-shrink: 0;
+    position: relative;
 }
 
-.header-left h2 {
-    font-size: 18px;
+.top-bar::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--brand-500), transparent 40%, transparent);
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.top-bar .header-left {
+    min-width: 0;
+    flex: 1;
+}
+
+.header-brand-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    min-width: 0;
+}
+
+.header-brand-mark {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 8px var(--brand-glow));
+}
+
+.header-titles {
+    min-width: 0;
+}
+
+.header-product {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--brand-500);
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+
+.top-bar #page-title {
+    font-size: 17px;
     font-weight: 700;
     color: var(--text-primary);
     letter-spacing: -0.3px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.breadcrumb {
+.top-bar #page-subtitle,
+.top-bar .breadcrumb {
     font-size: 12px;
     color: var(--text-tertiary);
     font-weight: 400;
     margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.top-bar .header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+}
+
+.header-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.2px;
+}
+
+.header-chip i {
+    font-size: 10px;
+    color: var(--brand-500);
 }
 
 .sync-status {
@@ -1275,10 +1383,11 @@ html, body {
     gap: var(--space-md);
 }
 
-.header-left {
+.card-header-left {
     display: flex;
     align-items: center;
     gap: var(--space-md);
+    min-width: 0;
 }
 
 .matrix-legend {
@@ -2482,13 +2591,30 @@ html, body {
     }
 }
 
+@media (max-width: 1100px) {
+    .header-chip {
+        display: none;
+    }
+}
+
 @media (max-width: 1024px) {
     .sidebar {
         width: 60px;
         min-width: 60px;
     }
-    .logo-text, .nav-link span, .user-info, .sidebar-header {
+    .brand-copy,
+    .nav-link span,
+    .user-info {
         display: none;
+    }
+    .sidebar-brand {
+        justify-content: center;
+        padding: var(--space-lg) var(--space-sm);
+    }
+    .brand-mark,
+    .brand-logo-img {
+        width: 32px;
+        height: 32px;
     }
     .sidebar-nav {
         align-items: center;
@@ -2499,6 +2625,9 @@ html, body {
         padding: var(--space-md);
     }
     .nav-link.active::before { display: none; }
+    .header-brand-mark {
+        display: none;
+    }
     .dashboard-grid, .strategy-dashboard-grid {
         grid-template-columns: 1fr;
     }

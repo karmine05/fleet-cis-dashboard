@@ -4,7 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CIS Compliance Dashboard</title>
+    <title>Fleet CIS — Compliance Intelligence</title>
+    <meta name="description" content="Fleet CIS Compliance Dashboard — real-time CIS Controls, D3FEND, and Fleet endpoint posture.">
+    <meta name="theme-color" content="#0c0d11">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,20 +18,20 @@
 <body>
     <div id="loading-overlay" class="loading-overlay hidden">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Loading...</div>
+        <div class="loading-text">Loading Fleet CIS…</div>
     </div>
     <div class="app-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-icon">
-                    <i class="fas fa-shield-check"></i>
+        <aside class="sidebar" aria-label="Main navigation">
+            <a href="#dashboard" class="sidebar-brand" data-page="dashboard" aria-label="Fleet CIS home">
+                <div class="brand-mark" aria-hidden="true">
+                    <img src="logo.svg" alt="" width="40" height="40" class="brand-logo-img">
                 </div>
-                <div class="logo-text">
-                    <h1>CIS</h1>
-                    <p>Compliance</p>
+                <div class="brand-copy">
+                    <span class="brand-name">Fleet CIS</span>
+                    <span class="brand-tag">Compliance Intelligence</span>
                 </div>
-            </div>
+            </a>
 
             <nav class="sidebar-nav">
                 <a href="#dashboard" class="nav-link active" data-page="dashboard">
@@ -67,13 +71,27 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Header -->
+            <!-- Header / product banner -->
             <header class="top-bar">
                 <div class="header-left">
-                    <h2>Security Compliance Dashboard</h2>
-                    <p class="breadcrumb">Real-time CIS Controls & D3FEND Analysis</p>
+                    <div class="header-brand-row">
+                        <img src="logo.svg" alt="" width="28" height="28" class="header-brand-mark" aria-hidden="true">
+                        <div class="header-titles">
+                            <p class="header-product">Fleet CIS</p>
+                            <h2 id="page-title">Security Posture Summary</h2>
+                            <p class="breadcrumb" id="page-subtitle">Real-time CIS Controls &amp; D3FEND analysis</p>
+                        </div>
+                    </div>
                 </div>
                 <div class="header-right">
+                    <div class="header-chip" title="CIS Controls framework">
+                        <i class="fas fa-layer-group" aria-hidden="true"></i>
+                        <span>CIS v8.1</span>
+                    </div>
+                    <div class="header-chip" title="MITRE D3FEND mapping">
+                        <i class="fas fa-project-diagram" aria-hidden="true"></i>
+                        <span>D3FEND</span>
+                    </div>
                     <div class="sync-status" id="sync-status-container">
                         <i class="fas fa-sync-alt" id="sync-icon"></i>
                         <span>Last sync: <strong id="sync-status-text">checking...</strong></span>
@@ -170,7 +188,7 @@
                     <!-- Heatmap -->
                     <div class="card heatmap-card">
                         <div class="card-header">
-                            <div class="header-left">
+                            <div class="card-header-left">
                                 <h3>D3FEND vs CIS Compliance Matrix</h3>
                                 <span class="badge-info">Heat Map</span>
                             </div>
@@ -298,7 +316,7 @@
                 <section class="mitre-matrix-section">
                     <div class="card mitre-card">
                         <div class="card-header">
-                            <div class="header-left">
+                            <div class="card-header-left">
                                 <h3>MITRE ATT&CK Compliance Matrix</h3>
                                 <span class="badge-info">Real-Time Posture</span>
                             </div>

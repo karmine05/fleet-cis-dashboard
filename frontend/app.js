@@ -27,6 +27,19 @@ async function init() {
     setupInfoTooltips();
     updateSyncStatus();
     setInterval(updateSyncStatus, 30000);
+
+    // Deep-link / restore page from hash
+    const hashPage = (window.location.hash || '').replace(/^#/, '');
+    if (hashPage && document.getElementById(hashPage)) {
+        switchPage(hashPage);
+    } else {
+        updatePageBanner('dashboard');
+    }
+
+    window.addEventListener('hashchange', () => {
+        const page = (window.location.hash || '').replace(/^#/, '') || 'dashboard';
+        if (document.getElementById(page)) switchPage(page);
+    });
 }
 
 function setupTooltip() {
@@ -100,11 +113,49 @@ function setupInfoTooltips() {
     });
 }
 
+const PAGE_META = {
+    dashboard: {
+        title: 'Security Posture Summary',
+        subtitle: 'Real-time CIS Controls & D3FEND analysis',
+        docTitle: 'Summary · Fleet CIS'
+    },
+    architecture: {
+        title: 'Security Architecture',
+        subtitle: 'MITRE ATT&CK coverage and defensive depth',
+        docTitle: 'Architecture · Fleet CIS'
+    },
+    audit: {
+        title: 'Compliance Audit',
+        subtitle: 'CIS evidence, drift, and remediation guidance',
+        docTitle: 'Audit · Fleet CIS'
+    },
+    strategy: {
+        title: 'Executive Strategy',
+        subtitle: 'Posture, risk, and priority actions for leadership',
+        docTitle: 'Strategy · Fleet CIS'
+    },
+    settings: {
+        title: 'Configuration',
+        subtitle: 'Framework weights, sync, and dashboard preferences',
+        docTitle: 'Settings · Fleet CIS'
+    }
+};
+
+function updatePageBanner(page) {
+    const meta = PAGE_META[page] || PAGE_META.dashboard;
+    const titleEl = document.getElementById('page-title');
+    const subEl = document.getElementById('page-subtitle');
+    if (titleEl) titleEl.textContent = meta.title;
+    if (subEl) subEl.textContent = meta.subtitle;
+    document.title = meta.docTitle;
+}
+
 // Setup event listeners
 function setupEventListeners() {
-    // Navigation
-    document.querySelectorAll('.nav-link').forEach(link => {
+    // Navigation (nav links + sidebar brand)
+    document.querySelectorAll('[data-page]').forEach(link => {
         link.addEventListener('click', (e) => {
+            if (!link.classList.contains('nav-link') && !link.classList.contains('sidebar-brand')) return;
             e.preventDefault();
             const page = link.dataset.page;
             switchPage(page);
@@ -121,6 +172,8 @@ function setupEventListeners() {
 
 // Switch pages
 function switchPage(page) {
+    if (!page || !document.getElementById(page)) return;
+
     const pages = document.querySelectorAll('.page-content');
     pages.forEach(p => {
         p.classList.remove('active');
@@ -131,7 +184,6 @@ function switchPage(page) {
     const targetPage = document.getElementById(page);
     targetPage.classList.add('active');
 
-    // Trigger animation in next frame
     requestAnimationFrame(() => {
         targetPage.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
         targetPage.style.opacity = '1';
@@ -139,11 +191,14 @@ function switchPage(page) {
     });
 
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-        if (link.dataset.page === page) {
-            link.classList.add('active');
-        }
+        link.classList.toggle('active', link.dataset.page === page);
     });
+
+    updatePageBanner(page);
+
+    if (window.location.hash !== `#${page}`) {
+        history.replaceState(null, '', `#${page}`);
+    }
 }
 
 // Populate filters
