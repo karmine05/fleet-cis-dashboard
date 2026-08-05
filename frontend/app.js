@@ -1389,8 +1389,30 @@ const DEFAULT_CONFIG = {
     framework_iso_multiplier: 0.82
 };
 
+const API_TOKEN_STORAGE_KEY = 'fleet_cis_api_token';
+
+function getStoredApiToken() {
+    try {
+        return sessionStorage.getItem(API_TOKEN_STORAGE_KEY) || '';
+    } catch {
+        return '';
+    }
+}
+
+function setStoredApiToken(token) {
+    try {
+        if (token) sessionStorage.setItem(API_TOKEN_STORAGE_KEY, token);
+        else sessionStorage.removeItem(API_TOKEN_STORAGE_KEY);
+    } catch {
+        /* private mode — ignore */
+    }
+}
+
 async function loadConfigSettings() {
     try {
+        const tokenInput = document.getElementById('config-api-token');
+        if (tokenInput) tokenInput.value = getStoredApiToken();
+
         const config = await fetch(`${API_BASE}/config`).then(r => r.json());
 
         // Populate UI with current values
@@ -1442,19 +1464,38 @@ async function saveConfigSettings() {
     };
 
     try {
+        const tokenInput = document.getElementById('config-api-token');
+        const token = (tokenInput?.value || getStoredApiToken() || '').trim();
+        if (!token) {
+            showError('API token required to save (set DASHBOARD_API_TOKEN on server)');
+            return;
+        }
+        setStoredApiToken(token);
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        };
         const resp = await fetch(`${API_BASE}/config`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(config)
         });
-        const result = await resp.json();
+        const result = await resp.json().catch(() => ({}));
 
+        if (resp.status === 401) {
+            showError('Unauthorized — check API token');
+            return;
+        }
+        if (resp.status === 503) {
+            showError(result.error || 'Write API disabled on server');
+            return;
+        }
         if (result.success) {
             showSuccess(`Configuration saved! Updated ${result.updated} settings.`);
-            // Refresh dashboard with new settings
             await updateDashboard();
         } else {
-            showError('Failed to save configuration');
+            showError(result.error || 'Failed to save configuration');
         }
     } catch (e) {
         console.error('Error saving config:', e);

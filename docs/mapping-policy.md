@@ -91,7 +91,19 @@ python3 scripts/audit_mitre_mapping.py
 
 Target gates:
 
-- ≥85% policies `mapped`
+- ≥85% policies honest coverage (`mapped` + `not_applicable`)
 - ≤15% `unmapped`
 - No technique >25% of policies (primary share)
 - Every technique used is present in `mitre_data.json`
+
+### Process / govern → `not_applicable`
+
+These CIS Controls v8.1 safeguards are **process** controls. They must not invent T-codes:
+
+| Safeguard | Reason |
+|-----------|--------|
+| CIS4.1, CIS4.2 | Secure configuration *process* (Govern) |
+| CIS6.1, CIS6.2 | Access grant/revoke *process* (Govern) |
+| CIS7.1 | Establish patch management *process* |
+| CIS8.1 | Audit log management *process* (Govern) |
+| CIS14.9 | Security awareness training |

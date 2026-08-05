@@ -49,7 +49,10 @@ def main() -> int:
     for sid, m in smap.items():
         st = (m.get("mapping_status") or "").lower()
         ids = m.get("attack_ids") or ([m["attack_id"]] if m.get("attack_id") else [])
-        if not ids:
+        # not_applicable may legitimately have empty attack_ids
+        if st == "not_applicable":
+            sg_status["not_applicable"] += 1
+        elif not ids:
             sg_empty.append(sid)
             sg_status["empty_attack"] += 1
         else:
@@ -93,8 +96,14 @@ def main() -> int:
     missing_meta = sorted(a for a in all_used if a not in mitre)
 
     failures = []
-    if cov["pct_mapped"] < MIN_MAPPED_PCT:
-        failures.append(f"pct_mapped {cov['pct_mapped']}% < {MIN_MAPPED_PCT}%")
+    # Honest coverage = mapped + not_applicable (process controls with no T-link)
+    honest_pct = round(
+        cov.get("pct_mapped", 0) + cov.get("pct_not_applicable", 0), 1
+    )
+    if honest_pct < MIN_MAPPED_PCT:
+        failures.append(
+            f"honest coverage (mapped+N/A) {honest_pct}% < {MIN_MAPPED_PCT}%"
+        )
     if cov["pct_unmapped"] > MAX_UNMAPPED_PCT:
         failures.append(f"pct_unmapped {cov['pct_unmapped']}% > {MAX_UNMAPPED_PCT}%")
     if top_pct > poison_limit:

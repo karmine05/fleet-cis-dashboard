@@ -25,12 +25,14 @@ FLEET_TOKEN = os.environ.get("FLEET_API_TOKEN", "")
 MAX_WORKERS = int(os.environ.get("SYNC_MAX_WORKERS", "10"))
 HOSTS_PER_PAGE = int(os.environ.get("SYNC_HOSTS_PER_PAGE", "100"))
 
-# SSL Verification Strategy
-ssl_verify_env = os.environ.get("FLEET_SSL_VERIFY", "false").lower()
-FLEET_SSL_VERIFY = ssl_verify_env in ('true', '1', 'yes')
+# SSL Verification Strategy — default ON (secure). Set FLEET_SSL_VERIFY=false
+# only for lab/self-signed Fleet endpoints.
+ssl_verify_env = os.environ.get("FLEET_SSL_VERIFY", "true").lower()
+FLEET_SSL_VERIFY = ssl_verify_env not in ('false', '0', 'no', 'off')
 
 if not FLEET_SSL_VERIFY:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    print("⚠ FLEET_SSL_VERIFY is disabled — TLS certificate checks skipped")
 
 
 # CIS control regex

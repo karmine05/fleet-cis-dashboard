@@ -197,10 +197,19 @@ def _finalize_mapping(m: Dict[str, Any], sid: str = "") -> Dict[str, Any]:
             status = "needs_review"
         else:
             status = "unmapped"
-    if status == "mapped" and not ids:
+    # Process/govern controls: honest "no T-link" — clear any leftover technique IDs
+    if status == "not_applicable":
+        ids = []
+        out["attack_ids"] = []
+        out["attack_id"] = ""
+        out["mapping_confidence"] = "not_applicable"
+    elif status == "mapped" and not ids:
         status = "needs_review"
     out["mapping_status"] = status
-    out.setdefault("mapping_confidence", "unmapped" if status == "unmapped" else "medium")
+    if status == "unmapped":
+        out.setdefault("mapping_confidence", "unmapped")
+    elif status != "not_applicable":
+        out.setdefault("mapping_confidence", "medium")
     out.setdefault("mapping_rationale", "")
     out.setdefault("mapping_source", "none")
     out.setdefault("title", sid or out.get("title") or "Unmapped")

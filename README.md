@@ -141,6 +141,8 @@ The dashboard automatically handles edge cases:
 |----------|-------------|---------|
 | `FLEET_URL` | Your Fleet instance URL | Required |
 | `FLEET_API_TOKEN` | Fleet API token | Required |
+| `FLEET_SSL_VERIFY` | Verify Fleet TLS certificates | `true` |
+| `DASHBOARD_API_TOKEN` | Bearer token for Settings writes (`PUT /api/config`) | Required to save settings |
 | `DATABASE_URL` | PostgreSQL connection | `postgresql://postgres:postgres@db:5432/fleet_cis` |
 | `REDIS_URL` | Redis connection | `redis://redis:6379/0` |
 | `ALLOWED_ORIGINS` | CORS allowed domains | `http://localhost:8081` |
@@ -178,7 +180,16 @@ docker-compose exec sync python backend/sync_fleet_data.py
 - **Non-root container**: Backend runs as unprivileged `appuser`
 - **Network isolation**: Services communicate on internal network only
 - **CORS protection**: API restricted to configured origins
+- **Write auth**: `PUT /api/config` requires `Authorization: Bearer $DASHBOARD_API_TOKEN` (fail closed if unset)
+- **TLS to Fleet**: `FLEET_SSL_VERIFY` defaults to `true` (set `false` only for self-signed lab certs)
 - **No secrets in image**: All credentials passed via environment
+
+### Tests
+
+```bash
+python3 -m unittest tests.test_mapping_rules -v
+python3 scripts/audit_mitre_mapping.py
+```
 
 ---
 

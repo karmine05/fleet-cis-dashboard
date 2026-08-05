@@ -57,11 +57,11 @@ MAP: dict[str, tuple[list[str], str, str, str]] = {
                 "Data protection family"),
     "CIS3.14": (["T1485", "T1070"], "mapped", "medium",
                 "Data disposal family"),
-    # 4.1 process — rare; multi-map if any policies remain
-    "CIS4.1": (["T1562", "T1078", "T1548"], "mapped", "medium",
-               "Secure configuration *process* (govern) — multi-technique"),
-    "CIS4.2": (["T1562", "T1046", "T1190"], "mapped", "medium",
-               "Network infrastructure secure config process"),
+    # Pure process / govern controls — no honest single ATT&CK technique link
+    "CIS4.1": ([], "not_applicable", "not_applicable",
+               "Secure configuration *process* (Govern) — no technical T-link"),
+    "CIS4.2": ([], "not_applicable", "not_applicable",
+               "Network secure-config *process* (Govern) — no technical T-link"),
     "CIS4.3": (["T1078", "T1021"], "mapped", "high",
                "Session lock reduces unattended account use"),
     "CIS4.4": (["T1021", "T1046", "T1219"], "mapped", "high",
@@ -98,10 +98,10 @@ MAP: dict[str, tuple[list[str], str, str, str]] = {
                 "Account lockout family"),
     "CIS5.11": (["T1078", "T1548"], "mapped", "medium",
                 "Privileged account family"),
-    "CIS6.1": (["T1078", "T1136"], "mapped", "medium",
-               "Access granting process"),
-    "CIS6.2": (["T1078", "T1136"], "mapped", "medium",
-               "Access revoking process"),
+    "CIS6.1": ([], "not_applicable", "not_applicable",
+               "Access granting *process* (Govern) — no technical T-link"),
+    "CIS6.2": ([], "not_applicable", "not_applicable",
+               "Access revoking *process* (Govern) — no technical T-link"),
     "CIS6.3": (["T1078", "T1110", "T1556"], "mapped", "high",
                "MFA for externally exposed apps"),
     "CIS6.4": (["T1078", "T1021", "T1110"], "mapped", "high",
@@ -128,14 +128,14 @@ MAP: dict[str, tuple[list[str], str, str, str]] = {
                 "Access control family"),
     "CIS7.3": (["T1190", "T1210", "T1068"], "mapped", "high",
                "OS patching reduces exploit paths"),
-    "CIS7.1": (["T1190", "T1210"], "mapped", "high",
-               "Establish patch management"),
+    "CIS7.1": ([], "not_applicable", "not_applicable",
+               "Establish patch management *process* — no technical T-link"),
     "CIS7.2": (["T1190", "T1068"], "mapped", "high",
                "Application patch management"),
     "CIS7.4": (["T1190", "T1210"], "mapped", "medium",
                "Automated application patch"),
-    "CIS8.1": (["T1070", "T1562"], "mapped", "medium",
-               "Log management process"),
+    "CIS8.1": ([], "not_applicable", "not_applicable",
+               "Audit log management *process* (Govern) — no technical T-link"),
     "CIS8.2": (["T1070", "T1562", "T1005"], "mapped", "high",
                "Collect audit logs"),
     "CIS8.3": (["T1070", "T1485"], "mapped", "high",
@@ -164,8 +164,8 @@ MAP: dict[str, tuple[list[str], str, str, str]] = {
                "Up-to-date network infrastructure"),
     "CIS13.7": (["T1046", "T1048", "T1071"], "mapped", "medium",
                "Network monitoring family"),
-    "CIS14.9": (["T1566", "T1204"], "mapped", "low",
-               "Awareness-related control surface"),
+    "CIS14.9": ([], "not_applicable", "not_applicable",
+               "Security awareness training — no technical T-link"),
     "CIS15.1": (["T1199", "T1195"], "mapped", "medium",
                "Service provider inventory"),
     "CIS15.2": (["T1199", "T1195"], "mapped", "low",
@@ -238,9 +238,19 @@ def main() -> int:
             mitre[tid] = {"name": tid, "tactic": "Unknown"}
     mitre_path.write_text(json.dumps(mitre, indent=2) + "\n", encoding="utf-8")
 
-    empty = sum(1 for e in sd.values() if not e.get("attack_ids"))
-    print(f"safeguards={len(sd)} curated_filled={filled} empty_attack={empty} techniques_used={len(used)}")
-    return 0 if empty == 0 else 1
+    empty = [
+        sid for sid, e in sd.items()
+        if not e.get("attack_ids")
+        and (e.get("mapping_status") or "").lower() not in ("not_applicable",)
+    ]
+    na = sum(1 for e in sd.values() if (e.get("mapping_status") or "").lower() == "not_applicable")
+    print(
+        f"safeguards={len(sd)} curated_filled={filled} "
+        f"not_applicable={na} empty_attack={len(empty)} techniques_used={len(used)}"
+    )
+    if empty:
+        print("empty (needs_review):", empty[:12])
+    return 0 if not empty else 1
 
 
 if __name__ == "__main__":

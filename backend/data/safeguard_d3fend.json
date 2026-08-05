@@ -112,17 +112,14 @@
     "d3fend_id": "D3-SCA",
     "d3fend_tactic": "Harden",
     "d3fend_technique": "Protective Configuration",
-    "attack_id": "T1566",
-    "mapping_confidence": "low",
+    "attack_id": "",
+    "mapping_confidence": "not_applicable",
     "mapping_source": "cis_v8_attack_curated",
     "title": "CIS14.9",
     "security_function": "Protect",
-    "attack_ids": [
-      "T1566",
-      "T1204"
-    ],
-    "mapping_status": "mapped",
-    "mapping_rationale": "Awareness-related control surface"
+    "attack_ids": [],
+    "mapping_status": "not_applicable",
+    "mapping_rationale": "Security awareness training — no technical T-link"
   },
   "CIS15.1": {
     "cis_safeguard_id": "CIS15.1",
@@ -424,18 +421,14 @@
     "d3fend_id": "D3-AMI",
     "d3fend_tactic": "Model",
     "d3fend_technique": "Governance Policy",
-    "attack_id": "T1562",
-    "mapping_confidence": "medium",
+    "attack_id": "",
+    "mapping_confidence": "not_applicable",
     "mapping_source": "cis_v8_attack_curated",
     "title": "Establish and Maintain a Secure Configuration Process for Network Infrastructure",
     "security_function": "Govern",
-    "attack_ids": [
-      "T1562",
-      "T1046",
-      "T1190"
-    ],
-    "mapping_status": "mapped",
-    "mapping_rationale": "Network infrastructure secure config process"
+    "attack_ids": [],
+    "mapping_status": "not_applicable",
+    "mapping_rationale": "Network secure-config *process* (Govern) — no technical T-link"
   },
   "CIS4.3": {
     "cis_safeguard_id": "CIS4.3",
@@ -687,17 +680,14 @@
     "d3fend_id": "D3-AMI",
     "d3fend_tactic": "Model",
     "d3fend_technique": "Governance Policy",
-    "attack_id": "T1078",
-    "mapping_confidence": "medium",
+    "attack_id": "",
+    "mapping_confidence": "not_applicable",
     "mapping_source": "cis_v8_attack_curated",
     "title": "Establish an Access Granting Process",
     "security_function": "Govern",
-    "attack_ids": [
-      "T1078",
-      "T1136"
-    ],
-    "mapping_status": "mapped",
-    "mapping_rationale": "Access granting process"
+    "attack_ids": [],
+    "mapping_status": "not_applicable",
+    "mapping_rationale": "Access granting *process* (Govern) — no technical T-link"
   },
   "CIS6.10": {
     "cis_safeguard_id": "CIS6.10",
@@ -789,17 +779,14 @@
     "d3fend_id": "D3-AMI",
     "d3fend_tactic": "Model",
     "d3fend_technique": "Governance Policy",
-    "attack_id": "T1078",
-    "mapping_confidence": "medium",
+    "attack_id": "",
+    "mapping_confidence": "not_applicable",
     "mapping_source": "cis_v8_attack_curated",
     "title": "Establish an Access Revoking Process",
     "security_function": "Govern",
-    "attack_ids": [
-      "T1078",
-      "T1136"
-    ],
-    "mapping_status": "mapped",
-    "mapping_rationale": "Access revoking process"
+    "attack_ids": [],
+    "mapping_status": "not_applicable",
+    "mapping_rationale": "Access revoking *process* (Govern) — no technical T-link"
   },
   "CIS6.3": {
     "cis_safeguard_id": "CIS6.3",
@@ -946,17 +933,14 @@
     "d3fend_id": "D3-AMI",
     "d3fend_tactic": "Model",
     "d3fend_technique": "Governance Policy",
-    "attack_id": "T1070",
-    "mapping_confidence": "medium",
+    "attack_id": "",
+    "mapping_confidence": "not_applicable",
     "mapping_source": "cis_v8_attack_curated",
     "title": "Establish and Maintain an Audit Log Management Process",
     "security_function": "Govern",
-    "attack_ids": [
-      "T1070",
-      "T1562"
-    ],
-    "mapping_status": "mapped",
-    "mapping_rationale": "Log management process"
+    "attack_ids": [],
+    "mapping_status": "not_applicable",
+    "mapping_rationale": "Audit log management *process* (Govern) — no technical T-link"
   },
   "CIS8.2": {
     "cis_safeguard_id": "CIS8.2",

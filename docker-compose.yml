@@ -38,6 +38,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
+      - FLEET_SSL_VERIFY=${FLEET_SSL_VERIFY:-true}
+      - DASHBOARD_API_TOKEN=${DASHBOARD_API_TOKEN:-}
       - ALLOWED_ORIGINS=http://localhost:8081,http://localhost:8082
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
     depends_on:
@@ -58,6 +60,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
+      - FLEET_SSL_VERIFY=${FLEET_SSL_VERIFY:-true}
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
     depends_on:
       db:

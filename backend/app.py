@@ -6,6 +6,8 @@ Serves real-time data from Fleet via PostgreSQL.
 
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
+from functools import wraps
+import hmac
 import os
 import json
 import logging
@@ -87,6 +89,34 @@ COARSE_ATTACK_THRESHOLD = 40
 # Legacy cis_to_d3fend_*.csv loaders were removed: runtime mapping uses
 # policy_catalog (safeguard_d3fend.json + tight policy-name rules).
 # See docs/mapping-policy.md — bulk CSV ATT&CK import is forbidden.
+
+# Write API token — required for mutating endpoints (fail closed if unset)
+DASHBOARD_API_TOKEN = os.environ.get("DASHBOARD_API_TOKEN", "").strip()
+
+
+def _extract_bearer_token() -> str:
+    auth = request.headers.get("Authorization", "") or ""
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return (request.headers.get("X-API-Token") or "").strip()
+
+
+def require_write_auth(fn):
+    """Require DASHBOARD_API_TOKEN for write endpoints. Fail closed if unset."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        expected = DASHBOARD_API_TOKEN
+        if not expected:
+            return error_response(
+                "Write API disabled: set DASHBOARD_API_TOKEN on the server",
+                503,
+            )
+        provided = _extract_bearer_token()
+        if not provided or not hmac.compare_digest(provided, expected):
+            return error_response("Unauthorized", 401)
+        return fn(*args, **kwargs)
+    return wrapper
+
 
 # --- Configuration Management ---
 def get_config(key, default):
@@ -255,6 +285,7 @@ def get_all_config():
         return error_response("Failed to fetch configuration", 500, str(e))
 
 @app.route('/api/config', methods=['PUT'])
+@require_write_auth
 def update_config():
     try:
         updates = request.json

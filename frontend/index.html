@@ -594,6 +594,17 @@
                             <span class="setting-hint">posture × this</span>
                         </div>
                     </div>
+
+                    <!-- API write auth (session only — never sent to server storage) -->
+                    <div class="setting-card">
+                        <h3><i class="fas fa-key"></i> Write API Token</h3>
+                        <p class="setting-desc">Required to save settings. Matches server <code>DASHBOARD_API_TOKEN</code>. Stored in this browser session only.</p>
+                        <div class="setting-row">
+                            <label for="config-api-token">API Token</label>
+                            <input type="password" id="config-api-token" autocomplete="off" placeholder="Bearer token for PUT /api/config">
+                            <span class="setting-hint">sessionStorage only</span>
+                        </div>
+                    </div>
                 </section>
 
                 <section class="settings-actions">
