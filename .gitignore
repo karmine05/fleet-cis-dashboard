@@ -39,9 +39,8 @@ node_modules/
 CLAUDE.md
 .serena/
 .planning/*
-docs/*
 
-# Docs (local plans, not upstream)
+# Docs (local plans only — keep mapping-policy.md tracked)
 docs/plans/
 
 # OS junk
