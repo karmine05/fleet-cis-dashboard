@@ -289,6 +289,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  <img src="docs/images/logo.svg" alt="Fleet CIS" width="48" height="48"><br>
+  <img src="docs/images/logo.png" alt="Fleet CIS" width="48"><br>
   <sub>Fleet CIS — Compliance Intelligence</sub>
 </p>
