@@ -184,13 +184,6 @@ docker-compose exec sync python backend/sync_fleet_data.py
 - **TLS to Fleet**: `FLEET_SSL_VERIFY` defaults to `true` (set `false` only for self-signed lab certs)
 - **No secrets in image**: All credentials passed via environment
 
-### Tests
-
-```bash
-python3 -m unittest tests.test_mapping_rules -v
-python3 scripts/audit_mitre_mapping.py
-```
-
 ---
 
 ## Troubleshooting

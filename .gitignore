@@ -40,8 +40,10 @@ CLAUDE.md
 .serena/
 .planning/*
 
-# Docs (local plans only — keep mapping-policy.md tracked)
-docs/plans/
+# Local-only (not for public GitHub)
+docs/
+tests/
+.planning/
 
 # OS junk
 .DS_Store
