@@ -473,12 +473,15 @@ def _cache_key(endpoint_name, generation, config_generation):
     """
     scope = []
     for name in CACHE_SCOPE_ARGS:
-        for val in request.args.getlist(name):
-            # Empty values are skipped to mirror the filters, which all gate on
-            # `if val:` — so ?label= applies no filter and must land on the same
-            # key as no label at all, not on a second entry holding the same body.
-            if val:
-                scope.append((name, val))
+        # request.args.get() — the SAME accessor every reader of these args uses.
+        # getlist() here made the key disagree with the body: ?team=&team=X keyed
+        # on team=X while get_filtered_hosts_subquery() saw the empty first value,
+        # applied no team filter, and cached unfiltered data under a team-scoped
+        # key. Empty values are skipped to mirror the filters' own `if val:` gate,
+        # so ?label= lands on the same key as no label at all.
+        val = request.args.get(name)
+        if val:
+            scope.append((name, val))
     query_string = urlencode(sorted(scope))
     return f"{CACHE_KEY_PREFIX}:{endpoint_name}:{generation}:{config_generation}:{query_string}"
 

@@ -402,41 +402,48 @@ def _ensure_history_partition(year, month):
         cur.execute("SELECT to_regclass('policy_results_history_def') IS NOT NULL AS present")
         has_default = cur.fetchone()['present']
 
+        # Build the partition as a STANDALONE table, fill it, and only then attach
+        # it. CREATE TABLE ... PARTITION OF takes ACCESS EXCLUSIVE on the parent
+        # immediately, which would then be held across the re-insert of every
+        # relocated row while /api/architecture and /api/strategy are reading the
+        # parent. This way the copy and the delete run before the exclusive lock
+        # is taken and only the ATTACH holds it.
+        #
+        # name comes from _history_partition_spec (validated ints only); range
+        # bounds are still passed as parameters.
+        cur.execute(
+            "CREATE TABLE " + name + " (LIKE policy_results_history "
+            "INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING STORAGE)"
+        )
+        # A CHECK matching the partition bounds lets ATTACH skip its validation
+        # scan of the new table. (Postgres still validates the DEFAULT partition,
+        # which is why the rows below are deleted from it first.)
+        cur.execute(
+            "ALTER TABLE " + name + " ADD CONSTRAINT " + name + "_range_ck "
+            "CHECK (checked_at >= %s::timestamptz AND checked_at < %s::timestamptz)",
+            (start, end)
+        )
+
         moved = 0
         if has_default:
-            # ON COMMIT DROP plus the fact that a rollback also discards the
-            # table means a leftover from an earlier attempt is impossible, so
-            # no defensive pre-drop is needed here.
             cur.execute("""
-                CREATE TEMP TABLE history_partition_move ON COMMIT DROP AS
-                SELECT * FROM policy_results_history_def
+                INSERT INTO """ + name + """ (history_id, policy_id, host_id, status, checked_at)
+                SELECT history_id, policy_id, host_id, status, checked_at
+                FROM policy_results_history_def
                 WHERE checked_at >= %s AND checked_at < %s
             """, (start, end))
-            cur.execute("SELECT COUNT(*) AS n FROM history_partition_move")
-            moved = cur.fetchone()['n'] or 0
+            moved = cur.rowcount or 0
             if moved:
                 cur.execute("""
                     DELETE FROM policy_results_history_def
                     WHERE checked_at >= %s AND checked_at < %s
                 """, (start, end))
 
-        # name comes from _history_partition_spec (validated ints only); the
-        # range bounds are still passed as parameters.
         cur.execute(
-            "CREATE TABLE " + name + " PARTITION OF policy_results_history "
+            "ALTER TABLE policy_results_history ATTACH PARTITION " + name + " "
             "FOR VALUES FROM (%s) TO (%s)",
             (start, end)
         )
-
-        if moved:
-            # Re-insert through the parent so tuple routing files the rows into
-            # the partition we just created. history_id is carried over so the
-            # rows keep their identity and the sequence is untouched.
-            cur.execute("""
-                INSERT INTO policy_results_history (history_id, policy_id, host_id, status, checked_at)
-                SELECT history_id, policy_id, host_id, status, checked_at
-                FROM history_partition_move
-            """)
 
     suffix = f" (relocated {moved} row(s) from the default partition)" if moved else ""
     print(f"  🧱 Created history partition {name}{suffix}")
@@ -617,17 +624,29 @@ def prune_history_default_partition():
         """, (cutoff, HISTORY_DEFAULT_SWEEP_LIMIT))
         removed = cur.rowcount or 0
 
+        # Bound the count the same way the DELETE is bounded. An unbounded
+        # COUNT(*) would scan the entire aged backlog on every sync purely to
+        # produce a log line — the exact case this function exists for is a large
+        # backlog, so the report says "50000+" rather than paying for an exact
+        # number nobody acts on.
         cur.execute("""
-            SELECT COUNT(*) AS n FROM policy_results_history_def
-            WHERE checked_at < %s
-        """, (cutoff,))
+            SELECT COUNT(*) AS n FROM (
+                SELECT 1 FROM policy_results_history_def
+                WHERE checked_at < %s
+                LIMIT %s
+            ) probe
+        """, (cutoff, HISTORY_DEFAULT_SWEEP_LIMIT + 1))
         row = cur.fetchone()
         remaining = (row['n'] if row else 0) or 0
+        remaining_text = (
+            f"{HISTORY_DEFAULT_SWEEP_LIMIT}+" if remaining > HISTORY_DEFAULT_SWEEP_LIMIT
+            else str(remaining)
+        )
 
     if removed:
         print(
             f"  🗑 Swept {removed} row(s) older than {cutoff} out of the default "
-            f"history partition ({remaining} aged row(s) still there; "
+            f"history partition ({remaining_text} aged row(s) still there; "
             f"limit {HISTORY_DEFAULT_SWEEP_LIMIT}/sync)."
         )
     return removed
@@ -681,6 +700,12 @@ def run_retention():
 
 # --- Sync Logic ---
 
+# _dedupe_result_rows() only resolves duplicates WITHIN one flush; a host whose
+# pass and fail observations land in different flushes is resolved by flush order
+# instead. The upserts therefore also carry
+# `WHERE EXCLUDED.checked_at >= policy_results.checked_at`, so an older
+# observation arriving after a newer one is dropped rather than moving checked_at
+# backwards. Ordering-safe regardless of where the batch boundary falls.
 def _dedupe_result_rows(rows):
     """Collapse duplicate (policy_id, host_id) rows, keeping the newest checked_at.
 
@@ -1019,11 +1044,18 @@ def sync_data():
         # Guarded exactly like the stale-host cleanup: a partial or empty policy
         # fetch is indistinguishable from "Fleet has no policies", and acting on
         # that would wipe the whole catalog off the dashboard.
-        # policies_fetch_failed was captured right after fetch_policies() above,
-        # before anything else could add to FETCH_ERRORS.
+        #
+        # teams_fetch_failed is part of the guard because policies are enumerated
+        # PER TEAM: with an incomplete team list, fetch_policies() returns only the
+        # global policies and every team policy looks deleted. Measured on a clone
+        # of the live database — a single simulated /fleet/teams timeout against a
+        # Fleet holding one global policy deleted 789 policies and all 5438
+        # policy_results rows, and still recorded status='success'. The
+        # empty-policy-set guard below cannot catch that case, because one
+        # surviving global policy makes the list non-empty.
         api_policy_ids = [p['id'] for p in policies]
-        if policies_fetch_failed:
-            print("  ⚠ Skipping stale-policy cleanup: policy fetch was partial.")
+        if policies_fetch_failed or teams_fetch_failed:
+            print("  ⚠ Skipping stale-policy cleanup: the policy set may be incomplete.")
         elif not api_policy_ids:
             print("  ⚠ Skipping stale-policy cleanup: Fleet returned no policies.")
         else:
@@ -1125,11 +1157,17 @@ def sync_data():
                 if api_fail > 0:
                     tasks.append((pid, 'fail'))
                     queued += 1
-                if counts_reported:
-                    # queued == 0 here means Fleet reports 0 passing and 0 failing
-                    # hosts while the DB still holds rows — the empty fetched set
-                    # is the correct answer and every row is stale.
+                if counts_reported and queued:
                     expected_tasks[pid] = queued
+                elif counts_reported:
+                    # Fleet claims 0 passing and 0 failing while the DB still holds
+                    # rows. Deleting every row for the policy on that basis would
+                    # trust exactly the cached aggregates this sync treats as
+                    # unreliable (39 of 789 disagreed with Fleet's own live lists),
+                    # so measure it: one fetch whose empty result is what authorises
+                    # the prune.
+                    tasks.append((pid, 'fail'))
+                    expected_tasks[pid] = 1
 
         if force_refreshed:
             print(
@@ -1179,6 +1217,7 @@ def sync_data():
                             VALUES %s
                             ON CONFLICT (policy_id, host_id) DO UPDATE SET
                                 status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
+                            WHERE EXCLUDED.checked_at >= policy_results.checked_at
                         """, flush_rows)
 
                         # Also Insert into History Log (Partitioned)
@@ -1203,6 +1242,7 @@ def sync_data():
                     VALUES %s
                     ON CONFLICT (policy_id, host_id) DO UPDATE SET
                         status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
+                    WHERE EXCLUDED.checked_at >= policy_results.checked_at
                 """, flush_rows)
                 extras.execute_values(cur, """
                     INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
