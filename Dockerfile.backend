@@ -5,6 +5,10 @@ WORKDIR /app
 # Set Python path to include backend directory
 ENV PYTHONPATH=/app/backend
 
+# Stream stdout/stderr straight to the container log instead of buffering it,
+# so sync daemon progress and errors are visible in `docker logs`.
+ENV PYTHONUNBUFFERED=1
+
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser
 

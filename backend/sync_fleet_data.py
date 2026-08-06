@@ -46,6 +46,21 @@ def get_fleet_headers():
         "Content-Type": "application/json"
     }
 
+
+# Fetch failures are collected here instead of being swallowed silently, so a
+# sync that talks to an unreachable/unauthenticated Fleet is reported as failed
+# rather than as a "successful" sync that happened to write zero rows.
+FETCH_ERRORS = []
+MAX_RECORDED_FETCH_ERRORS = 20
+
+
+def record_fetch_error(context, exc):
+    """Log a fetch failure and keep a bounded sample for the sync record."""
+    message = f"{context}: {type(exc).__name__}: {exc}"
+    print(f"  ⚠ {message}")
+    if len(FETCH_ERRORS) < MAX_RECORDED_FETCH_ERRORS:
+        FETCH_ERRORS.append(message)
+
 def init_db():
     """Ensure schema exists."""
     schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
@@ -73,7 +88,7 @@ def fetch_hosts_generator():
             yield hosts
             page += 1
         except Exception as e:
-            print(f"  ⚠ Error fetching hosts page {page}: {e}")
+            record_fetch_error(f"hosts page {page}", e)
             break
 
 def fetch_teams():
@@ -81,16 +96,22 @@ def fetch_teams():
     try:
         url = f"{FLEET_URL}/api/v1/fleet/teams"
         response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
+        response.raise_for_status()
         return response.json().get("teams", [])
-    except Exception: return []
+    except Exception as e:
+        record_fetch_error("teams", e)
+        return []
 
 def fetch_labels():
     if not FLEET_TOKEN: return []
     try:
         url = f"{FLEET_URL}/api/v1/fleet/labels"
         response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
+        response.raise_for_status()
         return response.json().get("labels", [])
-    except Exception: return []
+    except Exception as e:
+        record_fetch_error("labels", e)
+        return []
 
 def fetch_hosts_by_label(label_id):
     """Fetch all host IDs that belong to a specific label."""
@@ -125,18 +146,20 @@ def fetch_policies(teams):
         # Global
         url = f"{FLEET_URL}/api/latest/fleet/policies"
         response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
+        response.raise_for_status()
         gl_pols = response.json().get("policies", [])
         print(f"Global policies fetched: {len(gl_pols)}")
         for p in gl_pols:
             p['team_id'] = None
             all_policies[p['id']] = p
-    except Exception as e: 
-        print(f"Error fetching global policies: {e}")
-    
+    except Exception as e:
+        record_fetch_error("global policies", e)
+
     for team in teams:
         try:
             url = f"{FLEET_URL}/api/latest/fleet/teams/{team['id']}/policies"
             response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
+            response.raise_for_status()
             data = response.json()
             team_policies = data.get("policies", []) + data.get("inherited_policies", [])
             print(f"Team {team['id']} policies fetched: {len(team_policies)} (pol: {len(data.get('policies',[]))}, inh: {len(data.get('inherited_policies',[]))})")
@@ -147,8 +170,9 @@ def fetch_policies(teams):
                 else:
                     pass
         except Exception as e:
-            print(f"Error fetching team {team['id']} policies: {e}")
-        
+            record_fetch_error(f"team {team['id']} policies", e)
+
+
     print(f"Total unique policies returned: {len(all_policies)}")
     return list(all_policies.values())
 
@@ -158,9 +182,12 @@ def fetch_policy_hosts(policy_id, status):
         response_type = "passing" if status == "pass" else "failing"
         url = f"{FLEET_URL}/api/v1/fleet/hosts?policy_id={policy_id}&policy_response={response_type}"
         response = requests.get(url, headers=get_fleet_headers(), timeout=30, verify=FLEET_SSL_VERIFY)
+        response.raise_for_status()
         hosts = response.json().get("hosts", [])
         return [(policy_id, h['id'], status, datetime.now()) for h in hosts]
-    except Exception: return []
+    except Exception as e:
+        record_fetch_error(f"policy {policy_id} {status} hosts", e)
+        return []
 
 # --- Sync Logic ---
 
@@ -178,6 +205,8 @@ def sync_data():
     if not FLEET_TOKEN:
         print("⚠ FLEET_API_TOKEN not set.")
         return
+
+    FETCH_ERRORS.clear()
 
     # Start Sync Metadata
     with db.get_db_cursor(commit=True) as cur:
@@ -223,6 +252,7 @@ def sync_data():
         host_labels_buffer = []  # Buffer for host-label associations
 
         print("  🔄 Fetching hosts...")
+        errors_before_hosts = len(FETCH_ERRORS)
 
         for batch in fetch_hosts_generator():
             for host in batch:
@@ -287,9 +317,26 @@ def sync_data():
                 """, hosts_upsert_buffer)
             print(f"    ... flushed remaining. Total {len(host_ids_processed)} hosts.")
         
+        hosts_fetch_failed = len(FETCH_ERRORS) > errors_before_hosts
+
+        # An empty host list caused by a failed request is not an empty Fleet.
+        # Abort before the stale-host cleanup below, which would otherwise read
+        # "no hosts returned" as "every host was deleted in Fleet" and wipe
+        # fleet_hosts, host_labels and policy_results.
+        if hosts_fetch_failed and not host_ids_processed:
+            raise RuntimeError(
+                "Host enumeration failed and returned no hosts — refusing to "
+                f"sync. First error — {FETCH_ERRORS[errors_before_hosts]}"
+            )
+
         # 2.1 Clean up stale hosts (deletions in Fleet)
         stale_ids = set(db_state.keys()) - host_ids_processed
-        if stale_ids:
+        if stale_ids and hosts_fetch_failed:
+            print(
+                f"  ⚠ Skipping stale-host cleanup: host enumeration was partial "
+                f"({len(stale_ids)} host(s) would have been deleted)."
+            )
+        elif stale_ids:
             print(f"  🗑 Removing {len(stale_ids)} stale hosts that are no longer in Fleet...")
             with db.get_db_cursor(commit=True) as cur:
                 # Due to FK constraints, we should delete from policy_results first 
@@ -319,7 +366,17 @@ def sync_data():
             print(f"  ✅ No host labels to sync.")
 
         # 4. Policies & Results
+        errors_before_policies = len(FETCH_ERRORS)
         policies = fetch_policies(teams)
+
+        # Same reasoning as the host guard: no policies plus failing requests is
+        # a broken sync, not a Fleet without policies. Reporting it as success is
+        # what makes a bad FLEET_URL / token / TLS setting invisible.
+        if len(FETCH_ERRORS) > errors_before_policies and not policies:
+            raise RuntimeError(
+                "Policy fetch failed and returned no policies. "
+                f"First error — {FETCH_ERRORS[errors_before_policies]}"
+            )
         policy_buffer = []
         matched = 0
         for p in policies:
@@ -470,14 +527,23 @@ def sync_data():
 
         # Update Metadata
         duration = int((time.time() - start_time) * 1000)
+        # Partial failures still count as a successful sync (data landed), but
+        # the errors are surfaced so /api/sync-status can show degraded runs.
+        partial_error = (
+            f"{len(FETCH_ERRORS)} fetch error(s); first — {FETCH_ERRORS[0]}"
+            if FETCH_ERRORS else None
+        )
         with db.get_db_cursor(commit=True) as cur:
             cur.execute("""
-                UPDATE sync_metadata 
+                UPDATE sync_metadata
                 SET status='success', completed_at=NOW(), duration_ms=%s,
-                    hosts_changed=%s, policies_changed=0, results_changed=%s
+                    hosts_changed=%s, policies_changed=0, results_changed=%s,
+                    error_message=%s
                 WHERE sync_id=%s
-            """, (duration, len(host_ids_processed), count, sync_id))
-            
+            """, (duration, len(host_ids_processed), count, partial_error, sync_id))
+
+        if partial_error:
+            print(f"⚠ Sync completed with {len(FETCH_ERRORS)} fetch error(s)")
         print(f"✅ Sync complete in {duration/1000:.1f}s")
         
     except Exception as e:
