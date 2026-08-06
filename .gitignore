@@ -1,5 +1,10 @@
 # Secrets & credentials — NEVER commit
+# A bare `.env` matches only that exact name, so variants like .env.local or a
+# .env.backup-<date> written before rotating a password were not ignored and one
+# `git add -A` would have published them. The negation keeps the template tracked.
 .env
+.env.*
+!.env.example
 secrets/
 
 # Databases

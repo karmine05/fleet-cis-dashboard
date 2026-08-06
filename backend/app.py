@@ -6,6 +6,7 @@ Serves real-time data from Fleet via PostgreSQL.
 
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 from functools import wraps
 import hmac
 import math
@@ -71,7 +72,20 @@ if LOG_FILE:
         )
 
 def error_response(message, status_code=500, error_details=None):
-    """Standardized error response and logging."""
+    """Standardized error response and logging.
+
+    error_details is for the LOG only unless FLASK_1_DEBUG=1. Every caller passes
+    str(exception) there, and psycopg2's messages embed the DSN host, port and user,
+    so that gate is the one thing keeping a connection failure from being narrated
+    to an unauthenticated client. Both call sites are on /api/config.
+
+    FLASK_1_DEBUG is almost certainly a typo for Flask's own FLASK_DEBUG, and it is
+    deliberately left exactly as it is: an operator may already have it set, the
+    README documents it under this name, and teaching this gate to ALSO honour
+    FLASK_DEBUG would widen the leak, since FLASK_DEBUG=1 is a normal thing to have
+    in a shell for `flask run`. Renaming it is a docs-and-compose change, not a
+    one-line edit here.
+    """
     log_msg = f"{message}"
     if error_details:
         log_msg += f" - Details: {error_details}"
@@ -96,20 +110,138 @@ VALID_CONFIG_KEYS = {
     'framework_iso_multiplier'
 }
 
+# How much of a rejected PUT /api/config body is quoted back in the 400. The keys
+# come straight from the request, and echoing an unbounded number of unbounded
+# strings into both the response and the log line is free amplification for the
+# caller; the first few, truncated, identify the mistake just as well.
+MAX_ECHOED_KEYS = 10
+MAX_ECHOED_KEY_CHARS = 64
+
 # Import new DB module
 import db
 import policy_catalog
 
-# Load environment variables
-# Load environment variables
+# --- Optional .env, for host runs only ---
+# basedir is the repo root, so this resolves to <repo>/.env outside a container and
+# to /app/.env inside the image, where it NEVER exists: .dockerignore keeps .env out
+# of the build context and configuration arrives through the Compose environment.
+#
+# Kept (conditional + logged) rather than removed, because it is not dead in every
+# context: the README documents running the backend straight on the host
+# (`python backend/app.py`, which is what PORT is for), and there Compose is not
+# involved to inject anything, so the repo-root .env that Compose itself interpolates
+# is the operator's only source of config. What was wrong was the unconditional call:
+# a silent no-op that read as ".env is read at runtime" to anyone auditing the file.
+# load_dotenv() does not overwrite variables that are already set, so a stray .env
+# can never win over the Compose environment.
+#
+# Note the position: LOG_FILE, LOG_MAX_BYTES and LOG_BACKUP_COUNT are read above this
+# line, so those three come from the real environment only, never from .env. Left
+# that way on purpose - moving the load to the top of the module would change which
+# tunables .env can reach.
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-load_dotenv(os.path.join(basedir, '.env'))
+_dotenv_path = os.path.join(basedir, '.env')
+if os.path.isfile(_dotenv_path):
+    load_dotenv(_dotenv_path)
+    logger.info(
+        f"Applied {_dotenv_path} for variables not already set "
+        f"(host run; this file is absent in the container image)"
+    )
 
 
 app = Flask(__name__)
-# Enable CORS for restricted domains
-allowed_origins = os.environ.get('ALLOWED_ORIGINS', os.environ.get('FRONTEND_URL', 'http://localhost:8081')).split(',')
+
+# --- CORS allow-list for /api/* ---
+# The default chain is unchanged and stays localhost-only: ALLOWED_ORIGINS, then the
+# legacy single-origin FRONTEND_URL, then http://localhost:8081. Compose always sets
+# ALLOWED_ORIGINS=http://localhost:8081,http://localhost:8082, so the documented
+# port-8082 flow does not depend on this built-in default at all - and served through
+# nginx the UI is same-origin, where CORS never applies.
+#
+# The default is deliberately NOT '*'. Reads here are unauthenticated, so a wildcard
+# would let any page a browser visits read this API with the visitor's network
+# position. An operator who really wants that has to write it down.
+#
+# What changed: entries are stripped and empties dropped. Without that,
+# ALLOWED_ORIGINS="http://a, http://b" yielded the entry " http://b", which matches no
+# Origin header at all - CORS then failed silently for that origin with nothing in the
+# log to explain it. A list that parses to nothing (ALLOWED_ORIGINS=" " or ",") falls
+# back to the built-in default and says so, instead of becoming a deny-everything list
+# that looks like a broken deployment. The effective list is logged at boot, because a
+# CORS allow-list nobody can see is a CORS allow-list nobody can debug.
+CORS_DEFAULT_ORIGIN = 'http://localhost:8081'
+
+
+def parse_allowed_origins(raw):
+    """Split a comma-separated CORS allow-list, tolerating whitespace and empties."""
+    return [o.strip() for o in (raw or '').split(',') if o.strip()]
+
+
+allowed_origins = parse_allowed_origins(
+    os.environ.get('ALLOWED_ORIGINS', os.environ.get('FRONTEND_URL', CORS_DEFAULT_ORIGIN))
+)
+if not allowed_origins:
+    allowed_origins = parse_allowed_origins(CORS_DEFAULT_ORIGIN)
+    logger.warning(
+        f"ALLOWED_ORIGINS parsed to no usable origin; falling back to {allowed_origins}"
+    )
+if '*' in allowed_origins:
+    logger.warning(
+        "CORS allow-list is '*': any origin can read /api/* through a visitor's "
+        "browser, and nothing in this stack authenticates reads."
+    )
+logger.info(f"CORS allow-list for /api/*: {allowed_origins}")
 CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
+
+# Cap the request body. The only endpoint that reads one is PUT /api/config, whose
+# payload is a handful of numbers and two short keyword lists. With no cap, whatever a
+# client sends is materialized in the worker's memory as soon as anything reads the
+# stream (request.get_json here), and the size of that allocation was entirely the
+# caller's choice. With the cap Werkzeug refuses instead of reading. 1 MiB is orders of
+# magnitude above any legitimate config save and equals nginx's own default
+# client_max_body_size, so the proxy and the app agree on the ceiling; over it Werkzeug
+# raises 413, which the JSON error handler below renders as JSON. A hard constant, not
+# a tunable: no deployment needs a different value, and every new env var is another
+# line the operator has to be told about.
+MAX_REQUEST_BODY_BYTES = 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = MAX_REQUEST_BODY_BYTES
+
+
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    """Render Werkzeug's HTTP errors as JSON, keeping their own status code.
+
+    Werkzeug's defaults are HTML pages, and every consumer of this app parses JSON -
+    a 404 from a typo'd path or a 413 from an oversized body used to arrive as markup.
+    e.description is Werkzeug's own static text for the status; nothing here comes
+    from the database or is echoed back from the request.
+    """
+    return jsonify({
+        "error": e.name,
+        "status": e.code,
+        "detail": e.description,
+    }), (e.code or 500)
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_exception(e):
+    """Last resort: log the traceback, answer with an opaque JSON 500.
+
+    None of the read endpoints has a try/except, so before this an unhandled
+    psycopg2 error reached Werkzeug's generic 500 page: an HTML body where every
+    client expects JSON, and one FLASK_1_DEBUG=1 deployment away from serving the
+    interactive debugger - whose traceback carries the DSN host, port and user - to an
+    unauthenticated client. The message returned here is a constant; the exception and
+    its traceback go to the log.
+    """
+    if app.debug or app.testing or app.config.get('PROPAGATE_EXCEPTIONS'):
+        # Keep `python backend/app.py` with FLASK_1_DEBUG=1 debuggable, and let the
+        # test client see the real exception instead of a masked 500.
+        raise e
+    logger.exception(
+        f"Unhandled exception on {request.method} {request.path}: {type(e).__name__}"
+    )
+    return jsonify({"error": "Internal server error"}), 500
 
 # Initialize the DB pool eagerly so a misconfigured database shows up in the
 # worker's boot log rather than on the first request. Guarded on DATABASE_URL
@@ -149,6 +281,10 @@ COARSE_ATTACK_THRESHOLD = 40
 # 30 days is the default: long enough for a fleet syncing every 15 minutes to
 # accumulate several distinct days, short enough that the scan touches only one or
 # two monthly partitions and stays on idx_history_checked_policy.
+# It bounds the compliance_snapshots lookback for the team leaderboard trend too. That
+# is a reuse, not an oversight: "how far back does a trend look" has one answer in this
+# app, and a second env var for the same question is surface an operator has to be told
+# about for no behavioural gain.
 HISTORY_TREND_DAYS = max(1, _env_int('HISTORY_TREND_DAYS', 30))
 # A technique whose trend rests on a handful of observed pairs swings by tens of
 # points when one host flips, which reads as a dramatic gain that is really
@@ -262,6 +398,19 @@ REDIS_TIMEOUT_MS = max(1, _env_int('REDIS_TIMEOUT_MS', 500))
 # gunicorn worker, silently reverting the app to fully uncached until the
 # container was restarted.
 CACHE_RETRY_COOLDOWN_SECONDS = max(1, _env_int('CACHE_RETRY_COOLDOWN_SECONDS', 30))
+# Longest scope-arg VALUE that may take part in a cache key. The allow-list above
+# bounds how many DISTINCT args can appear in a key but says nothing about how long
+# their values are, so the claim that entries per generation is "the number of real
+# filter scopes" only held for realistic values: a single request with an 8 KB query
+# string (nginx's request-line ceiling) minted an 8 KB Redis key whose body was a few
+# hundred bytes, which is the cheapest amplification against the cache in the app.
+# Team names, platforms, OS versions and label names are host attributes; nothing real
+# comes close to 200 characters. A request carrying a longer value is served LIVE and
+# uncached - the SQL filter itself is untouched, so the response body is byte-identical
+# to before and no key is ever created for it. This bounds key SIZE; key COUNT is
+# bounded by allkeys-lru plus the fact that every new key costs the caller a full round
+# of Postgres queries.
+MAX_CACHE_SCOPE_VALUE_LEN = 200
 
 _cache_client = None
 # 'new'      -> not probed yet.
@@ -486,6 +635,15 @@ def _cache_key(endpoint_name, generation, config_generation):
     return f"{CACHE_KEY_PREFIX}:{endpoint_name}:{generation}:{config_generation}:{query_string}"
 
 
+def cache_scope_within_limits():
+    """False when an allow-listed scope value is too long to be worth keying on."""
+    for name in CACHE_SCOPE_ARGS:
+        val = request.args.get(name)
+        if val and len(val) > MAX_CACHE_SCOPE_VALUE_LEN:
+            return False
+    return True
+
+
 def cached_response(endpoint_name, config_dependent=False):
     """Cache an expensive read-only endpoint's serialized JSON body in Redis.
 
@@ -499,6 +657,10 @@ def cached_response(endpoint_name, config_dependent=False):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            # Checked before the Redis probe and the two generation lookups: a
+            # request nobody will cache should not pay for them either.
+            if not cache_scope_within_limits():
+                return fn(*args, **kwargs)
             client = get_cache_client()
             if client is None:
                 return fn(*args, **kwargs)
@@ -557,6 +719,68 @@ def get_config(key, default):
     except Exception as e:
         logger.error(f"Config error for {key}: {e}")
         return default
+
+
+def config_number(key, default):
+    """get_config() with a numeric guarantee, for values that reach arithmetic.
+
+    config_settings.value is free-form TEXT and get_config() hands back whatever it
+    parses to, so a stored "True" comes back as the string 'True'. /api/strategy then
+    evaluated `min(100, fail_count * 'True')`, which is a string repetition followed by
+    comparing str to int: TypeError, i.e. a 500 on a read endpoint on EVERY request
+    until someone edits the database. PUT /api/config validates with float() and so
+    accepts a JSON boolean, and the operator has psql, so the value does not have to
+    arrive well-formed.
+
+    A well-formed value is returned untouched, ints included, so the response bodies
+    are byte-identical to before for every value the Settings UI can produce. Junk
+    falls back to the documented default with a warning - the same lenient contract the
+    env tunables use, for the same reason: a read path must not die on configuration.
+    """
+    val = get_config(key, default)
+    # bool is an int subclass, and arithmetic on "somebody typed a boolean into a
+    # numeric setting" is meaningless rather than merely odd.
+    if not isinstance(val, bool) and isinstance(val, (int, float)) and math.isfinite(val):
+        return val
+    try:
+        num = float(str(val).strip())
+    except (TypeError, ValueError):
+        num = None
+    if num is None or not math.isfinite(num):
+        logger.warning(
+            f"Config {key}={val!r} is not a finite number, using default {default}"
+        )
+        return default
+    return num
+
+
+def config_keyword_list(key, default):
+    """get_config() as a list of lowercase keywords, whatever is stored.
+
+    Same failure class as config_number: the effort keyword settings are not in
+    update_config's numeric list, so any JSON value can be stored under them. A stored
+    number came back as an int and `[k.lower() for k in 5]` is a TypeError; a stored
+    [1, 2] reached str.lower() on an int. Both 500'd /api/strategy permanently.
+
+    Accepts the two shapes that actually occur - a JSON array (what the Settings UI
+    sends) and a comma-separated string - and degrades anything else into a keyword
+    that simply matches no policy name, which is the harmless outcome.
+    """
+    val = get_config(key, default)
+    if isinstance(val, str):
+        items = val.split(',')
+    elif isinstance(val, (list, tuple, set)):
+        items = list(val)
+    elif val is None:
+        items = []
+    else:
+        items = [val]
+    keywords = []
+    for item in items:
+        text = str(item).strip().lower()
+        if text:
+            keywords.append(text)
+    return keywords
 
 # --- Helper Query Builder ---
 def build_filter_query(base_query, params, filters_map):
@@ -628,13 +852,19 @@ def get_filtered_hosts_subquery():
 
 
 # --- Historical trend helpers (policy_results_history) ---
-# Deliberately NOT sourced from compliance_snapshots. Snapshot rows written before
-# the sync fix hold critical_failures = 0 and a passing_hosts that actually counted
-# result rows, and nothing in the row says which revision wrote it - no schema
-# version, no writer column - so old and new rows are indistinguishable and the
-# whole table has to be treated as untrustworthy for trends. policy_results_history
-# stores raw per-host statuses that have always meant the same thing, so every
-# trend below is derived from it and only from it.
+# The per-policy and per-technique trends in this section come from
+# policy_results_history and only from it: it stores raw per-host statuses, which have
+# always meant the same thing, and compliance_snapshots has no per-policy grain at all,
+# so it could not answer these questions even if every row were trustworthy.
+#
+# The warning that used to sit here ("not sourced from compliance_snapshots") applies
+# to two COLUMNS, not to the whole table. Rows written before the sync fix hold
+# critical_failures = 0 where the truth is unknown, and a passing_hosts that counted
+# result rows instead of hosts; nothing in a row says which revision wrote it, so those
+# two columns cannot be compared across time. compliance_score is different: every
+# revision of create_compliance_snapshot() has written the same quantity - 100 *
+# passing policy_result rows / all policy_result rows for the scope - so it is
+# comparable across revisions, and it is the only column team_score_trends() reads.
 def history_window_bounds(cur, h_query, params):
     """Earliest/latest history observation in the trend window, for this scope.
 
@@ -782,6 +1012,159 @@ def technique_trends(trend_rows, policy_techniques):
         key=lambda m: m['change_pp']
     )[:HISTORY_TREND_TOP_N]
     return gains, losses
+
+
+# --- Team score trend (compliance_snapshots) ---
+# compliance_snapshots is the only per-day record of a team's score. The sync writes one
+# row per (snapshot_date, team_id) plus a global row (team_id NULL) on every run and
+# replaces the day's rows in place, so the table is a daily series rather than a
+# per-sync log. Until now nothing read it, which is why /api/strategy's leaderboard
+# hardcoded "trend": "unknown".
+#
+# A change smaller than this many percentage points is reported as 'stable', not as a
+# direction. Half a point because the score shown next to the trend is rounded to a
+# whole percent: under 0.5 pp the displayed number cannot have moved at all, so calling
+# it a rise or a fall would be presenting float noise as progress. It is a statement
+# about the resolution of what is being compared, not a guess at measurement error.
+TEAM_TREND_FLAT_THRESHOLD_PP = 0.5
+# Scope args a stored snapshot cannot be re-scoped by. A snapshot aggregates ALL of a
+# team's hosts, so ?platform= / ?osVersion= / ?label= leave the live leaderboard score
+# and the stored history describing different host sets, and the comparison is void: the
+# trend goes back to "unknown" for every team rather than describing a scope the caller
+# did not ask about. ?team= is compatible - it selects which teams are listed, not which
+# of a team's hosts count. Derived from CACHE_SCOPE_ARGS so that a scope filter added
+# later disables the trend by default instead of silently mismatching.
+TEAM_TREND_UNSUPPORTED_SCOPE_ARGS = tuple(a for a in CACHE_SCOPE_ARGS if a != 'team')
+# Fewer than this many distinct snapshot dates in the window is not a trend.
+TEAM_TREND_MIN_DATES = 2
+
+
+def team_trend_scope_is_comparable():
+    """True when the request scope is one compliance_snapshots can answer."""
+    return not any(request.args.get(a) for a in TEAM_TREND_UNSUPPORTED_SCOPE_ARGS)
+
+
+def classify_team_trend(delta_pp):
+    """'up' / 'down' / 'stable' from a percentage-point delta.
+
+    Called with the ROUNDED delta, the same number that is reported, so the direction
+    and the figure next to it can never disagree at the threshold.
+    """
+    if delta_pp >= TEAM_TREND_FLAT_THRESHOLD_PP:
+        return 'up'
+    if delta_pp <= -TEAM_TREND_FLAT_THRESHOLD_PP:
+        return 'down'
+    return 'stable'
+
+
+def team_score_trends(cur):
+    """team_name -> {trend, delta, trend_basis} from compliance_snapshots.
+
+    A team appears in the result ONLY when the window holds at least
+    TEAM_TREND_MIN_DATES distinct snapshot dates for it carrying a non-NULL
+    compliance_score. One row is not a trend - there is no second end to compare
+    against - so such a team is left at "unknown" by the caller instead of being
+    reported as 0, which would read as "measured, and it did not move".
+
+    The delta is snapshot minus snapshot (newest in the window minus oldest), never the
+    live leaderboard score minus the oldest snapshot: those two numbers are measured at
+    different instants and, because the rotating full-refresh sweep re-enumerates a
+    slice of policies each sync, over slightly different row sets. Subtracting one from
+    the other would bake that difference into the delta and call it progress.
+
+    Excluded on purpose:
+      - team_id IS NULL, the global row. It covers every host, so it is emphatically not
+        the leaderboard's 'Unassigned' entry (hosts with no team), and using it there
+        would attach fleet-wide movement to one bucket.
+      - compliance_score IS NULL. An unscored row is not evidence of a date.
+      - team names that are not unique in fleet_teams. The leaderboard groups by
+        team_name, so a duplicated name cannot be resolved to one team's snapshots
+        without guessing; guessing here would silently attribute one team's movement to
+        another.
+
+    DISTINCT ON gives exactly one row per team on each end. The snapshot_id tiebreak
+    matters only on a database provisioned before the (snapshot_date, team_id) unique
+    constraint existed: it keeps the highest snapshot_id for a date, which is the same
+    "most recently written aggregate wins" rule schema.sql uses when it de-duplicates.
+    It is carried in the select list rather than only in ORDER BY, matching
+    history_pair_deltas() above, so the CTE does not depend on how a given PostgreSQL
+    version treats an ORDER BY column that a DISTINCT query does not select.
+    """
+    cur.execute("""
+        WITH scoped AS (
+            SELECT snapshot_id, team_id, snapshot_date, compliance_score
+            FROM compliance_snapshots
+            WHERE team_id IS NOT NULL
+              AND compliance_score IS NOT NULL
+              AND snapshot_date >= CURRENT_DATE - make_interval(days => %s)
+        ),
+        first_obs AS (
+            SELECT DISTINCT ON (team_id)
+                   team_id, snapshot_date, compliance_score, snapshot_id
+            FROM scoped
+            ORDER BY team_id, snapshot_date ASC, snapshot_id DESC
+        ),
+        last_obs AS (
+            SELECT DISTINCT ON (team_id)
+                   team_id, snapshot_date, compliance_score, snapshot_id
+            FROM scoped
+            ORDER BY team_id, snapshot_date DESC, snapshot_id DESC
+        ),
+        spans AS (
+            SELECT team_id, COUNT(DISTINCT snapshot_date) AS observed_dates
+            FROM scoped
+            GROUP BY team_id
+        )
+        SELECT t.team_name,
+               s.observed_dates,
+               f.snapshot_date AS first_date,
+               f.compliance_score AS first_score,
+               l.snapshot_date AS last_date,
+               l.compliance_score AS last_score
+        FROM spans s
+        JOIN first_obs f ON f.team_id = s.team_id
+        JOIN last_obs l ON l.team_id = s.team_id
+        JOIN fleet_teams t ON t.team_id = s.team_id
+    """, [HISTORY_TREND_DAYS])
+    rows = cur.fetchall()
+
+    name_counts = {}
+    for row in rows:
+        name = row['team_name']
+        name_counts[name] = name_counts.get(name, 0) + 1
+
+    trends = {}
+    for row in rows:
+        name = row['team_name']
+        if not name or name_counts.get(name, 0) > 1:
+            continue
+        if int(row['observed_dates'] or 0) < TEAM_TREND_MIN_DATES:
+            continue
+        first_score = row['first_score']
+        last_score = row['last_score']
+        if first_score is None or last_score is None:
+            continue
+        first_score = float(first_score)
+        last_score = float(last_score)
+        # Percentage points, not a ratio of a ratio.
+        delta = round(last_score - first_score, 1)
+        first_date = row['first_date']
+        last_date = row['last_date']
+        trends[name] = {
+            "trend": classify_team_trend(delta),
+            "delta": delta,
+            # The evidence the direction rests on, so a consumer never has to take
+            # the label on trust.
+            "trend_basis": {
+                "first_date": first_date.isoformat() if first_date else None,
+                "first_score": round(first_score, 1),
+                "last_date": last_date.isoformat() if last_date else None,
+                "last_score": round(last_score, 1),
+                "observed_dates": int(row['observed_dates'] or 0),
+                "source": "compliance_snapshots",
+            },
+        }
+    return trends
 
 
 @app.route('/', methods=['GET'])
@@ -933,7 +1316,13 @@ def update_config():
         # Validation for keys
         invalid_keys = [k for k in updates if k not in VALID_CONFIG_KEYS]
         if invalid_keys:
-            return error_response(f"Invalid configuration keys: {', '.join(invalid_keys)}", 400)
+            # Bounded echo: see MAX_ECHOED_KEYS. The body is already capped by
+            # MAX_CONTENT_LENGTH, but a 1 MiB body of long junk keys would still be
+            # quoted back in full into both the response and the log line.
+            shown = [str(k)[:MAX_ECHOED_KEY_CHARS] for k in invalid_keys[:MAX_ECHOED_KEYS]]
+            if len(invalid_keys) > MAX_ECHOED_KEYS:
+                shown.append(f"(+{len(invalid_keys) - MAX_ECHOED_KEYS} more)")
+            return error_response(f"Invalid configuration keys: {', '.join(shown)}", 400)
 
         # Basic type validation for numeric fields
         numeric_keys = [
@@ -972,6 +1361,13 @@ def update_config():
             
             logger.info(f"Updated {updated_count} config settings: {list(updates.keys())}")
             return jsonify({"success": True, "updated": updated_count})
+    except HTTPException:
+        # request.get_json() itself raises 413 for a body over MAX_CONTENT_LENGTH -
+        # silent=True suppresses PARSE failures, not the length check. Without this
+        # re-raise the generic handler below reported an oversized body as
+        # "Failed to update configuration" with status 500, which sends the caller
+        # looking for a server fault instead of trimming the request.
+        raise
     except Exception as e:
         return error_response("Failed to update configuration", 500, str(e))
 
@@ -1443,11 +1839,13 @@ def get_strategy():
         # 3. Risk Exposure
         cur.execute(f"SELECT COUNT(*) as fail_count FROM policy_results WHERE status='fail' AND host_id IN ({h_query})", params)
         fail_count = cur.fetchone()['fail_count'] or 0
-        risk_multiplier = get_config('risk_exposure_multiplier', 2)
+        # config_number, not get_config: these three values land in arithmetic and a
+        # non-numeric stored value used to be a permanent 500 here.
+        risk_multiplier = config_number('risk_exposure_multiplier', 2)
         risk_exposure = min(100, fail_count * risk_multiplier)
 
         # 4. Security Debt
-        debt_per_issue = get_config('security_debt_hours_per_issue', 0.5)
+        debt_per_issue = config_number('security_debt_hours_per_issue', 0.5)
         security_debt_hours = fail_count * debt_per_issue
         if security_debt_hours < 1: security_debt = "< 1h"
         elif security_debt_hours < 8: security_debt = f"{int(security_debt_hours)}h"
@@ -1519,10 +1917,17 @@ def get_strategy():
             team_stats.append({
                 "name": team_name,
                 "score": score,
-                "trend": "unknown",  # no snapshot history yet
-                "delta": None
+                # Filled in from compliance_snapshots by step 9, after every other
+                # query on this cursor has run. "unknown" is the honest starting
+                # value and stays that way for any team the snapshots cannot speak
+                # for: fewer than 2 snapshot dates in the window, 'Unassigned'
+                # (hosts with no team have no team snapshot), a duplicated team
+                # name, a request scope snapshots cannot answer, or a failed lookup.
+                "trend": "unknown",
+                "delta": None,
+                "trend_basis": None,
             })
-        
+
         # Sort by score descending and assign rank
         team_stats.sort(key=lambda x: x['score'], reverse=True)
         for i, team in enumerate(team_stats):
@@ -1540,18 +1945,13 @@ def get_strategy():
         """, params)
         
         priorities = []
-        impact_threshold = get_config('impact_high_threshold', 5)
-        
-        # Effort Configuration
-        low_kw = get_config('effort_low_keywords', ['Ensure', 'Set'])
-        high_kw = get_config('effort_high_keywords', ['Manual', 'Review'])
-        
-        # Ensure they are lists (in case of misconfiguration)
-        if isinstance(low_kw, str): low_kw = [k.strip() for k in low_kw.split(',')]
-        if isinstance(high_kw, str): high_kw = [k.strip() for k in high_kw.split(',')]
-            
-        low_keywords = [k.lower() for k in low_kw if k]
-        high_keywords = [k.lower() for k in high_kw if k]
+        impact_threshold = config_number('impact_high_threshold', 5)
+
+        # Effort Configuration. config_keyword_list keeps the two shapes this already
+        # handled (JSON array, comma-separated string) and stops a stored number or a
+        # list of numbers from raising inside the comparison below.
+        low_keywords = config_keyword_list('effort_low_keywords', ['Ensure', 'Set'])
+        high_keywords = config_keyword_list('effort_high_keywords', ['Manual', 'Review'])
 
         for row in cur.fetchall():
             fail_count = row['fail_count']
@@ -1575,6 +1975,73 @@ def get_strategy():
                 "effort": effort
             })
 
+        # 9. Team trend, from compliance_snapshots.
+        #
+        # Deliberately the LAST statement executed on this cursor. The lookup is
+        # wrapped so a snapshot problem cannot turn a working /api/strategy into a
+        # 500 - the endpoint answered without any trend before this existed and must
+        # keep answering - but swallowing a psycopg2 error inside the `with` block
+        # means get_db_cursor() never sees it and never rolls back, so the
+        # transaction stays aborted and ANY statement issued after it would fail.
+        # Nothing follows it here, and psycopg2's pool rolls the connection back when
+        # it is returned, so the failure is contained to this one feature.
+        #
+        # Cache interaction: this runs inside the @cached_response body, so the trend
+        # is cached with the rest of it under
+        # fleetcis:v1:strategy:<sync_generation>:<config_generation>:<scope>. No new
+        # arg is read, so the key contract is untouched. Writing a snapshot row does
+        # not by itself move the sync generation - but the only writer,
+        # create_compliance_snapshot(), runs inside sync_data(), which then stamps
+        # sync_metadata (success OR failed - both halves of the token move), so a
+        # sync-written snapshot always lands in a fresh key space. What CAN go stale
+        # for up to CACHE_TTL_SECONDS is a snapshot row inserted outside a sync (a
+        # manual backfill, a restore, psql), and the window edge after midnight, since
+        # CURRENT_DATE moves while a cached body does not. Both are bounded by the TTL
+        # and neither can produce a WRONG direction, only an older one.
+        team_trend = {
+            "source": "compliance_snapshots",
+            "days": HISTORY_TREND_DAYS,
+            "flat_threshold_pp": TEAM_TREND_FLAT_THRESHOLD_PP,
+            "min_snapshot_dates": TEAM_TREND_MIN_DATES,
+            "scope_comparable": team_trend_scope_is_comparable(),
+            "teams_with_trend": 0,
+            "reason": None,
+        }
+        if not team_trend['scope_comparable']:
+            team_trend['reason'] = 'scope_not_comparable'
+        else:
+            trends = {}
+            try:
+                trends = team_score_trends(cur)
+            except Exception as e:
+                logger.warning(
+                    f"Team snapshot trend lookup failed, reporting unknown: {e}"
+                )
+                team_trend['reason'] = 'lookup_failed'
+            # The board can carry a duplicated name too, not just fleet_teams: hosts
+            # with no team are bucketed as 'Unassigned', so a real Fleet team named
+            # "Unassigned" produces two rows with one name. Matching a snapshot to
+            # either of them would be a guess, so both stay unknown - the same rule
+            # team_score_trends() applies on its side.
+            board_name_counts = {}
+            for team in team_stats:
+                board_name_counts[team['name']] = board_name_counts.get(team['name'], 0) + 1
+            for team in team_stats:
+                if board_name_counts.get(team['name'], 0) > 1:
+                    continue
+                fields = trends.get(team['name'])
+                if not fields:
+                    continue
+                team.update(fields)
+                team_trend['teams_with_trend'] += 1
+            if team_trend['reason'] is None and team_trend['teams_with_trend'] == 0:
+                # Distinguish "no team has two snapshot dates yet" - the state of this
+                # deployment today, with exactly one snapshot date on record - from
+                # "there is history, but none of it belongs to a listed team".
+                team_trend['reason'] = (
+                    'no_matching_team' if trends else 'insufficient_snapshot_history'
+                )
+
         return jsonify({
             "posture_score": posture_score,
             "maturity_level": maturity,
@@ -1589,6 +2056,10 @@ def get_strategy():
             "velocity_window": velocity_window,
             "roadmap": roadmap,
             "team_leaderboard": team_stats,
+            # Additive, and additive only: every key the frontend reads inside
+            # team_leaderboard keeps its name and meaning. This says where the trend
+            # came from and, when it is "unknown" for everyone, why.
+            "team_trend": team_trend,
             "priorities": priorities
         })
 

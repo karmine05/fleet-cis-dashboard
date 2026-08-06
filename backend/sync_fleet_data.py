@@ -14,9 +14,15 @@ import policy_catalog
 
 import urllib3
 
-# Load environment variables
+# Load environment variables. This only does anything when the daemon is run
+# straight from a checkout: inside the container the path resolves to /app/.env,
+# which is never present (config arrives through the compose environment, and
+# .env is excluded from the build context on purpose). Guarded on existence so
+# the call is not mistaken for the runtime config source.
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-load_dotenv(os.path.join(basedir, '.env'))
+_dotenv_path = os.path.join(basedir, '.env')
+if os.path.exists(_dotenv_path):
+    load_dotenv(_dotenv_path)
 
 # Configuration
 FLEET_URL = os.environ.get("FLEET_URL", "https://fleet.example.com")
@@ -1176,9 +1182,23 @@ def sync_data():
                 f"{force_refreshed_unchanged} of them looked unchanged by Fleet's counts."
             )
 
-        # Fetch results
+        # Fetch results. `count` is how many rows Fleet reported; results_written
+        # is how many rows the upsert actually inserted or flipped status. They
+        # differ whenever a host's status is unchanged since the last sync, which
+        # is the normal case, so sync_metadata.results_changed records the second —
+        # a "changed" column carrying the fetched total would overstate every sync.
+        #
+        # The DO UPDATE only fires on a genuine status change, which is what makes
+        # RETURNING a real change count: gating on checked_at alone was always true
+        # (the timestamp moves every sync), so RETURNING handed back every row and
+        # a steady-state sync reported "1956 of 1956 changed".
+        # Consequence to know about: policy_results.checked_at therefore marks when
+        # a status was last observed to CHANGE, not when it was last observed. No
+        # endpoint reads that column — every checked_at the API touches belongs to
+        # policy_results_history, which still records one row per observation.
         results_buffer = []
         count = 0
+        results_written = 0
         # policy_id -> host ids Fleet reported this sync, and how many of that
         # policy's fetches actually succeeded. Only the host ids are kept in
         # memory (not the rows), so the existing 5000-row flush batching stays.
@@ -1212,13 +1232,16 @@ def sync_data():
                         # only state a concurrent dashboard read can observe is a
                         # superset of the truth — fresh rows plus not-yet-pruned
                         # stale ones — never a half-empty policy.
-                        extras.execute_values(cur, """
+                        written = extras.execute_values(cur, """
                             INSERT INTO policy_results (policy_id, host_id, status, checked_at)
                             VALUES %s
                             ON CONFLICT (policy_id, host_id) DO UPDATE SET
                                 status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
                             WHERE EXCLUDED.checked_at >= policy_results.checked_at
-                        """, flush_rows)
+                              AND policy_results.status IS DISTINCT FROM EXCLUDED.status
+                            RETURNING policy_id
+                        """, flush_rows, fetch=True)
+                        results_written += len(written or [])
 
                         # Also Insert into History Log (Partitioned)
                         # We only check 'status' change logic if we want to reduce log volume
@@ -1237,13 +1260,16 @@ def sync_data():
         if results_buffer:
              flush_rows = _dedupe_result_rows(results_buffer)
              with db.get_db_cursor(commit=True) as cur:
-                extras.execute_values(cur, """
+                written = extras.execute_values(cur, """
                     INSERT INTO policy_results (policy_id, host_id, status, checked_at)
                     VALUES %s
                     ON CONFLICT (policy_id, host_id) DO UPDATE SET
                         status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
                     WHERE EXCLUDED.checked_at >= policy_results.checked_at
-                """, flush_rows)
+                      AND policy_results.status IS DISTINCT FROM EXCLUDED.status
+                    RETURNING policy_id
+                """, flush_rows, fetch=True)
+                results_written += len(written or [])
                 extras.execute_values(cur, """
                     INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
                     VALUES %s
@@ -1288,6 +1314,12 @@ def sync_data():
         if skipped_prunes:
             print(f"  ⚠ Skipped prune for {skipped_prunes} policy(ies) with an incomplete host fetch.")
 
+        if count:
+            print(
+                f"  ✍ policy_results: {results_written} of {count} fetched row(s) "
+                f"inserted or actually changed."
+            )
+
         # 6. Snapshots
         create_compliance_snapshot()
 
@@ -1309,7 +1341,7 @@ def sync_data():
                     hosts_changed=%s, policies_changed=%s, results_changed=%s,
                     error_message=%s
                 WHERE sync_id=%s
-            """, (duration, len(host_ids_processed), policies_written, count,
+            """, (duration, len(host_ids_processed), policies_written, results_written,
                   partial_error, sync_id))
 
         if partial_error:

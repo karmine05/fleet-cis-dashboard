@@ -1293,14 +1293,25 @@ async function populateStrategyPage(summary, heatmapData) {
         const teams = data.team_leaderboard || [];
         leaderboard.innerHTML = DOMPurify.sanitize(teams.map((team, i) => {
             const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+            // The API reports trend 'unknown' with a null delta whenever a team has
+            // fewer than two snapshot dates — a permanent, valid state, not an
+            // error. Rendering the delta unconditionally produced the literal
+            // "→ null%". 'down' already carries its own sign in delta, so the
+            // arrow alone is the direction and the number is shown absolute.
             const trendIcon = team.trend === 'up' ? '↑' : team.trend === 'down' ? '↓' : '→';
-            const trendText = team.trend !== 'stable' ? `${trendIcon} ${team.delta}%` : '→';
+            const hasDelta = team.trend === 'up' || team.trend === 'down';
+            const trendText = hasDelta
+                ? `${trendIcon} ${Math.abs(team.delta)}%`
+                : (team.trend === 'unknown' ? '–' : '→');
+            const trendTitle = team.trend === 'unknown'
+                ? 'Not enough snapshot history yet to compute a trend'
+                : `Trend: ${team.trend}`;
             return `
                 <div class="leaderboard-item ${rankClass}">
                     <div class="leaderboard-rank">${team.rank}</div>
                     <div class="leaderboard-name">${team.name}</div>
                     <div class="leaderboard-score">${team.score}%</div>
-                    <div class="leaderboard-trend ${team.trend}">${trendText}</div>
+                    <div class="leaderboard-trend ${team.trend}" title="${trendTitle}">${trendText}</div>
                 </div>
             `;
         }).join('')) || '<p style="color:var(--text-secondary);text-align:center;">No team data</p>';

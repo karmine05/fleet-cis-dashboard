@@ -1,23 +1,55 @@
+# Every tunable below follows the ${VAR:-default} form, so a value set in .env
+# overrides it without editing this file. See .env.example for the full surface
+# and what each variable does. Two deliberate exceptions:
+#   - POSTGRES_PASSWORD uses ${VAR:?msg}: there is no default, and compose refuses
+#     to run at all until it is set. A public repo must not ship a working password.
+#   - LOG_FILE is passed bare (no :-), so it reaches the app as genuinely unset
+#     rather than as an empty string.
+
+# Bounded container logs, applied to every service via *default-logging.
+#
+# The default json-file driver has no size limit: it grows until the disk fills.
+# That is a real failure mode here, not a theoretical one — the sync daemon prints
+# a diagnostic block every SYNC_INTERVAL_MINUTES (15 by default) forever, and
+# nginx logs one line per request. 10m x 3 files caps each service at ~30 MB and
+# ~150 MB for the whole stack, while still leaving several days of sync history
+# readable in `docker compose logs`.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: fleet_cis
-    # The postgres default max_connections=100 is too tight here: 4 gunicorn
-    # workers each open their own pool (up to DB_POOL_MAX each), the sync daemon
-    # opens another, and pg_isready plus any psql session need spare slots.
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      # No default on purpose. `${VAR:?msg}` makes compose fail fast with this
+      # message when POSTGRES_PASSWORD is unset OR empty, instead of quietly
+      # standing up a database whose password is published in this repo's history.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set. Copy .env.example to .env and set it (openssl rand -hex 32). There is deliberately no default.}"
+      POSTGRES_DB: ${POSTGRES_DB:-fleet_cis}
+    # The postgres default max_connections=100 is too tight here: each gunicorn
+    # worker opens its own pool (up to DB_POOL_MAX each), the sync daemon opens
+    # another, and pg_isready plus any psql session need spare slots.
+    # Budget: WEB_CONCURRENCY x DB_POOL_MAX + DB_POOL_MAX (sync) < max_connections.
     # Keep the image entrypoint by re-stating "postgres" as the command.
     command: [ "postgres", "-c", "max_connections=200" ]
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # pg_isready needs the role name explicitly (the healthcheck runs as root, so
+    # its OS-user default would be wrong). $$POSTGRES_USER / $$POSTGRES_DB read the
+    # container's own environment — compose collapses the doubled dollar sign into
+    # one and the shell expands it — so the probe cannot drift from the values
+    # set above, the way a second copy of the defaults here would.
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"" ]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - fleet_cis_network
 
@@ -36,6 +68,7 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - fleet_cis_network
 
@@ -48,31 +81,95 @@ services:
       # Host 5002 avoids clash with other local services on 5001
       - "5002:5001"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
-      - REDIS_URL=redis://redis:6379/0
+      # Built from the same POSTGRES_* variables the db service uses, so the three
+      # services cannot drift apart.
+      #
+      # The password lands inside a postgresql:// URL here. Measured against this
+      # exact DSN with the installed psycopg2:
+      #   $  DANGEROUS — compose's own interpolation eats it BEFORE libpq sees it:
+      #      "pa$ss" renders as "pa", so initdb and the clients agree on a password
+      #      the operator never chose and nothing looks broken. Write it as $$ or,
+      #      better, avoid it.
+      #   %  breaks: invalid percent-encoded token
+      #   /  breaks: the remainder is parsed as the port
+      #   @ : ? #  parse correctly in this position, despite being URL-significant
+      # Stick to [A-Za-z0-9._~-] and none of it matters — openssl rand -hex 32.
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set. Copy .env.example to .env and set it.}@db:5432/${POSTGRES_DB:-fleet_cis}
+      # Response cache. Unset it to run with the cache disabled: the app degrades
+      # to serving live results and warns once, it does not fail.
+      # ${VAR-default}, not ${VAR:-default}: the dash-without-colon form only
+      # substitutes when the variable is UNSET, so `REDIS_URL=` in .env reaches
+      # the app as an empty value and genuinely disables the cache. With the
+      # colon form an empty value silently re-applied this default, making the
+      # documented way to run without Redis a no-op.
+      - REDIS_URL=${REDIS_URL-redis://redis:6379/0}
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
       - FLEET_SSL_VERIFY=${FLEET_SSL_VERIFY:-true}
+      # Unset means PUT /api/config fails closed with 503 rather than open.
       - DASHBOARD_API_TOKEN=${DASHBOARD_API_TOKEN:-}
-      - ALLOWED_ORIGINS=http://localhost:8081,http://localhost:8082
+      # Browser origins allowed to call the API cross-origin. The default covers
+      # both local frontends. Requests that arrive through nginx are same-origin
+      # and never consult this. (FRONTEND_URL is the app's legacy single-origin
+      # fallback and is only read when ALLOWED_ORIGINS is absent from the
+      # environment, which under compose it never is — set this one instead.)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082}
+      # gunicorn reads WEB_CONCURRENCY natively (its `workers` default is
+      # int(WEB_CONCURRENCY or 1)), so this is the worker count as long as
+      # Dockerfile.backend does not pass an explicit --workers, which would win.
+      #
+      # Arithmetic that constrains it: every worker holds its own pool, so the
+      # backend can occupy WEB_CONCURRENCY x DB_POOL_MAX connections, and the sync
+      # daemon adds up to another DB_POOL_MAX. That total must stay well under the
+      # db's max_connections=200 (postgres also reserves 3 slots for superusers,
+      # and pg_isready plus any psql session need their own).
+      #   defaults: 4 x 8 + 8 = 40 of 200 — comfortable.
+      #   16 workers x 16 pool + 16 = 272 of 200 — exhausted; connections refused.
+      # Raise DB_POOL_MAX and WEB_CONCURRENCY together, or raise max_connections.
+      - WEB_CONCURRENCY=${WEB_CONCURRENCY:-4}
+      # Read by the backend only to report the expected cadence on
+      # /api/sync-status. The sync service below is what actually schedules on it.
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
-      # Per-worker connection pool ceiling. Effective backend total is
-      # 4 workers x DB_POOL_MAX, which must stay under the db max_connections.
+      # Per-worker connection pool bounds. See the WEB_CONCURRENCY arithmetic above.
+      - DB_POOL_MIN=${DB_POOL_MIN:-1}
       - DB_POOL_MAX=${DB_POOL_MAX:-8}
+      # After the pool's connect retries (5 x 2s) are exhausted, remember the
+      # failure for this long so requests fail fast instead of each one blocking a
+      # gunicorn thread for the full retry budget while Postgres is down.
+      - DB_POOL_RETRY_COOLDOWN_SECONDS=${DB_POOL_RETRY_COOLDOWN_SECONDS:-10}
       # Upper bound the /api/devices limit clamps to.
       - MAX_PAGE_SIZE=${MAX_PAGE_SIZE:-500}
+      # Trend window for the history-backed deltas, and the minimum number of
+      # paired samples required before a trend is reported at all.
+      - HISTORY_TREND_DAYS=${HISTORY_TREND_DAYS:-30}
+      - HISTORY_TREND_MIN_SAMPLE=${HISTORY_TREND_MIN_SAMPLE:-5}
       # Redis response cache TTL. Keys also retire on each successful sync.
       - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-900}
+      # How long to serve uncached after a transient Redis failure before
+      # re-probing, so one blip does not disable the cache for the worker's life.
+      - CACHE_RETRY_COOLDOWN_SECONDS=${CACHE_RETRY_COOLDOWN_SECONDS:-30}
+      # Sub-second on purpose: a wedged Redis must not add more latency than the
+      # query it stands in for.
+      - REDIS_TIMEOUT_MS=${REDIS_TIMEOUT_MS:-500}
       # Optional rotating file log. Left unset so logs go to stdout only and
       # stay visible in `docker logs`; the bare form below passes the value
       # through only when it is set on the host, so the app still sees it as
       # unset by default. Any path set here must be writable by appuser
       # (for example /tmp/fleetcis.log) since the image drops root.
       - LOG_FILE
+      # Rotation bounds for that file log, ignored while LOG_FILE is unset.
+      - LOG_MAX_BYTES=${LOG_MAX_BYTES:-10485760}
+      - LOG_BACKUP_COUNT=${LOG_BACKUP_COUNT:-3}
+    # No depends_on for redis, on purpose. The response cache is optional: when
+    # Redis is unreachable the app serves live results and warns once, then
+    # re-probes after CACHE_RETRY_COOLDOWN_SECONDS. Declaring the dependency made
+    # the documented way to run without a cache — delete the redis service —
+    # produce "service backend depends on undefined service redis: invalid compose
+    # project", and `required: false` does not cover a service that is absent
+    # entirely (checked against compose 5.3.1). The only cost is that a backend
+    # started before Redis logs one cache warning and recovers on its own.
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     # The image has no curl, so probe the app with the stdlib. /healthz runs
     # SELECT 1 through the connection pool, so it proves the data path rather
@@ -80,16 +177,22 @@ services:
     # unreachable now reports unhealthy instead of serving 500s while "healthy".
     # A 503 raises HTTPError from urlopen, which exits non-zero, as intended.
     healthcheck:
-      test: [ "CMD-SHELL", "python -c \"import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5001/healthz', timeout=10).status == 200 else 1)\"" ]
+      # 127.0.0.1 rather than localhost: gunicorn binds 0.0.0.0 (IPv4), while
+      # localhost resolves to ::1 first in these images. urllib happens to fall
+      # back across address families so localhost worked here, but the nginx probe
+      # with busybox wget did not — so both probes name the address explicitly
+      # instead of depending on resolver behaviour.
+      test: [ "CMD-SHELL", "python -c \"import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5001/healthz', timeout=10).status == 200 else 1)\"" ]
       interval: 30s
       # Longer than the pool's retry budget (5 attempts x 2s) so a probe during a
       # database blip fails on the app's own verdict rather than on our timeout.
       timeout: 15s
       retries: 3
-      # Gunicorn with 4 workers is serving in roughly 5s; 20s leaves room for a
-      # cold start behind a slow db without marking the container unhealthy.
+      # Gunicorn with the default 4 workers is serving in roughly 5s; 20s leaves
+      # room for a cold start behind a slow db without marking it unhealthy.
       start_period: 20s
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - fleet_cis_network
 
@@ -99,20 +202,57 @@ services:
       dockerfile: Dockerfile.backend
     image: fleet-cis-dashboard-backend
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fleet_cis
-      - REDIS_URL=redis://redis:6379/0
+      # Same three POSTGRES_* variables as the backend and the db — see the note
+      # about URL-safe passwords there.
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set. Copy .env.example to .env and set it.}@db:5432/${POSTGRES_DB:-fleet_cis}
+      # ${VAR-default}, not ${VAR:-default}: the dash-without-colon form only
+      # substitutes when the variable is UNSET, so `REDIS_URL=` in .env reaches
+      # the app as an empty value and genuinely disables the cache. With the
+      # colon form an empty value silently re-applied this default, making the
+      # documented way to run without Redis a no-op.
+      - REDIS_URL=${REDIS_URL-redis://redis:6379/0}
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
       - FLEET_SSL_VERIFY=${FLEET_SSL_VERIFY:-true}
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
+      # Thread pool for concurrent Fleet API calls. Fleet is the bottleneck, not
+      # this container; raising it past ~10 mostly adds load to Fleet.
+      - SYNC_MAX_WORKERS=${SYNC_MAX_WORKERS:-10}
+      # Page sizes for the two paginated Fleet reads. The per-policy host lists use
+      # a larger page because a single policy can cover the whole fleet and every
+      # extra page is another round trip.
+      - SYNC_HOSTS_PER_PAGE=${SYNC_HOSTS_PER_PAGE:-100}
+      - SYNC_POLICY_HOSTS_PER_PAGE=${SYNC_POLICY_HOSTS_PER_PAGE:-500}
+      # Rotating full-refresh sweep. Fleet's cached passing/failing host counts are
+      # not a reliable change signal (measured: 39 of 789 policies disagreed with
+      # Fleet's own live host lists), so each sync force-re-enumerates 1/N of the
+      # catalog and every policy is refreshed within N syncs — 24 syncs is 6h at
+      # the 15-minute cadence. 0 disables the sweep; 1 refreshes everything, every
+      # sync, which is far more load on Fleet.
+      - SYNC_FULL_REFRESH_DIVISOR=${SYNC_FULL_REFRESH_DIVISOR:-24}
+      # Pool bounds for the daemon's own connections, and the same fail-fast
+      # cooldown the backend uses. Counted in the max_connections budget above.
+      - DB_POOL_MIN=${DB_POOL_MIN:-1}
       - DB_POOL_MAX=${DB_POOL_MAX:-8}
+      - DB_POOL_RETRY_COOLDOWN_SECONDS=${DB_POOL_RETRY_COOLDOWN_SECONDS:-10}
       # How long policy_results_history rows are kept before their monthly
-      # partitions are dropped.
+      # partitions are dropped. 0 disables retention.
       - HISTORY_RETENTION_MONTHS=${HISTORY_RETENTION_MONTHS:-12}
+      # Rows stranded in the DEFAULT history partition cannot be reclaimed by
+      # dropping a partition, so they are swept row-wise, at most this many per
+      # sync — bounded so the DELETE never holds long locks on a table the
+      # dashboard reads.
+      - HISTORY_DEFAULT_SWEEP_LIMIT=${HISTORY_DEFAULT_SWEEP_LIMIT:-50000}
       # sync_metadata pruning age. The most recent rows are kept regardless.
       - SYNC_METADATA_RETENTION_DAYS=${SYNC_METADATA_RETENTION_DAYS:-90}
       # Liveness file the daemon refreshes each loop; the healthcheck reads it.
       - SYNC_HEARTBEAT_FILE=${SYNC_HEARTBEAT_FILE:-/tmp/sync_heartbeat}
+      # How long one sync cycle may run before the daemon treats itself as wedged
+      # and exits non-zero so `restart: unless-stopped` can recover it. Docker
+      # never restarts a container for a failing healthcheck, so without this a
+      # daemon hung inside a sync stays hung. Empty means "use the daemon's
+      # derived default": max(300s, 3 x SYNC_INTERVAL_MINUTES). 0 disables it.
+      - SYNC_WATCHDOG_TIMEOUT_SECONDS=${SYNC_WATCHDOG_TIMEOUT_SECONDS:-}
     depends_on:
       db:
         condition: service_healthy
@@ -131,6 +271,7 @@ services:
       # sync can be slow against a large Fleet instance.
       start_period: 120s
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - fleet_cis_network
     command: python backend/sync_daemon.py
@@ -148,7 +289,31 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    # nginx:alpine ships no curl, but Alpine's base rootfs always includes
+    # busybox, which provides wget as an applet (/usr/bin/wget -> /bin/busybox) —
+    # that is why wget is safe to rely on here while curl is not. Only -q, -T and
+    # -O are used: busybox wget is not GNU wget and does not accept --tries.
+    #
+    # Probing / (not /api/) keeps this a test of nginx itself rather than a second
+    # backend probe: it proves the worker is accepting connections AND that the
+    # mounted frontend volume is being served, since a missing index.html returns
+    # 404 and wget then exits non-zero. A config-reload failure or an unmounted
+    # volume now shows up as unhealthy instead of as a blank page.
+    #
+    # 127.0.0.1, not localhost: inside this image localhost resolves to ::1 first,
+    # `listen 80` binds IPv4 only, and busybox wget does not fall back to the other
+    # address family — so the probe failed with "Connection refused" against a
+    # perfectly healthy nginx (observed: 21 consecutive failures while the site was
+    # serving normally on the host port).
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://127.0.0.1/" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # nginx binds in well under a second; this only absorbs image start-up.
+      start_period: 10s
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - fleet_cis_network
 

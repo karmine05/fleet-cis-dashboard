@@ -30,5 +30,11 @@ USER appuser
 # Expose port (Backend runs on 5001 usually in this project)
 EXPOSE 5001
 
-# Default command (can be overridden by docker-compose)
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--threads", "2", "app:app"]
+# Default command (can be overridden by docker-compose).
+# --workers is deliberately absent: gunicorn reads the worker count from the
+# WEB_CONCURRENCY environment variable when the flag is not passed, so an
+# operator can resize the pool through compose without rebuilding the image.
+# Note that gunicorn's own fallback is 1 worker if WEB_CONCURRENCY is unset —
+# the default supplied in docker-compose.yml is therefore load-bearing, not
+# decorative.
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--threads", "2", "app:app"]
