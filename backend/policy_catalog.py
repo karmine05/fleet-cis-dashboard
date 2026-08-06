@@ -85,7 +85,9 @@ def _normalize_sid_list(raw) -> List[str]:
     out = []
     for s in items:
         s = str(s).strip()
-        if not s or s in ("CISNone", "None", "none"):
+        # Sentinels are compared case-insensitively: "NONE" used to survive this
+        # filter and become the bogus safeguard id "CISNONE".
+        if not s or s.upper() in ("CISNONE", "NONE"):
             continue
         if not s.startswith("CIS"):
             s = "CIS" + s
@@ -107,6 +109,7 @@ def enrich_policy_from_catalog(policy_name: str, platform: str = "") -> Dict[str
     if not entry and not override:
         return {
             "cis_safeguard_ids": [],
+            "critical": False,
             "benchmark": "",
             "control_slug": "",
             "cis_category": "",
@@ -139,6 +142,15 @@ def enrich_policy_from_catalog(policy_name: str, platform: str = "") -> Dict[str
 
     return {
         "cis_safeguard_ids": sids,
+        # sync_fleet_data derives cis_policies.severity from this flag. It was
+        # never returned here, so the flag was always missing and every policy
+        # was written as 'Medium' — which in turn made critical_failures
+        # structurally zero. Overrides win, exactly like cis_safeguard_ids.
+        "critical": bool(
+            override.get("critical")
+            if override.get("critical") is not None
+            else entry.get("critical")
+        ),
         "benchmark": entry.get("benchmark") or "",
         "control_slug": entry.get("control") or "",
         "cis_category": override.get("cis_category") or entry.get("cis_category") or "",
@@ -151,6 +163,12 @@ def enrich_policy_from_catalog(policy_name: str, platform: str = "") -> Dict[str
         "platform": entry.get("platform") or platform,
         "benchmark_section": bench_section,
     }
+
+
+# A real ATT&CK technique id is T#### with an optional .### sub-technique.
+# Without this shape check "T1" and "TELEMETRY" both passed as techniques.
+# Verified against every id in safeguard_d3fend.json (46 distinct): all conform.
+ATTACK_ID_RE = re.compile(r"^T\d{4}(\.\d{3})?$")
 
 
 def _normalize_attack_ids(raw) -> List[str]:
@@ -169,7 +187,7 @@ def _normalize_attack_ids(raw) -> List[str]:
         a = str(p or "").strip().upper()
         if not a or a in ("UNMAPPED", "N/A", "NONE", "NA"):
             continue
-        if not a.startswith("T"):
+        if not ATTACK_ID_RE.match(a):
             continue
         if a not in seen:
             seen.add(a)
@@ -207,6 +225,11 @@ def _finalize_mapping(m: Dict[str, Any], sid: str = "") -> Dict[str, Any]:
         status = "needs_review"
     out["mapping_status"] = status
     if status == "unmapped":
+        # An explicitly-unmapped entry that still carried technique IDs used to
+        # ship them, so a heat map cell could claim coverage the status denies.
+        ids = []
+        out["attack_ids"] = []
+        out["attack_id"] = ""
         out.setdefault("mapping_confidence", "unmapped")
     elif status != "not_applicable":
         out.setdefault("mapping_confidence", "medium")

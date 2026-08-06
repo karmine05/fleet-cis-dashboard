@@ -5,6 +5,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: fleet_cis
+    # The postgres default max_connections=100 is too tight here: 4 gunicorn
+    # workers each open their own pool (up to DB_POOL_MAX each), the sync daemon
+    # opens another, and pg_isready plus any psql session need spare slots.
+    # Keep the image entrypoint by re-stating "postgres" as the command.
+    command: [ "postgres", "-c", "max_connections=200" ]
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -12,16 +17,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - fleet_cis_network
 
   redis:
     image: redis:7-alpine
+    # Bound the cache. Redis defaults to unlimited memory, and the response cache
+    # stores payloads of several hundred KB, so an unbounded key space is a way to
+    # exhaust the container's memory. allkeys-lru evicts the coldest entry instead
+    # of erroring, which is the right failure mode for a pure cache.
+    command:
+      [ "redis-server", "--maxmemory", "${REDIS_MAXMEMORY:-256mb}",
+        "--maxmemory-policy", "allkeys-lru" ]
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - fleet_cis_network
 
@@ -42,11 +56,40 @@ services:
       - DASHBOARD_API_TOKEN=${DASHBOARD_API_TOKEN:-}
       - ALLOWED_ORIGINS=http://localhost:8081,http://localhost:8082
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
+      # Per-worker connection pool ceiling. Effective backend total is
+      # 4 workers x DB_POOL_MAX, which must stay under the db max_connections.
+      - DB_POOL_MAX=${DB_POOL_MAX:-8}
+      # Upper bound the /api/devices limit clamps to.
+      - MAX_PAGE_SIZE=${MAX_PAGE_SIZE:-500}
+      # Redis response cache TTL. Keys also retire on each successful sync.
+      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-900}
+      # Optional rotating file log. Left unset so logs go to stdout only and
+      # stay visible in `docker logs`; the bare form below passes the value
+      # through only when it is set on the host, so the app still sees it as
+      # unset by default. Any path set here must be writable by appuser
+      # (for example /tmp/fleetcis.log) since the image drops root.
+      - LOG_FILE
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # The image has no curl, so probe the app with the stdlib. /healthz runs
+    # SELECT 1 through the connection pool, so it proves the data path rather
+    # than just that gunicorn bound the port — a backend whose Postgres is
+    # unreachable now reports unhealthy instead of serving 500s while "healthy".
+    # A 503 raises HTTPError from urlopen, which exits non-zero, as intended.
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c \"import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5001/healthz', timeout=10).status == 200 else 1)\"" ]
+      interval: 30s
+      # Longer than the pool's retry budget (5 attempts x 2s) so a probe during a
+      # database blip fails on the app's own verdict rather than on our timeout.
+      timeout: 15s
+      retries: 3
+      # Gunicorn with 4 workers is serving in roughly 5s; 20s leaves room for a
+      # cold start behind a slow db without marking the container unhealthy.
+      start_period: 20s
+    restart: unless-stopped
     networks:
       - fleet_cis_network
 
@@ -62,9 +105,32 @@ services:
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
       - FLEET_SSL_VERIFY=${FLEET_SSL_VERIFY:-true}
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
+      - DB_POOL_MAX=${DB_POOL_MAX:-8}
+      # How long policy_results_history rows are kept before their monthly
+      # partitions are dropped.
+      - HISTORY_RETENTION_MONTHS=${HISTORY_RETENTION_MONTHS:-12}
+      # sync_metadata pruning age. The most recent rows are kept regardless.
+      - SYNC_METADATA_RETENTION_DAYS=${SYNC_METADATA_RETENTION_DAYS:-90}
+      # Liveness file the daemon refreshes each loop; the healthcheck reads it.
+      - SYNC_HEARTBEAT_FILE=${SYNC_HEARTBEAT_FILE:-/tmp/sync_heartbeat}
     depends_on:
       db:
         condition: service_healthy
+    # The daemon has no HTTP server, so liveness is the mtime of the heartbeat
+    # file. SYNC_INTERVAL_MINUTES is minutes and mtime math is seconds, hence
+    # the x60. Allowing 2x the interval plus 60s of slack means one skipped or
+    # slow cycle does not flap the container, but a wedged or dead daemon is
+    # reported unhealthy. Reading the same env var keeps this in step with the
+    # daemon's own schedule.
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c \"import os, sys, time; path = os.environ.get('SYNC_HEARTBEAT_FILE', '/tmp/sync_heartbeat'); limit = 2 * float(os.environ.get('SYNC_INTERVAL_MINUTES', '15')) * 60 + 60; sys.exit(0 if time.time() - os.path.getmtime(path) < limit else 1)\"" ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      # The first heartbeat is only written once the daemon is up, and the first
+      # sync can be slow against a large Fleet instance.
+      start_period: 120s
+    restart: unless-stopped
     networks:
       - fleet_cis_network
     command: python backend/sync_daemon.py
@@ -77,8 +143,12 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./frontend:/usr/share/nginx/html:ro
+    # Wait for the backend to answer GET / so proxied requests do not 502
+    # during boot.
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - fleet_cis_network
 

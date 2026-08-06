@@ -8,22 +8,67 @@ from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from functools import wraps
 import hmac
+import math
 import os
 import json
 import logging
+import time
+from logging.handlers import RotatingFileHandler
+from urllib.parse import urlencode
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Configure logging
+
+def _env_int(name, default):
+    """Read an integer env var, falling back to default on missing/junk input.
+
+    Lenient on purpose: a typo in a deployment env var must not stop the app from
+    booting. Called before logging is configured for the log tunables themselves,
+    which is fine — logging's last-resort handler still surfaces the warning.
+    """
+    raw = os.environ.get(name)
+    if raw is None or str(raw).strip() == '':
+        return default
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        logging.getLogger(__name__).warning(
+            f"Invalid {name}={raw!r}, using default {default}"
+        )
+        return default
+
+
+# Configure logging. Default is stdout only, which is what a container wants:
+# docker collects and rotates it. A file log is opt-in via LOG_FILE and always
+# rotates, because the previous unconditional FileHandler("backend.log") had all
+# 4 gunicorn workers appending to one never-rotated file inside the container.
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOG_FILE = os.environ.get('LOG_FILE', '').strip()
+LOG_MAX_BYTES = _env_int('LOG_MAX_BYTES', 10 * 1024 * 1024)
+LOG_BACKUP_COUNT = _env_int('LOG_BACKUP_COUNT', 3)
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("backend.log")
-    ]
+    format=LOG_FORMAT,
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
+
+if LOG_FILE:
+    # Rotation state is per-process and workers share the path, so the file log is
+    # a convenience for single-process runs, not the primary sink.
+    try:
+        _file_handler = RotatingFileHandler(
+            LOG_FILE, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT
+        )
+        _file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+        logging.getLogger().addHandler(_file_handler)
+        logger.info(f"File logging enabled: {LOG_FILE}")
+    except OSError as e:
+        # An unwritable LOG_FILE must never keep the app from starting.
+        logger.warning(
+            f"Could not open LOG_FILE {LOG_FILE}: {e} - logging to stdout only"
+        )
 
 def error_response(message, status_code=500, error_details=None):
     """Standardized error response and logging."""
@@ -66,8 +111,16 @@ app = Flask(__name__)
 allowed_origins = os.environ.get('ALLOWED_ORIGINS', os.environ.get('FRONTEND_URL', 'http://localhost:8081')).split(',')
 CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
-# Initialize DB Pool
-db.get_db_pool()
+# Initialize the DB pool eagerly so a misconfigured database shows up in the
+# worker's boot log rather than on the first request. Guarded on DATABASE_URL
+# and on the failure itself: without this, importing app.py required a live
+# Postgres, which made every helper in this module untestable. get_db_cursor()
+# creates the pool on demand anyway, so a deferred pool is still correct.
+if os.environ.get('DATABASE_URL'):
+    try:
+        db.get_db_pool()
+    except Exception as e:
+        logger.warning(f"Deferred DB pool creation: {e}")
 
 # Load MITRE Data from JSON (technique id → name + tactic for architecture matrix)
 MITRE_DATA = {}
@@ -85,6 +138,25 @@ load_mitre_data()
 
 # ATT&CK techniques with more than this many CIS cells are flagged as coarse
 COARSE_ATTACK_THRESHOLD = 40
+
+# --- History trend window ---
+# /api/architecture gains/losses and /api/strategy remediation velocity read
+# policy_results_history. That table is NOT a daily snapshot: a sync only writes
+# rows for the policies it refetched, so a quiet day can contain zero rows. Every
+# number below is therefore computed from the earliest and the latest observation
+# of each (policy_id, host_id) pair *inside* the window, which keeps both ends of
+# the comparison on the same denominator and never reads "no rows today" as 0%.
+# 30 days is the default: long enough for a fleet syncing every 15 minutes to
+# accumulate several distinct days, short enough that the scan touches only one or
+# two monthly partitions and stays on idx_history_checked_policy.
+HISTORY_TREND_DAYS = max(1, _env_int('HISTORY_TREND_DAYS', 30))
+# A technique whose trend rests on a handful of observed pairs swings by tens of
+# points when one host flips, which reads as a dramatic gain that is really
+# sampling noise. Techniques below this many observed pairs are left out of
+# gains/losses; they still appear in the current-state matrix.
+HISTORY_TREND_MIN_SAMPLE = max(1, _env_int('HISTORY_TREND_MIN_SAMPLE', 5))
+# How many techniques to report on each side of the trend.
+HISTORY_TREND_TOP_N = 5
 
 # Legacy cis_to_d3fend_*.csv loaders were removed: runtime mapping uses
 # policy_catalog (safeguard_d3fend.json + tight policy-name rules).
@@ -118,6 +190,347 @@ def require_write_auth(fn):
     return wrapper
 
 
+# --- Request input limits ---
+# /api/devices used to honour any ?limit= (a full table dump once the fleet grows)
+# and passed a negative ?page= straight through as a negative OFFSET, which
+# Postgres rejects — a 500 from pure user input. Both are clamped now.
+DEFAULT_PAGE_SIZE = 100
+MAX_PAGE_SIZE = max(1, _env_int('MAX_PAGE_SIZE', 500))
+# Ceiling on the computed OFFSET so an absurd ?page= returns an empty page rather
+# than a bigint out-of-range error from Postgres.
+MAX_PAGE_OFFSET = 10000000
+
+
+def request_int(name, default):
+    """Parse a numeric query arg, falling back to default on junk input.
+
+    Lenient on purpose: ?limit=abc has always fallen back to the default instead
+    of erroring and the frontend relies on that. Range clamping is the caller's
+    job so each endpoint can pick its own bounds.
+    """
+    raw = request.args.get(name)
+    if raw is None or raw.strip() == '':
+        return default
+    try:
+        return int(raw.strip())
+    except ValueError:
+        return default
+
+
+# --- Host scope filters (single source of truth) ---
+# The query args that actually change a response body. Two places read this:
+# get_filtered_hosts_subquery() builds its WHERE clauses from HOST_SCOPE_FILTERS,
+# and the response cache builds its key from CACHE_SCOPE_ARGS, which is derived
+# from it. Deriving one from the other is the whole point: the cache key used to
+# hash the COMPLETE request arg set, so any unauthenticated client could mint an
+# unbounded number of ~800 KB cache entries with ?junk1=1&junk2=2&… against a
+# Redis whose maxmemory is 0 (unlimited) — an eviction/OOM lever with no auth.
+#
+# Any arg that changes a cached response must appear in this list. If it does
+# not, two materially different responses share one cache entry and the wrong
+# body is served. In the normal case (a host column compare) adding it to
+# HOST_SCOPE_FILTERS is enough and the cache key follows automatically. An arg an
+# endpoint reads straight off request.args goes in HOST_SCOPE_EXTRA_ARGS.
+HOST_SCOPE_FILTERS = {
+    'team': 'team_name',
+    'platform': 'platform',
+    'osVersion': 'platform_version',
+}
+# Scope args that are not plain column compares: 'label' drives a JOIN through
+# host_labels/fleet_labels instead of a WHERE on fleet_hosts.
+HOST_SCOPE_EXTRA_ARGS = ('label',)
+CACHE_SCOPE_ARGS = tuple(sorted(set(HOST_SCOPE_FILTERS) | set(HOST_SCOPE_EXTRA_ARGS)))
+
+
+# --- Response cache (optional Redis) ---
+# /api/heatmap-data (~731 KB), /api/safeguard-compliance (~816 KB),
+# /api/architecture and /api/strategy are recomputed from Postgres on every page
+# load. Their serialized bodies are cached under a key that embeds the sync
+# generation (and, for config-dependent endpoints, the config generation), so a
+# completed sync or a saved setting moves the whole key space and retires stale
+# entries with no explicit invalidation step.
+# Redis is strictly optional: a missing package, an unset REDIS_URL or an
+# unreachable server degrades to serving the live result and warns once per state.
+CACHE_KEY_PREFIX = 'fleetcis:v1'
+CACHE_TTL_SECONDS = max(1, _env_int('CACHE_TTL_SECONDS', 900))
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+# Deliberately sub-second: a wedged Redis must never add more latency than the
+# query it stands in for. Milliseconds so the tunable stays an int.
+REDIS_TIMEOUT_MS = max(1, _env_int('REDIS_TIMEOUT_MS', 500))
+# How long to serve uncached after a TRANSIENT Redis failure before re-probing.
+# Default 30s. A single blip used to disable the cache for the whole life of the
+# gunicorn worker, silently reverting the app to fully uncached until the
+# container was restarted.
+CACHE_RETRY_COOLDOWN_SECONDS = max(1, _env_int('CACHE_RETRY_COOLDOWN_SECONDS', 30))
+
+_cache_client = None
+# 'new'      -> not probed yet.
+# 'ready'    -> _cache_client is usable.
+# 'off'      -> PERMANENTLY unavailable in this process (no redis package, no
+#               REDIS_URL). Nothing a re-probe could observe would change, so we
+#               never look again.
+# 'cooldown' -> TRANSIENT failure (unreachable server, failed read/write). Re-probe
+#               once _cache_retry_at passes.
+_cache_state = 'new'
+# Last state we emitted a log line for, so each transition is logged exactly once
+# instead of once per request.
+_cache_logged_state = None
+_cache_retry_at = 0.0
+
+
+def _log_cache_state(state, message):
+    """Log a cache state transition exactly once per state.
+
+    Keyed on the state rather than the message because a hard outage re-probes
+    every CACHE_RETRY_COOLDOWN_SECONDS and must not log on every attempt — the
+    re-probe reinstates 'cooldown', which is already the logged state, so a
+    multi-hour outage still costs exactly one warning.
+    """
+    global _cache_logged_state
+    if _cache_logged_state == state:
+        return
+    _cache_logged_state = state
+    if state == 'ready':
+        logger.info(message)
+    else:
+        logger.warning(message)
+
+
+def _disable_cache(reason):
+    """Turn caching off permanently for this worker and say why once.
+
+    Only for conditions a running process cannot recover from. Anything that
+    could come back on its own belongs in _cooldown_cache().
+    """
+    global _cache_state, _cache_client
+    _cache_client = None
+    _cache_state = 'off'
+    _log_cache_state('off', f"Response cache disabled: {reason}")
+
+
+def _cooldown_cache(reason):
+    """Park the cache after a transient Redis failure and re-probe later.
+
+    The failure now costs CACHE_RETRY_COOLDOWN_SECONDS of uncached responses
+    instead of the rest of the worker's life. time.monotonic() so an NTP step or
+    a DST change cannot push the deadline hours into the future.
+    """
+    global _cache_state, _cache_client, _cache_retry_at
+    _cache_client = None
+    _cache_state = 'cooldown'
+    _cache_retry_at = time.monotonic() + CACHE_RETRY_COOLDOWN_SECONDS
+    _log_cache_state(
+        'cooldown',
+        f"Response cache paused for {CACHE_RETRY_COOLDOWN_SECONDS}s "
+        f"(will re-probe): {reason}",
+    )
+
+
+def get_cache_client():
+    """Return a usable Redis client, or None when caching is unavailable."""
+    global _cache_client, _cache_state
+    if _cache_state == 'ready':
+        return _cache_client
+    if _cache_state == 'off':
+        return None
+    if _cache_state == 'cooldown' and time.monotonic() < _cache_retry_at:
+        return None
+    if not REDIS_URL:
+        _disable_cache("REDIS_URL is not set")
+        return None
+    try:
+        # Imported lazily so a build without the redis package still boots.
+        import redis
+    except ImportError as e:
+        _disable_cache(f"redis package not installed ({e})")
+        return None
+    timeout = REDIS_TIMEOUT_MS / 1000.0
+    try:
+        client = redis.Redis.from_url(
+            REDIS_URL,
+            socket_timeout=timeout,
+            socket_connect_timeout=timeout,
+        )
+        client.ping()
+    except Exception as e:
+        # Transient, not permanent: a Redis container that is still starting up,
+        # or restarting, reaches this path and must be picked up when it returns.
+        _cooldown_cache(f"cannot reach REDIS_URL: {e}")
+        return None
+    _cache_client = client
+    _cache_state = 'ready'
+    _log_cache_state(
+        'ready', f"Response cache enabled via Redis (ttl={CACHE_TTL_SECONDS}s)"
+    )
+    return client
+
+
+def get_sync_generation():
+    """Cache generation token: "<newest-success>|<newest-sync-id>:<its-status>".
+
+    Both halves are load-bearing. The first is the completed_at of the newest
+    SUCCESSFUL sync, which is what retires a completed generation's entries. The
+    second is the newest sync row whatever its outcome, which is what keeps an
+    IN-PROGRESS sync out of a completed generation's key space: sync_data() sets
+    status='success' only in its final statement, so for the entire duration of a
+    sync every read sees half-written state. With the timestamp alone those
+    partial bodies were cached under the PREVIOUS generation's key, and if the
+    sync then failed the generation never advanced — so a partial-state body was
+    served for the full TTL. They now land under "…|N:running", a key space that
+    stops resolving the instant that row flips to success or failed.
+
+    Mid-sync bodies are still cached, just under their own generation — a sync can
+    take minutes and that is exactly when Postgres is busiest, so read-through is
+    worth keeping. The cost is one extra orphaned generation per sync, aging out
+    over CACHE_TTL_SECONDS. What bounds total memory is the allow-list in
+    _cache_key(): entries per generation is the number of real filter scopes, not
+    the number of distinct URLs a client can invent.
+
+    Returns None when the lookup itself failed (caller then bypasses the cache
+    rather than sharing the pre-first-sync key space). One indexed lookup per
+    request, which is why only the four heavy endpoints are cached — on the small
+    endpoints this query would cost more than the work it saves.
+    """
+    try:
+        with db.get_db_cursor() as cur:
+            # A bare SELECT returns exactly one row even against an empty table,
+            # and all three subqueries share one snapshot, so newest_id and
+            # newest_status can never come from different rows.
+            cur.execute("""
+                SELECT
+                    (SELECT completed_at
+                     FROM sync_metadata
+                     WHERE status = 'success' AND completed_at IS NOT NULL
+                     ORDER BY completed_at DESC
+                     LIMIT 1) AS last_success,
+                    (SELECT sync_id
+                     FROM sync_metadata
+                     ORDER BY sync_id DESC
+                     LIMIT 1) AS newest_id,
+                    (SELECT status
+                     FROM sync_metadata
+                     ORDER BY sync_id DESC
+                     LIMIT 1) AS newest_status
+            """)
+            row = cur.fetchone() or {}
+            last_success = row.get('last_success')
+            success_token = last_success.isoformat() if last_success else "none"
+            newest_id = row.get('newest_id')
+            newest_id = "none" if newest_id is None else newest_id
+            newest_status = row.get('newest_status') or "none"
+            return f"{success_token}|{newest_id}:{newest_status}"
+    except Exception as e:
+        logger.warning(f"Cache generation lookup failed, serving uncached: {e}")
+        return None
+
+
+def get_config_generation():
+    """Config generation token for config_settings: "<row-count>@<newest-updated-at>".
+
+    /api/strategy's numbers come from get_config() — risk_exposure_multiplier,
+    security_debt_hours_per_issue, impact_high_threshold and the effort keyword
+    lists — so a PUT /api/config changes its body with no sync involved. Tracking
+    only the sync generation meant Settings reported success while the dashboard
+    kept serving pre-save numbers for up to a full TTL.
+
+    Reading the token from Postgres, rather than flipping a flag in memory, is
+    what makes the invalidation correct across all 4 gunicorn workers: every
+    worker derives the same token from the same row, so whichever worker answers
+    the next request computes the new key. A per-process flag would only fix the
+    one worker that happened to handle the PUT.
+
+    The row count is included because MAX(updated_at) alone does not move when a
+    non-newest row is deleted. Returns None on lookup failure; the caller then
+    bypasses the cache.
+    """
+    try:
+        with db.get_db_cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) AS n, MAX(updated_at) AS newest FROM config_settings"
+            )
+            row = cur.fetchone() or {}
+            newest = row.get('newest')
+            return "%s@%s" % (
+                row.get('n') or 0,
+                newest.isoformat() if newest else "none",
+            )
+    except Exception as e:
+        logger.warning(f"Config generation lookup failed, serving uncached: {e}")
+        return None
+
+
+def _cache_key(endpoint_name, generation, config_generation):
+    """fleetcis:v1:<endpoint-name>:<sync_generation>:<config_generation>:<scope-querystring>
+
+    scope-querystring is urlencode() over CACHE_SCOPE_ARGS ONLY, never the whole
+    request arg set: an arg nobody reads cannot change the body, so it must not be
+    able to mint a new entry either. ?junk=1 therefore hits the same key as no arg
+    at all. Repeated values of an allow-listed arg are all kept, and sorting makes
+    the key insensitive to arg order.
+
+    config_generation is '-' for endpoints whose body does not depend on
+    config_settings, so every key keeps the same number of segments.
+    """
+    scope = []
+    for name in CACHE_SCOPE_ARGS:
+        for val in request.args.getlist(name):
+            # Empty values are skipped to mirror the filters, which all gate on
+            # `if val:` — so ?label= applies no filter and must land on the same
+            # key as no label at all, not on a second entry holding the same body.
+            if val:
+                scope.append((name, val))
+    query_string = urlencode(sorted(scope))
+    return f"{CACHE_KEY_PREFIX}:{endpoint_name}:{generation}:{config_generation}:{query_string}"
+
+
+def cached_response(endpoint_name, config_dependent=False):
+    """Cache an expensive read-only endpoint's serialized JSON body in Redis.
+
+    Set config_dependent=True for an endpoint that reads get_config(): its key
+    then also carries the config generation, so saving Settings is visible on the
+    next request instead of after the TTL.
+
+    Every failure path falls through to the live result: a cache problem must
+    never become a 5xx on a read endpoint.
+    """
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            client = get_cache_client()
+            if client is None:
+                return fn(*args, **kwargs)
+            generation = get_sync_generation()
+            if generation is None:
+                return fn(*args, **kwargs)
+            # Only paid for by the endpoints that need it — one aggregate over a
+            # table with a handful of rows.
+            config_generation = get_config_generation() if config_dependent else '-'
+            if config_generation is None:
+                return fn(*args, **kwargs)
+            key = _cache_key(endpoint_name, generation, config_generation)
+            try:
+                cached = client.get(key)
+            except Exception as e:
+                _cooldown_cache(f"read failed: {e}")
+                return fn(*args, **kwargs)
+            if cached is not None:
+                resp = app.response_class(cached, mimetype='application/json')
+                resp.headers['X-Cache'] = 'HIT'
+                return resp
+            resp = app.make_response(fn(*args, **kwargs))
+            resp.headers['X-Cache'] = 'MISS'
+            # Only successful JSON bodies are worth keeping — error_response()
+            # returns a non-200 tuple and must not be cached.
+            if resp.status_code == 200 and resp.mimetype == 'application/json':
+                try:
+                    client.setex(key, CACHE_TTL_SECONDS, resp.get_data())
+                except Exception as e:
+                    _cooldown_cache(f"write failed: {e}")
+            return resp
+        return wrapper
+    return decorator
+
+
 # --- Configuration Management ---
 def get_config(key, default):
     """Fetch configuration value from database with fallback to default."""
@@ -127,12 +540,15 @@ def get_config(key, default):
             row = cur.fetchone()
             if row:
                 val = row['value']
+                # Stored values are free-form text; fall back through JSON, then
+                # number, then raw string. Narrow excepts so a SystemExit or
+                # KeyboardInterrupt is not swallowed by the parse attempt.
                 try:
                     return json.loads(val)
-                except:
+                except (TypeError, ValueError):
                     try:
                         return float(val) if '.' in val else int(val)
-                    except:
+                    except (TypeError, ValueError):
                         return val
             return default
     except Exception as e:
@@ -144,6 +560,11 @@ def build_filter_query(base_query, params, filters_map):
     """
     Appends WHERE clauses based on filters.
     filters_map: dict of {url_param: sql_column}
+
+    ⚠ Currently unused. If you wire this into a @cached_response endpoint, the
+    filters_map you pass MUST be HOST_SCOPE_FILTERS (or its args added to
+    HOST_SCOPE_EXTRA_ARGS), otherwise the args it reads are absent from the cache
+    key and two different responses will share one entry.
     """
     conditions = []
     
@@ -169,10 +590,14 @@ def get_filtered_hosts_subquery():
     """
     Build a subquery to get host_ids with label + standard filters applied.
     Returns (subquery_string, params_list)
+
+    The filter map is HOST_SCOPE_FILTERS, shared with the response cache key so
+    the two can never disagree about which args change a body. Iteration order is
+    the dict's insertion order, so the emitted SQL is unchanged.
     """
     label_filter = request.args.get('label')
-    filters = {'team': 'team_name', 'platform': 'platform', 'osVersion': 'platform_version'}
-    
+    filters = HOST_SCOPE_FILTERS
+
     params = []
     conditions = []
     
@@ -195,8 +620,166 @@ def get_filtered_hosts_subquery():
     
     if conditions:
         base += " AND " + " AND ".join(conditions)
-    
+
     return base, params
+
+
+# --- Historical trend helpers (policy_results_history) ---
+# Deliberately NOT sourced from compliance_snapshots. Snapshot rows written before
+# the sync fix hold critical_failures = 0 and a passing_hosts that actually counted
+# result rows, and nothing in the row says which revision wrote it - no schema
+# version, no writer column - so old and new rows are indistinguishable and the
+# whole table has to be treated as untrustworthy for trends. policy_results_history
+# stores raw per-host statuses that have always meant the same thing, so every
+# trend below is derived from it and only from it.
+def history_window_bounds(cur, h_query, params):
+    """Earliest/latest history observation in the trend window, for this scope.
+
+    Returns (window_meta, first_seen, last_seen). window_meta['multi_day'] is the
+    "is there enough history to compare" test: comparing MIN and MAX dates is
+    exactly equivalent to "at least 2 distinct days present" but costs one bounded
+    range scan instead of sorting the window to count distinct days.
+
+    checked_at is constrained by a stable expression so PG can prune partitions at
+    execution start and serve the range from idx_history_checked_policy, instead of
+    scanning every partition that will ever exist.
+    """
+    cur.execute(f"""
+        SELECT MIN(checked_at) AS first_seen,
+               MAX(checked_at) AS last_seen,
+               MIN(checked_at)::date <> MAX(checked_at)::date AS multi_day
+        FROM policy_results_history
+        WHERE checked_at >= NOW() - make_interval(days => %s)
+          AND host_id IN ({h_query})
+    """, [HISTORY_TREND_DAYS] + list(params))
+    row = cur.fetchone() or {}
+    first_seen = row.get('first_seen')
+    last_seen = row.get('last_seen')
+    window_meta = {
+        "days": HISTORY_TREND_DAYS,
+        "first_observed": first_seen.isoformat() if first_seen else None,
+        "last_observed": last_seen.isoformat() if last_seen else None,
+        # False whenever the window holds fewer than 2 distinct days, including
+        # the empty case (NULL <> NULL is NULL, not true).
+        "multi_day": bool(row.get('multi_day')),
+        "source": "policy_results_history",
+    }
+    return window_meta, first_seen, last_seen
+
+
+def history_pair_deltas(cur, h_query, params):
+    """Per-policy first-vs-last observed status inside the trend window.
+
+    One row per policy_id: how many (policy_id, host_id) pairs were observed at
+    all, how many of them were failing at their FIRST observation in the window,
+    and how many at their LAST. A pair that produced no rows in the window is
+    absent from both counts rather than being assumed failing, which is what makes
+    this safe on a sparse history.
+
+    scoped is MATERIALIZED on purpose: it is referenced twice, so without it PG
+    would inline the window scan into both DISTINCT ON branches and read the
+    partitions twice. DISTINCT ON yields exactly one row per pair on each side, so
+    the join is 1:1 and duplicate rows for the same (pair, checked_at) - possible
+    if Fleet ever reported a host as both passing and failing in one sync - cannot
+    inflate the counts.
+    """
+    cur.execute(f"""
+        WITH scoped AS MATERIALIZED (
+            SELECT history_id, policy_id, host_id, status, checked_at
+            FROM policy_results_history
+            WHERE checked_at >= NOW() - make_interval(days => %s)
+              AND host_id IN ({h_query})
+        ),
+        first_obs AS (
+            SELECT DISTINCT ON (policy_id, host_id)
+                   policy_id, host_id, status, checked_at, history_id
+            FROM scoped
+            ORDER BY policy_id, host_id, checked_at ASC, history_id ASC
+        ),
+        last_obs AS (
+            SELECT DISTINCT ON (policy_id, host_id)
+                   policy_id, host_id, status, checked_at, history_id
+            FROM scoped
+            ORDER BY policy_id, host_id, checked_at DESC, history_id DESC
+        )
+        SELECT f.policy_id,
+               COUNT(*) AS observed_pairs,
+               COUNT(*) FILTER (WHERE f.status = 'fail') AS first_fail,
+               COUNT(*) FILTER (WHERE l.status = 'fail') AS last_fail
+        FROM first_obs f
+        JOIN last_obs l
+          ON l.policy_id = f.policy_id AND l.host_id = f.host_id
+        GROUP BY f.policy_id
+    """, [HISTORY_TREND_DAYS] + list(params))
+    return cur.fetchall()
+
+
+def technique_trends(trend_rows, policy_techniques):
+    """Roll per-policy history deltas up to ATT&CK techniques.
+
+    policy_techniques comes from the caller's own pass over
+    policy_catalog.mapping_for_policy() + MITRE_DATA, so there is exactly one
+    mapping path in the file and gains/losses can never disagree with the matrix
+    they sit next to.
+
+    "passing" here means "not failing", matching the current-state aggregate in
+    /api/architecture where a host with fail_count = 0 counts as passing - an
+    'error' result therefore lands on the passing side in both places.
+    """
+    stats = {}
+    for row in trend_rows:
+        techniques = policy_techniques.get(row['policy_id'])
+        if not techniques:
+            continue
+        pairs = int(row['observed_pairs'] or 0)
+        if pairs <= 0:
+            continue
+        first_pass = pairs - int(row['first_fail'] or 0)
+        last_pass = pairs - int(row['last_fail'] or 0)
+        for aid in techniques:
+            acc = stats.setdefault(aid, {'pairs': 0, 'first_pass': 0, 'last_pass': 0})
+            # A policy mapped to several techniques contributes its full volume to
+            # each of them, exactly as the current-state mitre_stats rollup does.
+            acc['pairs'] += pairs
+            acc['first_pass'] += first_pass
+            acc['last_pass'] += last_pass
+
+    moved = []
+    for aid, acc in stats.items():
+        pairs = acc['pairs']
+        if pairs < HISTORY_TREND_MIN_SAMPLE:
+            continue
+        baseline = 100.0 * acc['first_pass'] / pairs
+        current = 100.0 * acc['last_pass'] / pairs
+        change = round(current - baseline, 1)
+        # Techniques that did not move are not news, and reporting a 0.0% "gain"
+        # would fill the list with float noise.
+        if change == 0:
+            continue
+        meta = MITRE_DATA.get(aid) or {}
+        moved.append({
+            "id": aid,
+            "name": meta.get('name') or aid,
+            "tactic": meta.get('tactic') or '',
+            # Display string the frontend prints verbatim; the sign is included.
+            "change": f"{change:+.1f}%",
+            # Percentage points, not a ratio of a ratio.
+            "change_pp": change,
+            "baseline_rate": round(baseline, 1),
+            "current_rate": round(current, 1),
+            "sample_size": pairs,
+        })
+
+    gains = sorted(
+        [m for m in moved if m['change_pp'] > 0],
+        key=lambda m: m['change_pp'], reverse=True
+    )[:HISTORY_TREND_TOP_N]
+    losses = sorted(
+        [m for m in moved if m['change_pp'] < 0],
+        key=lambda m: m['change_pp']
+    )[:HISTORY_TREND_TOP_N]
+    return gains, losses
+
 
 @app.route('/', methods=['GET'])
 def index():
@@ -214,6 +797,39 @@ def index():
             "/api/config"
         ]
     })
+
+
+@app.route('/healthz', methods=['GET'])
+def healthz():
+    """Readiness probe that actually exercises the data path.
+
+    GET / cannot do this job and is deliberately left alone (the frontend and the
+    existing probes read it): it returns a static payload, so since pool creation
+    at import became non-fatal a backend with an unreachable Postgres answers it
+    200 — "healthy" — while every /api/* request 500s. This runs SELECT 1 through
+    db.get_db_cursor(), i.e. through the real pool and a real checked-out
+    connection, so a dead database is a 503 that an orchestrator can act on.
+
+    The body carries the exception CLASS only. psycopg2's OperationalError text
+    embeds the DSN host, port and user, and this endpoint is unauthenticated; the
+    full message goes to the log instead.
+    """
+    try:
+        with db.get_db_cursor() as cur:
+            cur.execute("SELECT 1 AS ok")
+            row = cur.fetchone()
+        if not row:
+            logger.warning("Health check: SELECT 1 returned no row")
+            return jsonify({"status": "unhealthy", "database": "no_result"}), 503
+        return jsonify({"status": "ok", "database": "ok"}), 200
+    except Exception as e:
+        logger.warning(f"Health check failed: {type(e).__name__}: {e}")
+        return jsonify({
+            "status": "unhealthy",
+            "database": "unreachable",
+            "error": type(e).__name__,
+        }), 503
+
 
 @app.route('/api/sync-status', methods=['GET'])
 def get_sync_status():
@@ -233,30 +849,44 @@ def get_sync_status():
                 return jsonify({
                     "last_sync": None,
                     "status": "never",
+                    "degraded": False,
                     "message": "No sync has been performed yet"
                 })
 
             # Handle TZ-aware datetimes from Postgres
             completed = row['completed_at']
             started = row['started_at']
-            
+            status = row['status']
+            error_message = row['error_message']
+
             return jsonify({
                 "last_sync": completed.isoformat() if completed else started.isoformat(),
-                "status": row['status'],
+                "status": status,
+                # Truthful partial-failure signal. sync_fleet_data records
+                # status='success' with error_message="N fetch error(s); first — …"
+                # when some fetches failed but the run still wrote data, so
+                # "status" alone says everything is fine and a consumer had to
+                # string-inspect "error" to notice. Additive on purpose: no
+                # existing key is renamed or removed, the frontend reads them.
+                "degraded": status == 'success' and bool(error_message),
                 "duration_ms": row['duration_ms'],
-                "sync_interval_minutes": int(os.environ.get("SYNC_INTERVAL_MINUTES", "5")),
+                # _env_int so a non-numeric SYNC_INTERVAL_MINUTES cannot turn this
+                # read endpoint into a 500.
+                "sync_interval_minutes": _env_int("SYNC_INTERVAL_MINUTES", 5),
                 "changes": {
                     "hosts": row['hosts_changed'],
                     "policies": row['policies_changed'],
                     "results": row['results_changed']
                 },
-                "error": row['error_message']
+                "error": error_message
             })
     except Exception as e:
         logger.error(f"Sync status fetch failed: {str(e)}")
         return jsonify({
             "last_sync": None,
             "status": "error",
+            # Present on every branch so a consumer can read it unconditionally.
+            "degraded": False,
             "message": "Internal server error"
         }), 500
 
@@ -271,10 +901,10 @@ def get_all_config():
                 val = row['value']
                 try:
                     parsed = json.loads(val)
-                except:
+                except (TypeError, ValueError):
                     try:
                         parsed = float(val) if '.' in val else int(val)
-                    except:
+                    except (TypeError, ValueError):
                         parsed = val
                 config[key] = {
                     "value": parsed,
@@ -288,10 +918,15 @@ def get_all_config():
 @require_write_auth
 def update_config():
     try:
-        updates = request.json
+        # silent=True so a malformed body or a missing JSON content-type reports
+        # 400 here instead of raising and being reported as a 500 by the handler
+        # below. A JSON array or scalar would also break the .items() loop.
+        updates = request.get_json(silent=True)
         if not updates:
             return error_response("No configuration provided", 400)
-        
+        if not isinstance(updates, dict):
+            return error_response("Configuration must be a JSON object", 400)
+
         # Validation for keys
         invalid_keys = [k for k in updates if k not in VALID_CONFIG_KEYS]
         if invalid_keys:
@@ -310,9 +945,16 @@ def update_config():
         for key, value in updates.items():
             if key in numeric_keys:
                 try:
-                    float(value)
+                    numeric_value = float(value)
                 except (ValueError, TypeError):
                     return error_response(f"Value for {key} must be numeric", 400)
+                # "nan"/"inf" pass float() and would be stored verbatim, then
+                # serialized into /api/strategy as a non-standard JSON token that
+                # strict clients reject.
+                if not math.isfinite(numeric_value):
+                    return error_response(
+                        f"Value for {key} must be a finite number", 400
+                    )
         
         with db.get_db_cursor(commit=True) as cur:
             updated_count = 0
@@ -391,13 +1033,14 @@ def get_os_versions():
 
 @app.route('/api/devices', methods=['GET'])
 def get_devices():
-    # Pagination
-    try:
-        page = int(request.args.get('page', 0))
-        limit = int(request.args.get('limit', 100)) # Default 100
-        offset = page * limit
-    except:
-        page, limit, offset = 0, 100, 0
+    # Pagination — clamp before these values ever reach SQL. Junk input still
+    # falls back to the defaults rather than erroring; out-of-range numbers are
+    # clamped so ?limit=999999 cannot dump the table and ?page=-1 cannot send a
+    # negative OFFSET to Postgres.
+    page = max(0, request_int('page', 0))
+    limit = min(MAX_PAGE_SIZE, max(1, request_int('limit', DEFAULT_PAGE_SIZE)))
+    page = min(page, MAX_PAGE_OFFSET // limit)
+    offset = page * limit
 
     label_filter = request.args.get('label')
     params = []
@@ -428,9 +1071,9 @@ def get_devices():
         """
         count_query = "SELECT COUNT(*) as total FROM fleet_hosts h WHERE 1=1"
     
-    # Additional filters
-    filters = {'team': 'team_name', 'platform': 'platform', 'osVersion': 'platform_version'}
-    for param, col in filters.items():
+    # Additional filters — same map as get_filtered_hosts_subquery(), so a new
+    # scope filter lands here too instead of silently applying to one endpoint.
+    for param, col in HOST_SCOPE_FILTERS.items():
         val = request.args.get(param)
         if val:
             clause = f" AND h.{col} = %s"
@@ -470,7 +1113,11 @@ def get_devices():
             "total": total,
             "count": len(devices),
             "page": page,
+            # Effective values after clamping, so a caller can tell it asked for
+            # more than the server is willing to return.
             "limit": limit,
+            "max_limit": MAX_PAGE_SIZE,
+            "offset": offset,
             "devices": devices
         })
 
@@ -536,6 +1183,7 @@ def get_compliance_summary():
         })
 
 @app.route('/api/safeguard-compliance', methods=['GET'])
+@cached_response('safeguard-compliance')
 def get_safeguard_compliance():
     h_query, params = get_filtered_hosts_subquery()
     
@@ -579,6 +1227,7 @@ def get_safeguard_compliance():
         return jsonify({"safeguards": result_list})
 
 @app.route('/api/heatmap-data', methods=['GET'])
+@cached_response('heatmap-data')
 def get_heatmap_data():
     """
     Heat map grain: policy (or cis_safeguard_id aggregation).
@@ -771,6 +1420,11 @@ def get_heatmap_data():
         })
 
 @app.route('/api/strategy', methods=['GET'])
+# config_dependent because this body is computed from config_settings (the risk
+# and effort tunables read via get_config() below), not from sync output alone. The
+# key therefore carries the config generation and a saved setting is visible on the
+# very next request in every worker, instead of after up to a full CACHE_TTL.
+@cached_response('strategy', config_dependent=True)
 def get_strategy():
     h_query, params = get_filtered_hosts_subquery()
     
@@ -797,8 +1451,24 @@ def get_strategy():
         elif security_debt_hours < 40: security_debt = f"{int(security_debt_hours / 8)}d"
         else: security_debt = f"{int(security_debt_hours / 40)}w"
 
-        # 5. Velocity — no historical store; do not invent a fake rate
+        # 5. Velocity — net failing checks remediated per day over the trend
+        #    window, from policy_results_history. Stays None (never 0, never a
+        #    fabricated rate) when the window holds fewer than 2 distinct days,
+        #    because "nothing was recorded" is not "nothing changed".
         velocity = None
+        velocity_window, vel_first, vel_last = history_window_bounds(cur, h_query, params)
+        if velocity_window['multi_day']:
+            net_fixed = 0
+            for row in history_pair_deltas(cur, h_query, params):
+                # Net over the same pair set at both ends of the window: pairs the
+                # window never observed contribute nothing instead of counting as
+                # newly fixed or newly broken.
+                net_fixed += int(row['first_fail'] or 0) - int(row['last_fail'] or 0)
+            span_days = (vel_last - vel_first).total_seconds() / 86400.0
+            # multi_day only guarantees two different calendar dates, so the span
+            # can be minutes across midnight. Flooring at one day stops that from
+            # inflating a per-day rate by three orders of magnitude.
+            velocity = round(net_fixed / max(1.0, span_days), 1)
 
         # Maturity
         if posture_score > 90: maturity = 5
@@ -909,13 +1579,18 @@ def get_strategy():
             "risk_exposure": risk_exposure,
             "security_debt": security_debt,
             "remediation_velocity": velocity,
-            "velocity_available": False,
+            "velocity_available": velocity is not None,
+            # Signed net checks remediated per day. Negative means the fleet lost
+            # ground over the window.
+            "velocity_unit": "checks/day",
+            "velocity_window": velocity_window,
             "roadmap": roadmap,
             "team_leaderboard": team_stats,
             "priorities": priorities
         })
 
 @app.route('/api/architecture', methods=['GET'])
+@cached_response('architecture')
 def get_architecture():
     h_query, params = get_filtered_hosts_subquery()
 
@@ -948,6 +1623,10 @@ def get_architecture():
         mitre_stats = {}
         d3fend_tech_stats = {}
         tactic_stats = {}
+        # policy_id -> set of ATT&CK technique ids, harvested from the same
+        # mapping pass as the matrix below so the history trend rolls up through
+        # one mapping path rather than resolving policies a second time.
+        policy_techniques = {}
 
         total_checks = 0
         total_passed = 0
@@ -983,6 +1662,10 @@ def get_architecture():
                 primary = (mapping.get('attack_id') or '').strip()
                 if primary:
                     attack_ids = [primary]
+            for aid in attack_ids:
+                if aid and aid in MITRE_DATA:
+                    policy_techniques.setdefault(row['policy_id'], set()).add(aid)
+
             # Count each technique once per policy check volume (primary weight for multi-map)
             seen_tactics = set()
             for attack_id in attack_ids:
@@ -1006,6 +1689,8 @@ def get_architecture():
                     tactic_stats[tactic]['pass'] += pass_count
 
         if total_checks == 0:
+            # Nothing in scope right now, so there is nothing for history to be a
+            # trend of. Skip the history queries entirely.
             return jsonify({
                 "overall_compliance": 0,
                 "compliance_by_tactic": {},
@@ -1014,6 +1699,13 @@ def get_architecture():
                 "biggest_gains": [],
                 "biggest_losses": [],
                 "history_available": False,
+                "history_window": {
+                    "days": HISTORY_TREND_DAYS,
+                    "first_observed": None,
+                    "last_observed": None,
+                    "multi_day": False,
+                    "source": "policy_results_history",
+                },
                 "mitre_matrix": []
             })
 
@@ -1034,9 +1726,20 @@ def get_architecture():
         top_weakest = tech_list[:5]
         top_strongest = sorted(tech_list, key=lambda x: x['rate'], reverse=True)[:3]
 
-        # No historical store yet — do not invent gains/losses
+        # Real gains/losses per ATT&CK technique: pass rate at each technique's
+        # last observation in the window versus its first. With fewer than 2
+        # distinct days of history (the state of a freshly seeded database, where
+        # every row shares one checked_at date) the comparison has no two ends, so
+        # both lists stay empty and history_available stays False rather than
+        # reporting a 0.0% change for everything.
+        history_window, _hist_first, _hist_last = history_window_bounds(cur, h_query, params)
+        history_available = history_window['multi_day']
         gains = []
         losses = []
+        if history_available:
+            gains, losses = technique_trends(
+                history_pair_deltas(cur, h_query, params), policy_techniques
+            )
 
         # 5. MITRE Matrix (Grouped by Tactic)
         # Expected: [{tactic: "Initial Access", rate: 50, techniques: [{id: T1078, name:..., rate:..}]}]
@@ -1079,7 +1782,8 @@ def get_architecture():
             "top_3_strongest": top_strongest,
             "biggest_gains": gains,
             "biggest_losses": losses,
-            "history_available": False,
+            "history_available": history_available,
+            "history_window": history_window,
             "mitre_matrix": mitre_matrix
         })
 

@@ -45,8 +45,13 @@ CLAUDE.md
 docs/*
 !docs/images/
 !docs/images/**
+# Test suite and its dev-only requirements stay local: not published.
 tests/
+requirements-dev.txt
 .planning/
+
+# Tooling scratch output
+.playwright-mcp/
 
 # OS junk
 .DS_Store

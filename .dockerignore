@@ -1,3 +1,50 @@
-.DS_Store
-.agent/.DS_Store
-*/.DS_Store
+# Keep the build context to what Dockerfile.backend actually COPYs
+# (requirements.txt and backend/). Everything below either carries secrets,
+# is large, or is host-specific state that has no business on the daemon.
+#
+# Note on syntax: dockerignore patterns match the whole path relative to the
+# context root, not the basename, so a bare "__pycache__" would only match one
+# at the root. Anything that can appear at any depth is written as "**/name".
+
+# Secrets. Dockerfile.backend does not COPY these, but an un-ignored .env is
+# still uploaded to the docker daemon as build context and kept in the build
+# cache. app.py calls load_dotenv('/app/.env'), which is a silent no-op in the
+# image because the file is absent; config comes from the compose environment.
+.env
+.env.*
+
+# Local VCS and tooling state
+.git
+.gitignore
+.claude
+.agent
+
+# Python virtualenvs, bytecode and test caches. These nest under backend/, so
+# without the recursive form "COPY backend/" would bake stale .pyc into the
+# image and invalidate the layer cache on every local test run.
+**/.venv
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# Not needed to build or run the backend image.
+# frontend/ is deliberately NOT excluded: .dockerignore applies to the whole
+# context regardless of which Dockerfile is used, so excluding it would make
+# Dockerfile.frontend unbuildable. scripts/ stays for the same reason — the
+# maintenance scripts there are run inside an image that has a DATABASE_URL.
+docs
+tests
+.playwright-mcp
+
+# Host-only database state, should it ever exist as a bind directory
+postgres_data
+
+# OS and editor cruft, at any depth
+**/.DS_Store
+**/*.swp
+.idea
+.vscode

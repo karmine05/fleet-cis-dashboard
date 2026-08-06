@@ -1574,6 +1574,12 @@ async function updateSyncStatus() {
         if (data.status === 'failed') {
             textEl.textContent += ' ⚠';
             textEl.title = `Last sync failed: ${data.error || 'Unknown error'}`;
+        } else if (data.degraded) {
+            // A sync can succeed overall while individual Fleet fetches failed, so
+            // some policies were not refreshed. Without this the dashboard looked
+            // identical to a clean sync and the partial failure stayed invisible.
+            textEl.textContent += ' ⚠';
+            textEl.title = `Last sync completed with errors: ${data.error || 'some fetches failed'}`;
         }
     } catch (e) {
         textEl.textContent = 'offline';
