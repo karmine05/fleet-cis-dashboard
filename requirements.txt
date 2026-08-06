@@ -1,9 +1,13 @@
-Flask==2.3.3
-Flask-CORS==4.0.0
-Werkzeug==2.3.7
-python-dotenv==1.0.0
+Flask==3.1.3
+Flask-CORS==6.0.0
+Werkzeug==3.1.6
+python-dotenv==1.2.2
+requests==2.33.0
+
+# Security floors for transitive dependencies flagged by pip-audit.
+urllib3>=2.7.0
+click>=8.3.3
+
 psycopg2-binary
 gunicorn
 redis
-requests
-
