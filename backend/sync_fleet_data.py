@@ -248,25 +248,78 @@ def fetch_host_details(host_id):
         return response.json().get("host", {})
     except Exception: return None
 
+def _fetch_policy_page(team_id, page, per_page):
+    """One GET to /teams/{id}/policies. Returns (own_list, inherited_list) on
+    200; raises requests.HTTPError on a non-2xx so the caller can branch on 404.
+    """
+    url = f"{FLEET_URL}/api/latest/fleet/teams/{team_id}/policies"
+    response = requests.get(
+        url, params={"per_page": per_page, "page": page},
+        headers=get_fleet_headers(), timeout=20, verify=FLEET_SSL_VERIFY,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data.get("policies", []), data.get("inherited_policies", [])
+
+
+def _refetch_page_one_each(team_id, page, own_by_id, inherited_by_id):
+    """Re-request a 404'd page's offset range one policy at a time.
+
+    A page 404s because ONE policy on it references a deleted SoftwareInstaller;
+    Fleet fails the whole page instead of skipping that one policy. Re-requesting
+    each position in the page's range with per_page=1 returns every OTHER policy
+    on that page (200 each) and 404s only the dangling policy's position, so the
+    page's blast radius shrinks from POLICY_PAGE_SIZE to a single policy.
+
+    The offset range of page P (per_page PS) is [P*PS, (P+1)*PS). With per_page=1
+    the `page` param IS the offset, so we request pages P*PS .. P*PS+PS-1. This
+    is what keeps "all policies" syncing even while Fleet's listing is broken by
+    someone removing a software installer — only the one orphaned policy that
+    Fleet itself cannot serialize is missed, and it stays in the DB untouched
+    (the team is marked partial) until Fleet lists it again.
+    """
+    base = page * POLICY_PAGE_SIZE
+    for offset in range(base, base + POLICY_PAGE_SIZE):
+        try:
+            own, inherited = _fetch_policy_page(team_id, offset, 1)
+        except requests.HTTPError as e:
+            # The dangling policy's position: unlistable by Fleet's bug, and
+            # the page-level 404 was already logged once. Skip it silently.
+            if e.response is not None and e.response.status_code == 404:
+                continue
+            raise
+        for p in own:
+            own_by_id.setdefault(p["id"], p)
+        for p in inherited:
+            inherited_by_id.setdefault(p["id"], p)
+        # An empty own page means we are past the team's last policy: stop early
+        # so a short final page does not cost a full POLICY_PAGE_SIZE requests.
+        if not own:
+            break
+
+
 def _fetch_team_policy_pages(team_id):
     """Paginate /teams/{id}/policies, tolerating per-page 404s.
 
     Fleet 404s the whole page that serializes a policy referencing a DELETED
     SoftwareInstaller (message "SoftwareInstaller was not found in the
     datastore") instead of skipping that one policy. Paginating with a modest
-    page size means such a dangling policy only blanks the page it sits on, and
-    the rest of the team's policies still sync.
+    page size means such a dangling policy only blanks the page it sits on; the
+    per-position re-fetch (_refetch_page_one_each) then recovers every OTHER
+    policy on that page, so only the single orphaned policy Fleet cannot
+    serialize is missed.
 
     Returns (own_by_id, inherited_by_id, fully_ok):
       own_by_id / inherited_by_id — policy dicts keyed by id (deduped; Fleet
         may repeat the inherited list across pages). Own policies are
         team-scoped; inherited are global (the caller attributes them).
-      fully_ok — True only if EVERY page succeeded. A page that 404'd leaves
-        fully_ok False so the caller treats the team as PARTIALLY fetched: its
+      fully_ok — True only if EVERY page succeeded with no 404. A page that
+        404'd leaves fully_ok False even after the re-fetch recovers its other
+        policies: the one dangling policy Fleet would not list is still
+        unconfirmed, so the caller treats the team as PARTIALLY fetched. Its
         fetched policies still upsert and their results still sync, but the
-        stale-policy cleanup keeps every row of that team — the page we
-        skipped may contain policies we already have, and we cannot confirm
-        they are gone. See compute_stale_policy_ids().
+        stale-policy cleanup keeps every row of that team — we cannot confirm
+        the unlisted policy is gone. See compute_stale_policy_ids().
     """
     own_by_id = {}
     inherited_by_id = {}
@@ -274,19 +327,15 @@ def _fetch_team_policy_pages(team_id):
     page = 0
     consecutive_404 = 0
     while page < POLICY_MAX_PAGES:
-        url = f"{FLEET_URL}/api/latest/fleet/teams/{team_id}/policies"
         try:
-            response = requests.get(
-                url, params={"per_page": POLICY_PAGE_SIZE, "page": page},
-                headers=get_fleet_headers(), timeout=20, verify=FLEET_SSL_VERIFY,
-            )
-            response.raise_for_status()
+            own, inherited = _fetch_policy_page(team_id, page, POLICY_PAGE_SIZE)
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code == 404:
-                # The page serializes a dangling SoftwareInstaller. Skip it and
-                # keep paginating — the broken policy only costs its own page.
                 record_fetch_error(f"team {team_id} policies page {page}", e)
                 fully_ok = False
+                # Recover every policy on this page except the one dangling
+                # installer that broke it, so the rest of the page still syncs.
+                _refetch_page_one_each(team_id, page, own_by_id, inherited_by_id)
                 consecutive_404 += 1
                 if consecutive_404 >= POLICY_MAX_CONSECUTIVE_404:
                     break
@@ -294,9 +343,6 @@ def _fetch_team_policy_pages(team_id):
                 continue
             raise
         consecutive_404 = 0
-        data = response.json()
-        own = data.get("policies", [])
-        inherited = data.get("inherited_policies", [])
         for p in own:
             own_by_id.setdefault(p["id"], p)
         for p in inherited:
