@@ -788,7 +788,7 @@ def build_filter_query(base_query, params, filters_map):
     Appends WHERE clauses based on filters.
     filters_map: dict of {url_param: sql_column}
 
-    ⚠ Currently unused. If you wire this into a @cached_response endpoint, the
+    Currently unused. If you wire this into a @cached_response endpoint, the
     filters_map you pass MUST be HOST_SCOPE_FILTERS (or its args added to
     HOST_SCOPE_EXTRA_ARGS), otherwise the args it reads are absent from the cache
     key and two different responses will share one entry.

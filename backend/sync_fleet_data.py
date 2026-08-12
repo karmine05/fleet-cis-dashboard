@@ -47,10 +47,10 @@ def _env_int(name, default, minimum=None):
     try:
         value = int(raw.strip())
     except ValueError:
-        print(f"⚠ {name}={raw!r} is not an integer — using default {default}")
+        print(f"{name}={raw!r} is not an integer — using default {default}")
         return default
     if minimum is not None and value < minimum:
-        print(f"⚠ {name}={value} is below the minimum of {minimum} — using default {default}")
+        print(f"{name}={value} is below the minimum of {minimum} — using default {default}")
         return default
     return value
 
@@ -117,7 +117,7 @@ FLEET_SSL_VERIFY = ssl_verify_env not in ('false', '0', 'no', 'off')
 
 if not FLEET_SSL_VERIFY:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    print("⚠ FLEET_SSL_VERIFY is disabled — TLS certificate checks skipped")
+    print("FLEET_SSL_VERIFY is disabled — TLS certificate checks skipped")
 
 
 # CIS control regex
@@ -167,7 +167,7 @@ POLICY_MAX_PAGES = 200
 def record_fetch_error(context, exc):
     """Log a fetch failure and keep a bounded sample for the sync record."""
     message = f"{context}: {type(exc).__name__}: {exc}"
-    print(f"  ⚠ {message}")
+    print(f"  Warning: {message}")
     if len(FETCH_ERRORS) < MAX_RECORDED_FETCH_ERRORS:
         FETCH_ERRORS.append(message)
 
@@ -650,7 +650,7 @@ def ensure_history_partitions(months_ahead=None):
             # partition only means rows land in the DEFAULT partition until the
             # next sync retries.
             print(
-                f"  ⚠ Skipped history partition for {year:04d}-{month:02d}: "
+                f"  Skipped history partition for {year:04d}-{month:02d}: "
                 f"policy_results_history was locked longer than {DDL_LOCK_TIMEOUT}."
             )
     if created:
@@ -716,7 +716,7 @@ def prune_history_partitions():
                     qualified = _quote_ident(schema_name) + "." + _quote_ident(name)
                 except ValueError as e:
                     # A schema we cannot safely name is a schema we do not touch.
-                    print(f"  ⚠ Skipping history partition {name}: {e}")
+                    print(f"  Skipping history partition {name}: {e}")
                     continue
                 cur.execute("DROP TABLE IF EXISTS " + qualified)
                 dropped.append(name)
@@ -726,14 +726,14 @@ def prune_history_partitions():
         # The transaction rolled back, so nothing was actually dropped — reporting
         # 0 keeps the log honest.
         print(
-            f"  ⚠ History partition drop skipped: policy_results_history was "
+            f"  History partition drop skipped: policy_results_history was "
             f"locked longer than {DDL_LOCK_TIMEOUT}."
         )
         return 0
 
     if dropped:
         print(
-            f"  🗑 Dropped {len(dropped)} history partition(s) older than "
+            f"  Dropped {len(dropped)} history partition(s) older than "
             f"{HISTORY_RETENTION_MONTHS} month(s): {', '.join(dropped)}"
         )
     return len(dropped)
@@ -819,7 +819,7 @@ def prune_history_default_partition():
 
     if removed:
         print(
-            f"  🗑 Swept {removed} row(s) older than {cutoff} out of the default "
+            f"  Swept {removed} row(s) older than {cutoff} out of the default "
             f"history partition ({remaining_text} aged row(s) still there; "
             f"limit {HISTORY_DEFAULT_SWEEP_LIMIT}/sync)."
         )
@@ -845,7 +845,7 @@ def prune_sync_metadata():
 
     if removed:
         print(
-            f"  🗑 Pruned {removed} sync_metadata row(s) older than "
+            f"  Pruned {removed} sync_metadata row(s) older than "
             f"{SYNC_METADATA_RETENTION_DAYS} day(s) (kept the newest {SYNC_METADATA_KEEP_ROWS})."
         )
     return removed
@@ -860,17 +860,17 @@ def run_retention():
     try:
         prune_history_partitions()
     except Exception as e:
-        print(f"  ⚠ History retention skipped: {type(e).__name__}: {e}")
+        print(f"  History retention skipped: {type(e).__name__}: {e}")
     try:
         # Second pass, and not redundant: dropping partitions can never reach rows
         # sitting in the DEFAULT partition.
         prune_history_default_partition()
     except Exception as e:
-        print(f"  ⚠ Default-partition sweep skipped: {type(e).__name__}: {e}")
+        print(f"  Default-partition sweep skipped: {type(e).__name__}: {e}")
     try:
         prune_sync_metadata()
     except Exception as e:
-        print(f"  ⚠ sync_metadata retention skipped: {type(e).__name__}: {e}")
+        print(f"  sync_metadata retention skipped: {type(e).__name__}: {e}")
 
 # --- Sync Logic ---
 
@@ -963,11 +963,11 @@ def sync_data():
     try:
         init_db()
     except Exception as e:
-        print(f"❌ DB Init failed: {e}")
+        print(f"DB Init failed: {e}")
         return
 
     if not FLEET_TOKEN:
-        print("⚠ FLEET_API_TOKEN not set.")
+        print("FLEET_API_TOKEN not set.")
         return
 
     FETCH_ERRORS.clear()
@@ -1104,11 +1104,11 @@ def sync_data():
         stale_ids = set(db_state.keys()) - host_ids_processed
         if stale_ids and hosts_fetch_failed:
             print(
-                f"  ⚠ Skipping stale-host cleanup: host enumeration was partial "
+                f"  Skipping stale-host cleanup: host enumeration was partial "
                 f"({len(stale_ids)} host(s) would have been deleted)."
             )
         elif stale_ids:
-            print(f"  🗑 Removing {len(stale_ids)} stale hosts that are no longer in Fleet...")
+            print(f"  Removing {len(stale_ids)} stale hosts that are no longer in Fleet...")
             with db.get_db_cursor(commit=True) as cur:
                 # Due to FK constraints, we should delete from policy_results first 
                 # unless we've successfully updated the schema with ON DELETE CASCADE.
@@ -1338,7 +1338,7 @@ def sync_data():
                     "DELETE FROM cis_policies WHERE policy_id = ANY(%s::bigint[])",
                     (stale_policy_ids,)
                 )
-            print(f"  🗑 Removed {len(stale_policy_ids)} policy(ies) that no longer exist in Fleet.")
+            print(f"  Removed {len(stale_policy_ids)} policy(ies) that no longer exist in Fleet.")
         else:
             print("  ✅ No stale policies to remove (per-scope cleanup).")
 
@@ -1350,11 +1350,11 @@ def sync_data():
         except Exception as e:
             # Non-fatal: without the partition, rows still land in the DEFAULT
             # partition, so the sync itself is unaffected.
-            print(f"  ⚠ History partition maintenance failed: {type(e).__name__}: {e}")
+            print(f"  History partition maintenance failed: {type(e).__name__}: {e}")
 
         # 5. Policy Results (Differential by Counts)
         # We check pass/fail counts. If changed, we re-fetch the list for that policy.
-        print(f"  📊 Syncing {len(policies)} policies...")
+        print(f"  Syncing {len(policies)} policies...")
         with db.get_db_cursor() as cur:
             cur.execute("""
                 SELECT policy_id, 
@@ -1561,12 +1561,12 @@ def sync_data():
                     removed_results += cur.rowcount or 0
             if removed_results:
                 print(
-                    f"  🗑 Pruned {removed_results} stale policy result row(s) "
+                    f"  Pruned {removed_results} stale policy result row(s) "
                     f"across {len(prune_targets)} fully-fetched policies."
                 )
         skipped_prunes = len(expected_tasks) - len(prune_targets)
         if skipped_prunes:
-            print(f"  ⚠ Skipped prune for {skipped_prunes} policy(ies) with an incomplete host fetch.")
+            print(f"  Skipped prune for {skipped_prunes} policy(ies) with an incomplete host fetch.")
 
         if count:
             print(
@@ -1599,11 +1599,11 @@ def sync_data():
                   partial_error, sync_id))
 
         if partial_error:
-            print(f"⚠ Sync completed with {len(FETCH_ERRORS)} fetch error(s)")
+            print(f"Sync completed with {len(FETCH_ERRORS)} fetch error(s)")
         print(f"✅ Sync complete in {duration/1000:.1f}s")
         
     except Exception as e:
-        print(f"❌ Sync Failed: {e}")
+        print(f"Sync failed: {e}")
         with db.get_db_cursor(commit=True) as cur:
              cur.execute("""
                 UPDATE sync_metadata 
@@ -1669,7 +1669,7 @@ def _snapshot_metrics(cur, team_id):
     if unmeasured_hosts:
         scope = "global" if team_id is None else f"team {team_id}"
         print(
-            f"  ⚠ {scope}: {unmeasured_hosts} host(s) excluded from passing_hosts — "
+            f"  {scope}: {unmeasured_hosts} host(s) excluded from passing_hosts — "
             f"no policy results at all, so compliance was never measured for them."
         )
 

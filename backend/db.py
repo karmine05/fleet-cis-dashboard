@@ -94,7 +94,7 @@ def get_db_pool():
     remaining = _POOL_FAILED_UNTIL - time.monotonic()
     if remaining > 0:
         raise Exception(
-            "❌ Failed to connect to database. "
+            "Failed to connect to database. "
             f"Retry suppressed for another {remaining:.1f}s."
         )
 
@@ -133,7 +133,7 @@ def get_db_pool():
         # one retry budget; with 2 threads per gunicorn worker that is the bound,
         # and every later request in the window is cheap.
         raise Exception(
-            f"❌ Failed to connect to database. "
+            f"Failed to connect to database. "
             f"Suppressing retries for {cooldown}s."
         )
 

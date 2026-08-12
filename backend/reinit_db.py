@@ -11,10 +11,10 @@ def reinit_db():
     db_url = os.environ.get("DATABASE_URL")
     schema_path = 'schema.sql'
     
-    print(f"🗑️  Starting database reinitialization for PostgreSQL...")
+    print("Starting database reinitialization for PostgreSQL...")
     
     if not db_url:
-        print("❌ Error: DATABASE_URL not found in environment!")
+        print("Error: DATABASE_URL not found in environment")
         return
 
     try:
@@ -37,7 +37,7 @@ def reinit_db():
         
         # 2. Apply schema
         if not os.path.exists(schema_path):
-            print(f"❌ Error: Schema file '{schema_path}' not found!")
+            print(f"Error: Schema file '{schema_path}' not found")
             return
             
         with open(schema_path, 'r') as f:
@@ -47,7 +47,7 @@ def reinit_db():
         cur.execute(schema_sql)
         
         # 3. Insert default configuration values
-        print("📋 Inserting default configuration values...")
+        print("Inserting default configuration values...")
         defaults = [
             ('impact_high_threshold', '5', 'Fail count threshold for High impact classification'),
             ('impact_medium_threshold', '2', 'Fail count threshold for Medium impact classification'),
@@ -69,10 +69,10 @@ def reinit_db():
         cur.close()
         conn.close()
         
-        print(f"✨ Successfully reinitialized PostgreSQL database from '{schema_path}'!")
+        print(f"Successfully reinitialized PostgreSQL database from '{schema_path}'!")
         
     except Exception as e:
-        print(f"❌ Error during reinitialization: {e}")
+        print(f"Error during reinitialization: {e}")
 
 if __name__ == "__main__":
     # Ensure we are in the backend directory
@@ -81,6 +81,6 @@ if __name__ == "__main__":
         if os.path.exists('backend'):
             os.chdir('backend')
         else:
-            print("⚠️  Warning: Script should be run from the 'backend' directory.")
+            print("Warning: Script should be run from the 'backend' directory.")
             
     reinit_db()

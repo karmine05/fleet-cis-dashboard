@@ -103,7 +103,7 @@ WATCHDOG_TIMEOUT_SECONDS = _env_int(
     "SYNC_WATCHDOG_TIMEOUT_SECONDS", DEFAULT_WATCHDOG_TIMEOUT_SECONDS, minimum=0
 )
 if 0 < WATCHDOG_TIMEOUT_SECONDS < MIN_WATCHDOG_TIMEOUT_SECONDS:
-    print(f"⚠ SYNC_WATCHDOG_TIMEOUT_SECONDS={WATCHDOG_TIMEOUT_SECONDS} is below the "
+    print(f"SYNC_WATCHDOG_TIMEOUT_SECONDS={WATCHDOG_TIMEOUT_SECONDS} is below the "
           f"minimum of {MIN_WATCHDOG_TIMEOUT_SECONDS}s — using {MIN_WATCHDOG_TIMEOUT_SECONDS}s")
     WATCHDOG_TIMEOUT_SECONDS = MIN_WATCHDOG_TIMEOUT_SECONDS
 
@@ -142,7 +142,7 @@ def write_heartbeat():
     except Exception as e:
         if not heartbeat_error_logged:
             heartbeat_error_logged = True
-            print(f"⚠️  Cannot write heartbeat file {HEARTBEAT_FILE}: {e}")
+            print(f"Cannot write heartbeat file {HEARTBEAT_FILE}: {e}")
 
 
 def watchdog_should_abort(started_at, now, timeout_seconds):
@@ -181,7 +181,7 @@ def _abort_wedged(elapsed_seconds):
     deadline.start()
 
     print(f"{'='*60}")
-    print(f"🚨 WATCHDOG: sync cycle has been running for {elapsed_seconds:.0f}s, "
+    print(f"WATCHDOG: sync cycle has been running for {elapsed_seconds:.0f}s, "
           f"over the {WATCHDOG_TIMEOUT_SECONDS}s limit — the daemon is wedged.")
     print(f"   A wedged thread cannot be interrupted cooperatively, so the")
     print(f"   process is exiting with code {WATCHDOG_EXIT_CODE} to let the container")
@@ -217,7 +217,7 @@ def run_sync_cycle(label):
     try:
         sync_fleet_data.sync_data()
     except Exception as e:
-        print(f"❌ {label} failed: {e}")
+        print(f"{label} failed: {e}")
         # Continue running — next attempt at the next interval
     finally:
         # Refresh regardless of outcome: a failing Fleet API is not a dead daemon.
@@ -231,7 +231,7 @@ def run_sync_cycle(label):
 def handle_signal(signum, frame):
     global shutdown_requested
     sig_name = signal.Signals(signum).name
-    print(f"\n⏹️  Received {sig_name} — shutting down sync daemon...")
+    print(f"\nReceived {sig_name} — shutting down sync daemon...")
     shutdown_requested = True
 
 
@@ -262,7 +262,7 @@ def main():
     write_heartbeat()
 
     # Run one immediate sync on startup
-    print(f"\n🚀 Running initial sync...")
+    print(f"\nRunning initial sync...")
     run_sync_cycle("Initial sync")
 
     # Recurring loop
