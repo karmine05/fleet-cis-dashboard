@@ -14,11 +14,8 @@ import policy_catalog
 
 import urllib3
 
-# Load environment variables. This only does anything when the daemon is run
-# straight from a checkout: inside the container the path resolves to /app/.env,
-# which is never present (config arrives through the compose environment, and
-# .env is excluded from the build context on purpose). Guarded on existence so
-# the call is not mistaken for the runtime config source.
+# Loads .env only when running outside the container (config arrives via Compose in-docker).
+# Guarded on existence so the call isn't mistaken for the runtime config source.
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 _dotenv_path = os.path.join(basedir, '.env')
 if os.path.exists(_dotenv_path):
@@ -59,59 +56,35 @@ def _env_int(name, default, minimum=None):
 MAX_WORKERS = _env_int("SYNC_MAX_WORKERS", 10, minimum=1)
 HOSTS_PER_PAGE = _env_int("SYNC_HOSTS_PER_PAGE", 100, minimum=1)
 
-# Page size for the per-policy host lists. Larger than HOSTS_PER_PAGE because a
-# policy can cover the whole fleet and every extra page is an extra round trip;
-# a short page terminates the loop, so small policies still cost one request.
+# Larger than HOSTS_PER_PAGE so policies covering the whole fleet cost fewer round trips.
 POLICY_HOSTS_PER_PAGE = _env_int("SYNC_POLICY_HOSTS_PER_PAGE", 500, minimum=1)
-# Hard stop so a misbehaving API that always returns a full page cannot spin
-# forever. Hitting it is treated as a failed (incomplete) fetch.
+# Prevents an API that always returns a full page from spinning forever.
 MAX_POLICY_HOST_PAGES = 200
 
-# Retention / partition housekeeping (see run_retention()).
-# policy_results_history keeps this many whole months; older partitions are
-# DROPped, which is far cheaper than a row-wise DELETE. 0 (or any negative
-# value) disables retention, so no minimum is enforced on the parse.
+# Retention: keeps HISTORY_RETENTION_MONTHS whole months, DROPping older partitions.
+# 0 or negative turns retention off.
 HISTORY_RETENTION_MONTHS = _env_int("HISTORY_RETENTION_MONTHS", 12)
-# Rows that landed in the DEFAULT history partition can never be reclaimed by
-# dropping a partition (see prune_history_default_partition()), so they are swept
-# row-wise, at most this many per sync. Bounded on purpose: an unbounded DELETE
-# over years of stranded rows would hold locks on a table the dashboard reads.
+# Rows stranded in the DEFAULT partition can't be reclaimed by DROP, so they're swept row-wise.
+# Bounded to avoid holding locks on a table the dashboard reads.
 HISTORY_DEFAULT_SWEEP_LIMIT = _env_int("HISTORY_DEFAULT_SWEEP_LIMIT", 50000, minimum=1)
-# sync_metadata rows older than this are deleted, except that the newest
-# SYNC_METADATA_KEEP_ROWS rows are always kept so /api/sync-status still has
-# something to report on a long-idle instance. 0 disables retention.
+# Deletes aged sync_metadata rows but keeps the newest SYNC_METADATA_KEEP_ROWS.
+# 0 disables retention.
 SYNC_METADATA_RETENTION_DAYS = _env_int("SYNC_METADATA_RETENTION_DAYS", 90)
 SYNC_METADATA_KEEP_ROWS = 20
-# Current month plus this many future months of history partitions are created
-# on every sync, so a sync that runs over a month boundary never has to wait
-# for DDL that nobody scheduled.
+# Creates HISTORY_PARTITION_MONTHS_AHEAD future partitions so month boundaries never wait on DDL.
 HISTORY_PARTITION_MONTHS_AHEAD = 2
 
-# Rotating full-refresh sweep (see section 5 of sync_data()).
-# Fleet's cached passing_host_count/failing_host_count are NOT a reliable change
-# signal: measured live, 39 of 789 policies had aggregates that disagreed with
-# Fleet's own live host lists. Counts are also structurally blind to
-# count-preserving churn — host A pass->fail while host B fail->pass leaves both
-# totals equal, so a policy holding wrong rows would never be re-enumerated.
-# Every sync therefore force-refreshes the slice of policies satisfying
-# policy_id %% divisor == sync_id %% divisor: a rotating ~1/divisor of the
-# catalog per sync rather than an every-Nth-sync spike, and every policy is fully
-# re-enumerated within `divisor` syncs (24 syncs = 6h at the 15-minute cadence).
-# 0 disables the sweep entirely; 1 force-refreshes every policy every sync.
+# Rotating full-refresh sweep: Fleet's cached pass/fail counts are unreliable
+# (39/789 disagreed with live lists). Force-refresh ~1/divisor policies per sync
+# so every policy is fully re-enumerated within `divisor` cycles.
 SYNC_FULL_REFRESH_DIVISOR = _env_int("SYNC_FULL_REFRESH_DIVISOR", 24, minimum=0)
 
-# SQLSTATEs that mean "another session held the lock longer than we were willing
-# to wait" (55P03 lock_not_available from SET LOCAL lock_timeout, 57014
-# query_canceled from a statement_timeout). Partition DDL takes ACCESS EXCLUSIVE
-# on policy_results_history, which /api/architecture and /api/strategy now read
-# on the request path, so hitting one of these is a skip, not a failure.
+# Lock/wait SQLSTATEs. Partition DDL takes ACCESS EXCLUSIVE, so a timeout is a skip.
 PG_LOCK_TIMEOUT_SQLSTATES = ('55P03', '57014')
-# Long enough to win an uncontended race, short enough that a slow reader cannot
-# stall the sync behind DDL.
+# 5s: wins uncontended races, won't stall the sync behind a slow reader.
 DDL_LOCK_TIMEOUT = '5s'
 
-# SSL Verification Strategy — default ON (secure). Set FLEET_SSL_VERIFY=false
-# only for lab/self-signed Fleet endpoints.
+# SSL verification defaults ON. Set FLEET_SSL_VERIFY=false for lab/self-signed Fleet.
 ssl_verify_env = os.environ.get("FLEET_SSL_VERIFY", "true").lower()
 FLEET_SSL_VERIFY = ssl_verify_env not in ('false', '0', 'no', 'off')
 
@@ -125,9 +98,7 @@ import re
 CIS_REGEX = re.compile(r'(?:CIS|Benchmark)\s*[-:]?\s*(\d+(?:\.\d+)+)', re.IGNORECASE)
 CIS_FALLBACK_REGEX = re.compile(r'^(\d+(?:\.\d+)+)\s')
 
-# Monthly history partitions are named policy_results_history_y<YYYY>m<MM>.
-# Anything that does not match this exactly (notably the DEFAULT partition
-# policy_results_history_def) is never a retention-drop candidate.
+# Monthly partitions are named policy_results_history_y<YYYY>m<MM>; others are not retention candidates.
 HISTORY_PARTITION_RE = re.compile(r'^policy_results_history_y(\d{4})m(\d{2})$')
 
 def get_fleet_headers():
@@ -415,12 +386,8 @@ def fetch_policies(teams):
         suffix = "" if fully_ok else " (partial: a Fleet page 404'd on a dangling SoftwareInstaller)"
         print(f"Team {team['id']} policies fetched: {len(own_by_id)} own, {len(inherited_by_id)} inherited{suffix}")
         for p in own_by_id.values():
-            # inherited_policies are GLOBAL policies (team_id null) that apply to
-            # this team; their pass/fail counts are scoped to the team, but the
-            # policy itself is global. Attribute them as global (team_id None),
-            # not to this team — otherwise a global policy only seen via a team's
-            # inherited list would be pruned against that team's fetch and could
-            # survive or vanish depending on which team we asked.
+            # Global policies scoped to a team: attribute as global (team_id None)
+            # so pruning doesn't depend on which team we asked.
             p['team_id'] = team['id']
             if p['id'] not in all_policies:
                 all_policies[p['id']] = p
@@ -463,12 +430,8 @@ def fetch_policy_hosts(policy_id, status):
             response.raise_for_status()
             hosts = response.json().get("hosts", [])
 
-            # Everything that touches the payload stays INSIDE this try. Fleet's
-            # Go handler can marshal a nil slice as JSON null, and an element
-            # without 'id' is equally possible; outside the try those raise
-            # TypeError/KeyError in the worker thread, the exception escapes
-            # through the unguarded future.result() in sync_data() and the ENTIRE
-            # sync dies. A malformed page is one failed page, nothing more.
+            # Payload handling inside try so a nil/null/malformed page fails one
+            # worker, not the entire sync.
             if not isinstance(hosts, list):
                 raise TypeError(
                     "Fleet returned %s for \"hosts\", expected a list"
@@ -567,12 +530,8 @@ def _ensure_history_partition(year, month):
         if cur.fetchone()['present']:
             return False
 
-        # Rows for this month can already be sitting in the DEFAULT partition —
-        # that is where every history row landed while no monthly partition
-        # existed. Postgres refuses to create an overlapping partition while the
-        # default still holds matching rows, so move them across inside this
-        # same transaction: either the whole move plus the DDL commits, or
-        # nothing does and the rows stay where they were.
+        # Move rows from DEFAULT partition first — Postgres won't create overlapping
+        # partitions while DEFAULT still holds matching rows.
         cur.execute("SELECT to_regclass('policy_results_history_def') IS NOT NULL AS present")
         has_default = cur.fetchone()['present']
 
@@ -798,11 +757,8 @@ def prune_history_default_partition():
         """, (cutoff, HISTORY_DEFAULT_SWEEP_LIMIT))
         removed = cur.rowcount or 0
 
-        # Bound the count the same way the DELETE is bounded. An unbounded
-        # COUNT(*) would scan the entire aged backlog on every sync purely to
-        # produce a log line — the exact case this function exists for is a large
-        # backlog, so the report says "50000+" rather than paying for an exact
-        # number nobody acts on.
+        # Bound the count the same way the DELETE is bounded — report "50000+"
+        # rather than scanning the entire aged backlog for a log line.
         cur.execute("""
             SELECT COUNT(*) AS n FROM (
                 SELECT 1 FROM policy_results_history_def
@@ -874,12 +830,8 @@ def run_retention():
 
 # --- Sync Logic ---
 
-# _dedupe_result_rows() only resolves duplicates WITHIN one flush; a host whose
-# pass and fail observations land in different flushes is resolved by flush order
-# instead. The upserts therefore also carry
-# `WHERE EXCLUDED.checked_at >= policy_results.checked_at`, so an older
-# observation arriving after a newer one is dropped rather than moving checked_at
-# backwards. Ordering-safe regardless of where the batch boundary falls.
+# Upserts carry WHERE EXCLUDED.checked_at >= existing so older observations
+# arriving after newer ones don't move checked_at backwards.
 def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
                              all_team_ids, global_api_ids, team_api_ids):
     """Policy ids that are safe to delete because their owning scope was fetched
@@ -978,12 +930,8 @@ def sync_data():
         sync_id = cur.fetchone()['sync_id']
 
     try:
-        # 1. Sync Teams & Labels (Small datasets)
-        # The error baseline is captured BEFORE fetch_teams(), not after: teams
-        # feed the per-team policy fetch, so a teams blip silently shrinks the
-        # policy set to "global policies only" (zero on this Fleet) without
-        # producing a single policy-fetch error. Capturing after it is what let
-        # that run be recorded as status='success' with 0 policies synced.
+        # 1. Sync Teams & Labels
+        # Error baseline captured before fetch_teams() so a teams failure doesn't silently shrink the policy set.
         errors_before_teams = len(FETCH_ERRORS)
         teams = fetch_teams()
         teams_fetch_failed = len(FETCH_ERRORS) > errors_before_teams
@@ -1122,11 +1070,7 @@ def sync_data():
         if host_labels_buffer:
             print(f"  🔄 Saving {len(host_labels_buffer)} host-label associations...")
             processed_host_ids = list(set(h for h, _ in host_labels_buffer))
-            # ONE transaction for the DELETE and the re-INSERT. With two commits
-            # there is a window in which host_labels is empty for every host in
-            # this sync, and a dashboard read landing in it sees zero label
-            # memberships — which the response cache then memoizes for a full TTL,
-            # long after the data is correct again.
+            # Delete + re-insert in one transaction so a dashboard read never sees an empty label set.
             with db.get_db_cursor(commit=True) as cur:
                 if processed_host_ids:
                     cur.execute("DELETE FROM host_labels WHERE host_id = ANY(%s)", (processed_host_ids,))
@@ -1142,12 +1086,7 @@ def sync_data():
         errors_before_policies = len(FETCH_ERRORS)
         policies, global_ok, ok_team_ids = fetch_policies(teams)
         policies_fetch_failed = len(FETCH_ERRORS) > errors_before_policies
-        # teams_ok: the /teams fetch gave us the complete team list, so every
-        # team policy is either enumerated this sync (ok_team_ids) or known to
-        # be unreachable (and thus kept). This is what makes it safe to prune
-        # global (team_id NULL) policies: with the full team list, a NULL row
-        # that survived the upsert is genuinely global, not an unattributed
-        # team policy.
+        # teams_ok: safe to prune global policies because a NULL survivor is genuinely global, not unattributed.
         teams_ok = not teams_fetch_failed
 
         # Same reasoning as the host guard: an empty policy set caused by a
@@ -1219,12 +1158,7 @@ def sync_data():
               f"({policy_catalog.catalog_stats().get('policy_count', 0)} in catalog)")
 
         with db.get_db_cursor(commit=True) as cur:
-            # The WHERE on DO UPDATE is what makes policies_changed an honest
-            # number: without it every policy is "touched" every sync (789 here),
-            # so the metric was a constant, and every unchanged row still burned a
-            # heap update plus WAL. IS DISTINCT FROM on the row constructors
-            # handles NULLs, which plain <> would not. RETURNING then yields
-            # exactly the inserts plus the genuine updates.
+            # WHERE on DO UPDATE makes policies_changed an honest count — only inserts plus genuine updates.
             written_policies = extras.execute_values(cur, """
                 INSERT INTO cis_policies (
                     policy_id, policy_name, cis_control, description, resolution, query,
@@ -1376,12 +1310,8 @@ def sync_data():
         force_refreshed_unchanged = 0
         for p in policies:
             pid = p['id']
-            # Zero is only trustworthy when Fleet actually reported BOTH counts. A
-            # missing field is not evidence that the policy covers no hosts, and
-            # treating it as zero would prune every result row for the half Fleet
-            # never told us about: with only passing_host_count present, the
-            # failing count defaulted to 0 and the prune deleted every failing row
-            # of that policy.
+            # Only prune on zero when Fleet reported BOTH counts — a missing field
+            # is not evidence of no hosts (old code defaulted failing to 0 and deleted every row).
             #
             # Read each count with an is-None test rather than `or 0`, because an
             # explicit JSON null must not read as a measured zero either.
@@ -1420,12 +1350,8 @@ def sync_data():
                 if counts_reported and queued:
                     expected_tasks[pid] = queued
                 elif counts_reported:
-                    # Fleet claims 0 passing and 0 failing while the DB still holds
-                    # rows. Deleting every row for the policy on that basis would
-                    # trust exactly the cached aggregates this sync treats as
-                    # unreliable (39 of 789 disagreed with Fleet's own live lists),
-                    # so measure it: one fetch whose empty result is what authorises
-                    # the prune.
+                    # Fleet claims 0/0 but DB still holds rows — don't trust cached aggregates;
+                    # measure with one fetch whose empty result authorises the prune.
                     tasks.append((pid, 'fail'))
                     expected_tasks[pid] = 1
 
@@ -1481,11 +1407,8 @@ def sync_data():
                     # carry the same (policy_id, host_id) twice.
                     flush_rows = _dedupe_result_rows(results_buffer)
                     with db.get_db_cursor(commit=True) as cur:
-                        # Upsert first, prune afterwards (see the prune block
-                        # below the final flush). Ordering it that way means the
-                        # only state a concurrent dashboard read can observe is a
-                        # superset of the truth — fresh rows plus not-yet-pruned
-                        # stale ones — never a half-empty policy.
+                        # Upsert first, prune after — a dashboard read sees a superset of truth,
+                        # never a half-empty policy.
                         written = extras.execute_values(cur, """
                             INSERT INTO policy_results (policy_id, host_id, status, checked_at)
                             VALUES %s
@@ -1497,11 +1420,8 @@ def sync_data():
                         """, flush_rows, fetch=True)
                         results_written += len(written or [])
 
-                        # Also Insert into History Log (Partitioned)
-                        # We only check 'status' change logic if we want to reduce log volume
-                        # Same de-duplicated rows: the history log records what was
-                        # observed, and the discarded duplicate is the older
-                        # observation of a host that flipped mid-sync.
+                        # History log: same de-duplicated rows; the discarded duplicate is the
+                        # older observation of a host that flipped mid-sync.
                         extras.execute_values(cur, """
                             INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
                             VALUES %s
@@ -1673,11 +1593,8 @@ def _snapshot_metrics(cur, team_id):
             f"no policy results at all, so compliance was never measured for them."
         )
 
-    # Distinguish "measured zero critical failures" from "no policy carries a
-    # Critical severity at all". The shipped catalog marks every policy
-    # non-critical, so a hard 0 would read as "nothing severe is failing" when
-    # the truth is that severity is unpopulated. NULL says unknown; a real 0
-    # only appears once at least one policy is actually classified Critical.
+    # NULL means "no Critical severity at all in catalog"; a real 0 only appears
+    # once at least one policy is classified Critical.
     cur.execute(
         "SELECT EXISTS (SELECT 1 FROM cis_policies WHERE severity = 'Critical') AS any_critical"
     )

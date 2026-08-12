@@ -9,16 +9,7 @@ logger = logging.getLogger(__name__)
 
 DB_POOL = None
 
-# Pool sizing. Every gunicorn worker process builds its own pool, and the sync
-# daemon builds one more in its own process, so the ceiling the server has to
-# absorb is (gunicorn workers x DB_POOL_MAX) + DB_POOL_MAX for the daemon.
-# With the defaults below and 4 workers: 4 x 8 + 8 = 40 connections worst case,
-# which fits comfortably under the max_connections=200 the compose config now
-# sets (postgres ships with 100, and the old maxconn=20 gave 4 x 20 + 20 = 100,
-# i.e. exactly the stock ceiling with zero headroom).
-# The default of 8 is deliberately small, not an oversight: gunicorn runs 2
-# threads per worker, so a single worker can only ever use 2 connections
-# concurrently. Anything past that is idle sockets held open against postgres.
+# Connection pool per process: 4 workers × 8 max + 1 daemon = 40, well under Postgres max_connections=200.
 DEFAULT_DB_POOL_MIN = 1
 DEFAULT_DB_POOL_MAX = 8
 
@@ -26,20 +17,11 @@ DEFAULT_DB_POOL_MAX = 8
 POOL_CONNECT_RETRIES = 5
 POOL_CONNECT_RETRY_SLEEP_SECONDS = 2
 
-# Cooldown after the retry budget is exhausted.
-#
-# Pool creation at import time in app.py is now wrapped in try/except (so the
-# module is importable without a database). The side effect: with Postgres down,
-# every request re-enters the retry loop below and blocks a gunicorn thread for
-# the full budget above. gunicorn runs 4 workers x 2 threads, so 8 concurrent
-# requests wedge the entire backend for ~8 seconds each, repeatedly.
-#
-# Remembering the failure makes the failed path cheap: the first request in a
-# window pays the retry loop, every request after it raises immediately until the
-# deadline passes and one more attempt is allowed through. Tuned via
-# DB_POOL_RETRY_COOLDOWN_SECONDS with the same lenient parsing as the bounds.
+# Cooldown after the retry budget is exhausted: the first request in a window
+# pays the retry loop; every request after it raises immediately until the
+# deadline passes. Tuned via DB_POOL_RETRY_COOLDOWN_SECONDS.
 DEFAULT_POOL_RETRY_COOLDOWN_SECONDS = 10
-# time.monotonic() deadline, so an NTP step cannot park it hours in the future.
+# Monotonic deadline so an NTP step cannot move it.
 _POOL_FAILED_UNTIL = 0.0
 
 def _env_pool_bound(name, default):
@@ -84,7 +66,6 @@ def _pool_retry_cooldown():
 
 def get_db_pool():
     global DB_POOL, _POOL_FAILED_UNTIL
-    # Successful path: unchanged and allocation-free once the pool exists.
     if DB_POOL is not None:
         return DB_POOL
 
@@ -116,8 +97,6 @@ def get_db_pool():
         except psycopg2.OperationalError as e:
             retries -= 1
             if retries <= 0:
-                # No point sleeping after the last attempt: that was 2s of a
-                # blocked gunicorn thread buying nothing.
                 logger.warning(f"Database connection failed, giving up: {e}")
                 break
             logger.warning(

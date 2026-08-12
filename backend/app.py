@@ -243,11 +243,8 @@ def handle_unexpected_exception(e):
     )
     return jsonify({"error": "Internal server error"}), 500
 
-# Initialize the DB pool eagerly so a misconfigured database shows up in the
-# worker's boot log rather than on the first request. Guarded on DATABASE_URL
-# and on the failure itself: without this, importing app.py required a live
-# Postgres, which made every helper in this module untestable. get_db_cursor()
-# creates the pool on demand anyway, so a deferred pool is still correct.
+# Initialize the DB pool eagerly so a misconfigured database shows up in the boot log.
+# Guarded on DATABASE_URL and on the failure itself: importing app.py doesn't require live Postgres.
 if os.environ.get('DATABASE_URL'):
     try:
         db.get_db_pool()
@@ -398,12 +395,8 @@ REDIS_TIMEOUT_MS = max(1, _env_int('REDIS_TIMEOUT_MS', 500))
 # gunicorn worker, silently reverting the app to fully uncached until the
 # container was restarted.
 CACHE_RETRY_COOLDOWN_SECONDS = max(1, _env_int('CACHE_RETRY_COOLDOWN_SECONDS', 30))
-# Longest scope-arg VALUE that may take part in a cache key. The allow-list above
-# bounds how many DISTINCT args can appear in a key but says nothing about how long
-# their values are, so the claim that entries per generation is "the number of real
-# filter scopes" only held for realistic values: a single request with an 8 KB query
-# string (nginx's request-line ceiling) minted an 8 KB Redis key whose body was a few
-# hundred bytes, which is the cheapest amplification against the cache in the app.
+# Scope-arg value length cap: a request with an 8 KB query string (nginx's limit)
+# used to mint an 8 KB Redis key whose body was a few hundred bytes.
 # Team names, platforms, OS versions and label names are host attributes; nothing real
 # comes close to 200 characters. A request carrying a longer value is served LIVE and
 # uncached - the SQL filter itself is untouched, so the response body is byte-identical
@@ -622,12 +615,8 @@ def _cache_key(endpoint_name, generation, config_generation):
     """
     scope = []
     for name in CACHE_SCOPE_ARGS:
-        # request.args.get() — the SAME accessor every reader of these args uses.
-        # getlist() here made the key disagree with the body: ?team=&team=X keyed
-        # on team=X while get_filtered_hosts_subquery() saw the empty first value,
-        # applied no team filter, and cached unfiltered data under a team-scoped
-        # key. Empty values are skipped to mirror the filters' own `if val:` gate,
-        # so ?label= lands on the same key as no label at all.
+        # request.args.get() — same accessor every reader uses. getlist() made the
+        # key disagree with the body (?team=&team=X). Empty values are skipped.
         val = request.args.get(name)
         if val:
             scope.append((name, val))
@@ -852,19 +841,10 @@ def get_filtered_hosts_subquery():
 
 
 # --- Historical trend helpers (policy_results_history) ---
-# The per-policy and per-technique trends in this section come from
-# policy_results_history and only from it: it stores raw per-host statuses, which have
-# always meant the same thing, and compliance_snapshots has no per-policy grain at all,
-# so it could not answer these questions even if every row were trustworthy.
-#
-# The warning that used to sit here ("not sourced from compliance_snapshots") applies
-# to two COLUMNS, not to the whole table. Rows written before the sync fix hold
-# critical_failures = 0 where the truth is unknown, and a passing_hosts that counted
-# result rows instead of hosts; nothing in a row says which revision wrote it, so those
-# two columns cannot be compared across time. compliance_score is different: every
-# revision of create_compliance_snapshot() has written the same quantity - 100 *
-# passing policy_result rows / all policy_result rows for the scope - so it is
-# comparable across revisions, and it is the only column team_score_trends() reads.
+# Trends come from policy_results_history (raw per-host statuses) — compliance_snapshots
+# has no per-policy grain. critical_failures and passing_hosts can't be compared across time
+# because old revisions stored wrong values. compliance_score is comparable: every revision
+# wrote the same quantity and it is the only column team_score_trends() reads.
 def history_window_bounds(cur, h_query, params):
     """Earliest/latest history observation in the trend window, for this scope.
 
@@ -1015,11 +995,9 @@ def technique_trends(trend_rows, policy_techniques):
 
 
 # --- Team score trend (compliance_snapshots) ---
-# compliance_snapshots is the only per-day record of a team's score. The sync writes one
-# row per (snapshot_date, team_id) plus a global row (team_id NULL) on every run and
-# replaces the day's rows in place, so the table is a daily series rather than a
-# per-sync log. Until now nothing read it, which is why /api/strategy's leaderboard
-# hardcoded "trend": "unknown".
+# compliance_snapshots is the only per-day record of a team's score — one row per
+# (snapshot_date, team_id) replaced in place. /api/strategy's leaderboard now reads it
+# instead of hardcoding "trend": "unknown".
 #
 # A change smaller than this many percentage points is reported as 'stable', not as a
 # direction. Half a point because the score shown next to the trend is rounded to a
@@ -1027,13 +1005,8 @@ def technique_trends(trend_rows, policy_techniques):
 # it a rise or a fall would be presenting float noise as progress. It is a statement
 # about the resolution of what is being compared, not a guess at measurement error.
 TEAM_TREND_FLAT_THRESHOLD_PP = 0.5
-# Scope args a stored snapshot cannot be re-scoped by. A snapshot aggregates ALL of a
-# team's hosts, so ?platform= / ?osVersion= / ?label= leave the live leaderboard score
-# and the stored history describing different host sets, and the comparison is void: the
-# trend goes back to "unknown" for every team rather than describing a scope the caller
-# did not ask about. ?team= is compatible - it selects which teams are listed, not which
-# of a team's hosts count. Derived from CACHE_SCOPE_ARGS so that a scope filter added
-# later disables the trend by default instead of silently mismatching.
+# ?platform= / ?osVersion= / ?label= make the live score and stored history describe
+# different host sets, so the trend goes back to "unknown". ?team= is compatible.
 TEAM_TREND_UNSUPPORTED_SCOPE_ARGS = tuple(a for a in CACHE_SCOPE_ARGS if a != 'team')
 # Fewer than this many distinct snapshot dates in the window is not a trend.
 TEAM_TREND_MIN_DATES = 2
@@ -1362,11 +1335,8 @@ def update_config():
             logger.info(f"Updated {updated_count} config settings: {list(updates.keys())}")
             return jsonify({"success": True, "updated": updated_count})
     except HTTPException:
-        # request.get_json() itself raises 413 for a body over MAX_CONTENT_LENGTH -
-        # silent=True suppresses PARSE failures, not the length check. Without this
-        # re-raise the generic handler below reported an oversized body as
-        # "Failed to update configuration" with status 500, which sends the caller
-        # looking for a server fault instead of trimming the request.
+        # silent=True suppresses parse failures, not the length check — re-raise
+        # so an oversized body returns 413, not a misleading 500.
         raise
     except Exception as e:
         return error_response("Failed to update configuration", 500, str(e))
@@ -1917,12 +1887,8 @@ def get_strategy():
             team_stats.append({
                 "name": team_name,
                 "score": score,
-                # Filled in from compliance_snapshots by step 9, after every other
-                # query on this cursor has run. "unknown" is the honest starting
-                # value and stays that way for any team the snapshots cannot speak
-                # for: fewer than 2 snapshot dates in the window, 'Unassigned'
-                # (hosts with no team have no team snapshot), a duplicated team
-                # name, a request scope snapshots cannot answer, or a failed lookup.
+                # Filled from compliance_snapshots by step 9. "unknown" stays for any team
+                # snapshots can't speak for (fewer than 2 dates, 'Unassigned', scope mismatch, or failed lookup).
                 "trend": "unknown",
                 "delta": None,
                 "trend_basis": None,
@@ -1976,28 +1942,10 @@ def get_strategy():
             })
 
         # 9. Team trend, from compliance_snapshots.
-        #
-        # Deliberately the LAST statement executed on this cursor. The lookup is
-        # wrapped so a snapshot problem cannot turn a working /api/strategy into a
-        # 500 - the endpoint answered without any trend before this existed and must
-        # keep answering - but swallowing a psycopg2 error inside the `with` block
-        # means get_db_cursor() never sees it and never rolls back, so the
-        # transaction stays aborted and ANY statement issued after it would fail.
-        # Nothing follows it here, and psycopg2's pool rolls the connection back when
-        # it is returned, so the failure is contained to this one feature.
-        #
-        # Cache interaction: this runs inside the @cached_response body, so the trend
-        # is cached with the rest of it under
-        # fleetcis:v1:strategy:<sync_generation>:<config_generation>:<scope>. No new
-        # arg is read, so the key contract is untouched. Writing a snapshot row does
-        # not by itself move the sync generation - but the only writer,
-        # create_compliance_snapshot(), runs inside sync_data(), which then stamps
-        # sync_metadata (success OR failed - both halves of the token move), so a
-        # sync-written snapshot always lands in a fresh key space. What CAN go stale
-        # for up to CACHE_TTL_SECONDS is a snapshot row inserted outside a sync (a
-        # manual backfill, a restore, psql), and the window edge after midnight, since
-        # CURRENT_DATE moves while a cached body does not. Both are bounded by the TTL
-        # and neither can produce a WRONG direction, only an older one.
+        # Deliberately last: wrapped so a snapshot problem can't turn /api/strategy into a 500.
+        # Cached with the rest under fleetcis:v1:strategy:...; a sync-written snapshot always
+        # moves the sync generation, so the key space refreshes. Stale for up to CACHE_TTL_SECONDS
+        # only on a manual backfill or the midnight window edge — older trend, not wrong.
         team_trend = {
             "source": "compliance_snapshots",
             "days": HISTORY_TREND_DAYS,
