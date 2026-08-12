@@ -143,6 +143,26 @@ def get_fleet_headers():
 FETCH_ERRORS = []
 MAX_RECORDED_FETCH_ERRORS = 20
 
+# Page size for paginated policy listing, and a safety bound on consecutive 404
+# pages. Fleet's /teams/{id}/policies returns the whole team on one request by
+# default; a single policy referencing a DELETED SoftwareInstaller makes Fleet
+# 404 the ENTIRE page that serializes it (message "SoftwareInstaller was not
+# found in the datastore") instead of skipping that one policy. That one bad
+# policy used to blank the whole team's listing — and with it the whole sync.
+# Paginating with a modest page size means the dangling policy only blanks the
+# page it sits on, and the rest of the team's policies still sync. See
+# fetch_policies() / _fetch_team_policy_pages(). This is why the repo tolerates
+# someone removing a software installer out from under a policy: it is the
+# normal Fleet lifecycle and will keep happening.
+POLICY_PAGE_SIZE = 100
+# Stop after this many consecutive 404 pages so a pathologically broken team
+# (every page 404) cannot loop forever. A real team with a few dangling
+# installers skips a handful of pages at most before the empty tail ends it.
+POLICY_MAX_CONSECUTIVE_404 = 5
+# Hard ceiling on pages per team, independent of the 404 counter. 200 pages =
+# 20,000 policies; beyond this the listing is assumed unbounded and we stop.
+POLICY_MAX_PAGES = 200
+
 
 def record_fetch_error(context, exc):
     """Log a fetch failure and keep a bounded sample for the sync record."""
@@ -228,6 +248,68 @@ def fetch_host_details(host_id):
         return response.json().get("host", {})
     except Exception: return None
 
+def _fetch_team_policy_pages(team_id):
+    """Paginate /teams/{id}/policies, tolerating per-page 404s.
+
+    Fleet 404s the whole page that serializes a policy referencing a DELETED
+    SoftwareInstaller (message "SoftwareInstaller was not found in the
+    datastore") instead of skipping that one policy. Paginating with a modest
+    page size means such a dangling policy only blanks the page it sits on, and
+    the rest of the team's policies still sync.
+
+    Returns (own_by_id, inherited_by_id, fully_ok):
+      own_by_id / inherited_by_id — policy dicts keyed by id (deduped; Fleet
+        may repeat the inherited list across pages). Own policies are
+        team-scoped; inherited are global (the caller attributes them).
+      fully_ok — True only if EVERY page succeeded. A page that 404'd leaves
+        fully_ok False so the caller treats the team as PARTIALLY fetched: its
+        fetched policies still upsert and their results still sync, but the
+        stale-policy cleanup keeps every row of that team — the page we
+        skipped may contain policies we already have, and we cannot confirm
+        they are gone. See compute_stale_policy_ids().
+    """
+    own_by_id = {}
+    inherited_by_id = {}
+    fully_ok = True
+    page = 0
+    consecutive_404 = 0
+    while page < POLICY_MAX_PAGES:
+        url = f"{FLEET_URL}/api/latest/fleet/teams/{team_id}/policies"
+        try:
+            response = requests.get(
+                url, params={"per_page": POLICY_PAGE_SIZE, "page": page},
+                headers=get_fleet_headers(), timeout=20, verify=FLEET_SSL_VERIFY,
+            )
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:
+                # The page serializes a dangling SoftwareInstaller. Skip it and
+                # keep paginating — the broken policy only costs its own page.
+                record_fetch_error(f"team {team_id} policies page {page}", e)
+                fully_ok = False
+                consecutive_404 += 1
+                if consecutive_404 >= POLICY_MAX_CONSECUTIVE_404:
+                    break
+                page += 1
+                continue
+            raise
+        consecutive_404 = 0
+        data = response.json()
+        own = data.get("policies", [])
+        inherited = data.get("inherited_policies", [])
+        for p in own:
+            own_by_id.setdefault(p["id"], p)
+        for p in inherited:
+            inherited_by_id.setdefault(p["id"], p)
+        # A short own page is the last page; an empty page (own and inherited
+        # both empty) also ends pagination. Inherited may repeat across pages
+        # but the by-id dicts dedupe it.
+        if len(own) < POLICY_PAGE_SIZE:
+            break
+        page += 1
+    return own_by_id, inherited_by_id, fully_ok
+
+
 def fetch_policies(teams):
     """Fetch every policy Fleet knows about, plus per-scope fetch success.
 
@@ -240,16 +322,20 @@ def fetch_policies(teams):
       global_ok       — the global /policies fetch succeeded. When False the
                          global policy set is unknown, so global policies are
                          left untouched by the cleanup (see sync_data()).
-      ok_team_ids     — set of team ids whose per-team policy fetch succeeded.
-                         A team not in this set could not be enumerated, so its
-                         policies are left untouched by the cleanup rather than
-                         half-deleted.
+      ok_team_ids     — set of team ids whose per-team policy fetch succeeded
+                         COMPLETELY. A team not in this set was not fully
+                         enumerated (a page 404'd on a dangling SoftwareInstaller,
+                         or the whole request failed), so its policies are left
+                         untouched by the cleanup rather than half-deleted.
 
     The previous all-or-nothing guard skipped the WHOLE stale-policy cleanup
     whenever any single team's fetch failed (a 10s timeout against a team with
     hundreds of policies was enough), so policies deleted in Fleet lingered on
     the dashboard forever. Per-scope attribution lets the cleanup prune the
-    scopes it actually reached and leave the rest alone.
+    scopes it actually reached and leave the rest alone. Per-page 404 tolerance
+    (see _fetch_team_policy_pages) extends that to a Fleet listing that 404s a
+    whole page when one of its policies references a deleted software installer
+    — the rest of that team still syncs instead of the whole team going dark.
     """
     if not FLEET_TOKEN:
         return [], False, set()
@@ -274,30 +360,30 @@ def fetch_policies(teams):
 
     for team in teams:
         try:
-            url = f"{FLEET_URL}/api/latest/fleet/teams/{team['id']}/policies"
-            response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
-            response.raise_for_status()
-            data = response.json()
-            own = data.get("policies", [])
+            own_by_id, inherited_by_id, fully_ok = _fetch_team_policy_pages(team['id'])
+        except Exception as e:
+            # A non-404 failure (timeout, connection, auth) on the whole team:
+            # record it and leave the team's rows untouched (not in ok_team_ids).
+            record_fetch_error(f"team {team['id']} policies", e)
+            continue
+        suffix = "" if fully_ok else " (partial: a Fleet page 404'd on a dangling SoftwareInstaller)"
+        print(f"Team {team['id']} policies fetched: {len(own_by_id)} own, {len(inherited_by_id)} inherited{suffix}")
+        for p in own_by_id.values():
             # inherited_policies are GLOBAL policies (team_id null) that apply to
             # this team; their pass/fail counts are scoped to the team, but the
             # policy itself is global. Attribute them as global (team_id None),
             # not to this team — otherwise a global policy only seen via a team's
             # inherited list would be pruned against that team's fetch and could
             # survive or vanish depending on which team we asked.
-            inherited = data.get("inherited_policies", [])
-            print(f"Team {team['id']} policies fetched: {len(own)} own, {len(inherited)} inherited")
-            for p in own:
-                p['team_id'] = team['id']
-                if p['id'] not in all_policies:
-                    all_policies[p['id']] = p
-            for p in inherited:
-                p['team_id'] = None
-                if p['id'] not in all_policies:
-                    all_policies[p['id']] = p
+            p['team_id'] = team['id']
+            if p['id'] not in all_policies:
+                all_policies[p['id']] = p
+        for p in inherited_by_id.values():
+            p['team_id'] = None
+            if p['id'] not in all_policies:
+                all_policies[p['id']] = p
+        if fully_ok:
             ok_team_ids.add(team['id'])
-        except Exception as e:
-            record_fetch_error(f"team {team['id']} policies", e)
 
     print(f"Total unique policies returned: {len(all_policies)}")
     return list(all_policies.values()), global_ok, ok_team_ids
