@@ -229,11 +229,37 @@ def fetch_host_details(host_id):
     except Exception: return None
 
 def fetch_policies(teams):
-    if not FLEET_TOKEN: return []
+    """Fetch every policy Fleet knows about, plus per-scope fetch success.
+
+    Returns (policies, global_ok, ok_team_ids):
+
+      policies        — list of policy dicts, each carrying p['team_id']:
+                         None for global policies, the team id for team-scoped
+                         ones. team_id is the attribution the stale-policy
+                         cleanup prunes by scope.
+      global_ok       — the global /policies fetch succeeded. When False the
+                         global policy set is unknown, so global policies are
+                         left untouched by the cleanup (see sync_data()).
+      ok_team_ids     — set of team ids whose per-team policy fetch succeeded.
+                         A team not in this set could not be enumerated, so its
+                         policies are left untouched by the cleanup rather than
+                         half-deleted.
+
+    The previous all-or-nothing guard skipped the WHOLE stale-policy cleanup
+    whenever any single team's fetch failed (a 10s timeout against a team with
+    hundreds of policies was enough), so policies deleted in Fleet lingered on
+    the dashboard forever. Per-scope attribution lets the cleanup prune the
+    scopes it actually reached and leave the rest alone.
+    """
+    if not FLEET_TOKEN:
+        return [], False, set()
     all_policies = {}
-    
+    global_ok = False
+    ok_team_ids = set()
+
     try:
-        # Global
+        # GET /api/latest/fleet/policies returns ONLY global (team_id null)
+        # policies — team-scoped policies are NOT in this response.
         url = f"{FLEET_URL}/api/latest/fleet/policies"
         response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
         response.raise_for_status()
@@ -242,6 +268,7 @@ def fetch_policies(teams):
         for p in gl_pols:
             p['team_id'] = None
             all_policies[p['id']] = p
+        global_ok = True
     except Exception as e:
         record_fetch_error("global policies", e)
 
@@ -251,20 +278,29 @@ def fetch_policies(teams):
             response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
             response.raise_for_status()
             data = response.json()
-            team_policies = data.get("policies", []) + data.get("inherited_policies", [])
-            print(f"Team {team['id']} policies fetched: {len(team_policies)} (pol: {len(data.get('policies',[]))}, inh: {len(data.get('inherited_policies',[]))})")
-            for p in team_policies:
+            own = data.get("policies", [])
+            # inherited_policies are GLOBAL policies (team_id null) that apply to
+            # this team; their pass/fail counts are scoped to the team, but the
+            # policy itself is global. Attribute them as global (team_id None),
+            # not to this team — otherwise a global policy only seen via a team's
+            # inherited list would be pruned against that team's fetch and could
+            # survive or vanish depending on which team we asked.
+            inherited = data.get("inherited_policies", [])
+            print(f"Team {team['id']} policies fetched: {len(own)} own, {len(inherited)} inherited")
+            for p in own:
+                p['team_id'] = team['id']
                 if p['id'] not in all_policies:
-                    p['team_id'] = team['id']
                     all_policies[p['id']] = p
-                else:
-                    pass
+            for p in inherited:
+                p['team_id'] = None
+                if p['id'] not in all_policies:
+                    all_policies[p['id']] = p
+            ok_team_ids.add(team['id'])
         except Exception as e:
             record_fetch_error(f"team {team['id']} policies", e)
 
-
     print(f"Total unique policies returned: {len(all_policies)}")
-    return list(all_policies.values())
+    return list(all_policies.values()), global_ok, ok_team_ids
 
 def fetch_policy_hosts(policy_id, status):
     """Fetch every host Fleet reports for (policy_id, status).
@@ -712,6 +748,42 @@ def run_retention():
 # `WHERE EXCLUDED.checked_at >= policy_results.checked_at`, so an older
 # observation arriving after a newer one is dropped rather than moving checked_at
 # backwards. Ordering-safe regardless of where the batch boundary falls.
+def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
+                             global_api_ids, team_api_ids):
+    """Policy ids that are safe to delete because their owning scope was fetched
+    successfully this sync and Fleet no longer reports them.
+
+    db_policies    — iterable of (policy_id, team_id) for every cis_policies row
+                     (team_id is None for global policies).
+    global_ok      — the global /policies fetch succeeded this sync.
+    teams_ok       — the /teams fetch succeeded, i.e. we have the complete team
+                     list. Gates the global prune: with no team list a NULL
+                     team_id row may be an unattributed team policy rather than a
+                     genuine global one (the column starts NULL on an existing
+                     database and is only populated by a successful upsert), so
+                     we keep NULL rows until we know every team has been seen.
+    ok_team_ids    — set of team ids whose per-team policy fetch succeeded.
+    global_api_ids — set of policy ids reported by the global fetch.
+    team_api_ids   — {team_id: set(policy_ids)} for successfully fetched teams.
+
+    A policy is pruned ONLY when the scope that owns it was fetched successfully
+    AND it is absent from that scope's reported set. A team we could not reach
+    is never pruned, so a single failing team endpoint can no longer hold the
+    rest of the catalog hostage. This is the property the old all-or-nothing
+    guard gave up entirely to avoid mass-deletion: it skipped EVERY policy
+    whenever any fetch was partial, which is why deleted policies lingered.
+    """
+    stale = []
+    for policy_id, team_id in db_policies:
+        if team_id is None:
+            if global_ok and teams_ok and policy_id not in global_api_ids:
+                stale.append(policy_id)
+        else:
+            if team_id in ok_team_ids and policy_id not in team_api_ids.get(team_id, ()):
+                stale.append(policy_id)
+    return stale
+
+
 def _dedupe_result_rows(rows):
     """Collapse duplicate (policy_id, host_id) rows, keeping the newest checked_at.
 
@@ -919,8 +991,15 @@ def sync_data():
 
         # 4. Policies & Results
         errors_before_policies = len(FETCH_ERRORS)
-        policies = fetch_policies(teams)
+        policies, global_ok, ok_team_ids = fetch_policies(teams)
         policies_fetch_failed = len(FETCH_ERRORS) > errors_before_policies
+        # teams_ok: the /teams fetch gave us the complete team list, so every
+        # team policy is either enumerated this sync (ok_team_ids) or known to
+        # be unreachable (and thus kept). This is what makes it safe to prune
+        # global (team_id NULL) policies: with the full team list, a NULL row
+        # that survived the upsert is genuinely global, not an unattributed
+        # team policy.
+        teams_ok = not teams_fetch_failed
 
         # Same reasoning as the host guard: no policies plus failing requests is
         # a broken sync, not a Fleet without policies. Reporting it as success is
@@ -982,6 +1061,7 @@ def sync_data():
                 enrich.get('level') or None,
                 json.dumps(tags),
                 bool(enrich.get('catalog_matched')),
+                p.get('team_id'),
             ))
 
         print(f"  📚 Catalog match: {matched}/{len(policies)} policies "
@@ -999,7 +1079,7 @@ def sync_data():
                     policy_id, policy_name, cis_control, description, resolution, query,
                     category, severity, platform,
                     cis_safeguard_ids, benchmark, control_slug, cis_category, cis_subcategory,
-                    framework, level, tags, catalog_matched
+                    framework, level, tags, catalog_matched, team_id
                 ) VALUES %s
                 ON CONFLICT (policy_id) DO UPDATE SET
                     policy_name=EXCLUDED.policy_name,
@@ -1018,7 +1098,8 @@ def sync_data():
                     framework=EXCLUDED.framework,
                     level=EXCLUDED.level,
                     tags=EXCLUDED.tags,
-                    catalog_matched=EXCLUDED.catalog_matched
+                    catalog_matched=EXCLUDED.catalog_matched,
+                    team_id=EXCLUDED.team_id
                 WHERE (
                     cis_policies.policy_name, cis_policies.cis_control,
                     cis_policies.description, cis_policies.resolution, cis_policies.query,
@@ -1026,7 +1107,8 @@ def sync_data():
                     cis_policies.cis_safeguard_ids, cis_policies.benchmark,
                     cis_policies.control_slug, cis_policies.cis_category,
                     cis_policies.cis_subcategory, cis_policies.framework,
-                    cis_policies.level, cis_policies.tags, cis_policies.catalog_matched
+                    cis_policies.level, cis_policies.tags, cis_policies.catalog_matched,
+                    cis_policies.team_id
                 ) IS DISTINCT FROM (
                     EXCLUDED.policy_name, EXCLUDED.cis_control,
                     EXCLUDED.description, EXCLUDED.resolution, EXCLUDED.query,
@@ -1034,7 +1116,8 @@ def sync_data():
                     EXCLUDED.cis_safeguard_ids, EXCLUDED.benchmark,
                     EXCLUDED.control_slug, EXCLUDED.cis_category,
                     EXCLUDED.cis_subcategory, EXCLUDED.framework,
-                    EXCLUDED.level, EXCLUDED.tags, EXCLUDED.catalog_matched
+                    EXCLUDED.level, EXCLUDED.tags, EXCLUDED.catalog_matched,
+                    EXCLUDED.team_id
                 )
                 RETURNING policy_id
             """, policy_buffer, fetch=True)
@@ -1046,47 +1129,60 @@ def sync_data():
             f"inserted or actually changed."
         )
 
-        # 4.1 Clean up policies deleted in Fleet.
-        # Guarded exactly like the stale-host cleanup: a partial or empty policy
-        # fetch is indistinguishable from "Fleet has no policies", and acting on
-        # that would wipe the whole catalog off the dashboard.
+        # 4.1 Clean up policies deleted in Fleet — per scope, not all-or-nothing.
         #
-        # teams_fetch_failed is part of the guard because policies are enumerated
-        # PER TEAM: with an incomplete team list, fetch_policies() returns only the
-        # global policies and every team policy looks deleted. Measured on a clone
-        # of the live database — a single simulated /fleet/teams timeout against a
-        # Fleet holding one global policy deleted 789 policies and all 5438
-        # policy_results rows, and still recorded status='success'. The
-        # empty-policy-set guard below cannot catch that case, because one
-        # surviving global policy makes the list non-empty.
-        api_policy_ids = [p['id'] for p in policies]
-        if policies_fetch_failed or teams_fetch_failed:
-            print("  ⚠ Skipping stale-policy cleanup: the policy set may be incomplete.")
-        elif not api_policy_ids:
-            print("  ⚠ Skipping stale-policy cleanup: Fleet returned no policies.")
-        else:
+        # The old guard skipped the WHOLE cleanup whenever any fetch was partial
+        # (policies_fetch_failed or teams_fetch_failed). Policies are enumerated
+        # per team, so a single 10s timeout against one team with hundreds of
+        # policies was enough to skip the entire catalog every sync — and
+        # policies deleted in Fleet (e.g. "Windows - Google Chrome up to date")
+        # lingered on the dashboard forever.
+        #
+        # Now each cis_policies row carries team_id (NULL = global), and a policy
+        # is pruned ONLY when the scope that owns it was fetched successfully this
+        # sync: a global policy when global_ok AND the team list is complete, a
+        # team policy when that team's fetch succeeded. A team we could not reach
+        # is left untouched, so a flaky team endpoint can no longer hold the rest
+        # of the catalog hostage. See compute_stale_policy_ids() for the rule and
+        # the safety property it preserves.
+        #
+        # The catastrophic case the old guard existed for — a /fleet/teams timeout
+        # making every team policy look deleted — is now structurally impossible:
+        # with teams_fetch_failed, teams_ok is False so global (NULL) rows are
+        # kept, and ok_team_ids is empty so no team row is pruned either.
+        global_api_ids = {p['id'] for p in policies if p.get('team_id') is None}
+        team_api_ids = {}
+        for p in policies:
+            tid = p.get('team_id')
+            if tid is not None:
+                team_api_ids.setdefault(tid, set()).add(p['id'])
+
+        with db.get_db_cursor() as cur:
+            cur.execute("SELECT policy_id, team_id FROM cis_policies")
+            db_policies = [(row['policy_id'], row['team_id']) for row in cur.fetchall()]
+
+        stale_policy_ids = compute_stale_policy_ids(
+            db_policies, global_ok, teams_ok, ok_team_ids,
+            global_api_ids, team_api_ids,
+        )
+
+        if stale_policy_ids:
             with db.get_db_cursor(commit=True) as cur:
+                # policy_results.policy_id has a plain FK with no cascade, so the
+                # child rows have to go first. policy_results_history is
+                # deliberately left untouched — it is the audit trail and
+                # outlives the policy it describes.
                 cur.execute(
-                    "SELECT policy_id FROM cis_policies "
-                    "WHERE NOT (policy_id = ANY(%s::bigint[]))",
-                    (api_policy_ids,)
+                    "DELETE FROM policy_results WHERE policy_id = ANY(%s::bigint[])",
+                    (stale_policy_ids,)
                 )
-                stale_policy_ids = [row['policy_id'] for row in cur.fetchall()]
-                if stale_policy_ids:
-                    # policy_results.policy_id has a plain FK with no cascade, so
-                    # the child rows have to go first. policy_results_history is
-                    # deliberately left untouched — it is the audit trail and
-                    # outlives the policy it describes.
-                    cur.execute(
-                        "DELETE FROM policy_results WHERE policy_id = ANY(%s::bigint[])",
-                        (stale_policy_ids,)
-                    )
-                    cur.execute(
-                        "DELETE FROM cis_policies WHERE policy_id = ANY(%s::bigint[])",
-                        (stale_policy_ids,)
-                    )
-            if stale_policy_ids:
-                print(f"  🗑 Removed {len(stale_policy_ids)} policies that no longer exist in Fleet.")
+                cur.execute(
+                    "DELETE FROM cis_policies WHERE policy_id = ANY(%s::bigint[])",
+                    (stale_policy_ids,)
+                )
+            print(f"  🗑 Removed {len(stale_policy_ids)} policy(ies) that no longer exist in Fleet.")
+        else:
+            print("  ✅ No stale policies to remove (per-scope cleanup).")
 
         # Monthly partitions must exist before the first history INSERT below,
         # otherwise every row lands in the DEFAULT partition and retention can
