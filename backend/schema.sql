@@ -52,6 +52,44 @@ CREATE TABLE IF NOT EXISTS cis_policies (
 CREATE INDEX IF NOT EXISTS idx_policies_safeguard ON cis_policies USING GIN (cis_safeguard_ids);
 CREATE INDEX IF NOT EXISTS idx_policies_benchmark ON cis_policies(benchmark);
 
+-- cis_policies.team_id: which Fleet team a policy belongs to (NULL = global).
+-- The stale-policy cleanup prunes per-scope, not all-or-nothing: a policy is only
+-- deleted when the scope that owns it (global or a specific team) was fetched
+-- successfully this sync. Without this column the cleanup cannot tell a stale
+-- team policy from a stale global one, so a single failing team fetch forced it
+-- to skip the WHOLE catalog — and deleted policies lingered forever. See
+-- sync_fleet_data.compute_stale_policy_ids().
+--
+-- CREATE TABLE IF NOT EXISTS is a no-op on an existing database, so the column
+-- and its FK are added idempotently here. New rows are NULL until the next sync
+-- upserts team_id, which is safe: NULL rows are only pruned when the global fetch
+-- succeeded AND the teams-list fetch succeeded (see the cleanup guard).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'cis_policies'
+          AND column_name = 'team_id'
+    ) THEN
+        ALTER TABLE cis_policies ADD COLUMN team_id BIGINT;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'cis_policies'::regclass
+          AND conname = 'cis_policies_team_fk'
+    ) THEN
+        ALTER TABLE cis_policies
+            ADD CONSTRAINT cis_policies_team_fk
+            FOREIGN KEY (team_id) REFERENCES fleet_teams(team_id) ON DELETE SET NULL;
+    END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_policies_team ON cis_policies(team_id);
+
 -- Policy Results (Current State)
 -- Optimized for dashboard queries ("show me current status")
 CREATE TABLE IF NOT EXISTS policy_results (
