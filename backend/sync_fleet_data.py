@@ -749,7 +749,7 @@ def run_retention():
 # observation arriving after a newer one is dropped rather than moving checked_at
 # backwards. Ordering-safe regardless of where the batch boundary falls.
 def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
-                             global_api_ids, team_api_ids):
+                             all_team_ids, global_api_ids, team_api_ids):
     """Policy ids that are safe to delete because their owning scope was fetched
     successfully this sync and Fleet no longer reports them.
 
@@ -763,6 +763,18 @@ def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
                      database and is only populated by a successful upsert), so
                      we keep NULL rows until we know every team has been seen.
     ok_team_ids    — set of team ids whose per-team policy fetch succeeded.
+    all_team_ids   — set of EVERY team id from the /teams list. A NULL row is
+                     only treated as a (possibly stale) GLOBAL policy once every
+                     team was fetched successfully this sync (ok_team_ids ==
+                     all_team_ids): a NULL row may really belong to a team whose
+                     policy fetch FAILED and never attributed team_id, in which
+                     case pruning it against the empty global set would delete a
+                     live policy. When any team is unreachable we keep ALL NULL
+                     rows rather than risk that. This is the case the old
+                     all-or-nothing guard was bolted on for — a team whose Fleet
+                     endpoint 404s (e.g. a dangling SoftwareInstaller) while the
+                     whole local catalog is still unattributed NULL — and it is
+                     why teams_ok alone (the list succeeded) is not enough.
     global_api_ids — set of policy ids reported by the global fetch.
     team_api_ids   — {team_id: set(policy_ids)} for successfully fetched teams.
 
@@ -774,9 +786,14 @@ def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
     whenever any fetch was partial, which is why deleted policies lingered.
     """
     stale = []
+    all_teams_seen = teams_ok and ok_team_ids == all_team_ids
     for policy_id, team_id in db_policies:
         if team_id is None:
-            if global_ok and teams_ok and policy_id not in global_api_ids:
+            # Prune a NULL row as a stale global only once every team was
+            # fetched this sync; otherwise it may be an unattributed policy of
+            # an unreachable team and must be kept.
+            if (global_ok and all_teams_seen
+                    and policy_id not in global_api_ids):
                 stale.append(policy_id)
         else:
             if team_id in ok_team_ids and policy_id not in team_api_ids.get(team_id, ()):
@@ -1001,26 +1018,28 @@ def sync_data():
         # team policy.
         teams_ok = not teams_fetch_failed
 
-        # Same reasoning as the host guard: no policies plus failing requests is
-        # a broken sync, not a Fleet without policies. Reporting it as success is
-        # what makes a bad FLEET_URL / token / TLS setting invisible.
+        # Same reasoning as the host guard: an empty policy set caused by a
+        # totally broken fetch path is not an empty Fleet. Abort ONLY when no
+        # trustworthy policy scope was reached at all — the global fetch failed
+        # AND no team's policy fetch succeeded — which is the signature of a bad
+        # FLEET_URL / token / TLS setting. Reporting that as success is what made
+        # such a misconfiguration invisible.
         #
-        # The teams fetch counts as part of that path. When it fails, teams == []
-        # and only global policies are fetched — zero of them on a Fleet where
-        # every policy lives on a team — with no policy-fetch error to show for it.
-        # The cleanup guards below already keep the data intact in that case; this
-        # guard exists so sync_metadata does not call the run a success.
-        if not policies and (policies_fetch_failed or teams_fetch_failed):
-            if policies_fetch_failed:
-                reason = "Policy fetch failed and returned no policies."
-                first_error = FETCH_ERRORS[errors_before_policies]
-            else:
-                reason = (
-                    "The teams fetch failed, so only global policies were "
-                    "requested and the policy set came back empty."
-                )
-                first_error = FETCH_ERRORS[errors_before_teams]
-            raise RuntimeError(f"{reason} First error — {first_error}")
+        # A PARTIAL failure (some teams fetched, or the global set fetched even
+        # if empty) is NOT a reason to abort: the per-scope cleanup below is safe
+        # (unreachable teams' rows are kept, NULL rows are kept unless EVERY team
+        # was fetched), and the fetch errors are recorded so /api/sync-status can
+        # show the run as degraded. Aborting on a single team's 404 — as the old
+        # `not policies and (policies_fetch_failed or teams_fetch_failed)` guard
+        # did — kills the whole sync (no results, no snapshots) over one flaky
+        # team endpoint, which is how a Fleet-side "SoftwareInstaller was not
+        # found" 404 on a single team froze the entire dashboard.
+        if not policies and not global_ok and not ok_team_ids:
+            first_error = FETCH_ERRORS[errors_before_policies] if FETCH_ERRORS[errors_before_policies:] else FETCH_ERRORS[errors_before_teams]
+            raise RuntimeError(
+                "Policy enumeration failed — no global and no team policies "
+                f"could be fetched. First error — {first_error}"
+            )
         policy_buffer = []
         matched = 0
         for p in policies:
@@ -1149,7 +1168,14 @@ def sync_data():
         # The catastrophic case the old guard existed for — a /fleet/teams timeout
         # making every team policy look deleted — is now structurally impossible:
         # with teams_fetch_failed, teams_ok is False so global (NULL) rows are
-        # kept, and ok_team_ids is empty so no team row is pruned either.
+        # kept, and ok_team_ids is empty so no team row is pruned either. The
+        # subtler case this also covers: the team LIST succeeds (teams_ok True)
+        # but one team's policy endpoint 404s (a Fleet-side dangling
+        # SoftwareInstaller), while the local catalog is still unattributed NULL
+        # from the migration window. teams_ok alone would have pruned every NULL
+        # row against the empty global set — wiping the whole catalog. The
+        # `ok_team_ids == all_team_ids` check in compute_stale_policy_ids() keeps
+        # NULL rows intact until that unreachable team is fetched too.
         global_api_ids = {p['id'] for p in policies if p.get('team_id') is None}
         team_api_ids = {}
         for p in policies:
@@ -1163,7 +1189,7 @@ def sync_data():
 
         stale_policy_ids = compute_stale_policy_ids(
             db_policies, global_ok, teams_ok, ok_team_ids,
-            global_api_ids, team_api_ids,
+            {t['id'] for t in teams}, global_api_ids, team_api_ids,
         )
 
         if stale_policy_ids:
