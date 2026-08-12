@@ -1,7 +1,4 @@
-# Secrets & credentials — NEVER commit
-# A bare `.env` matches only that exact name, so variants like .env.local or a
-# .env.backup-<date> written before rotating a password were not ignored and one
-# `git add -A` would have published them. The negation keeps the template tracked.
+# Secrets & credentials
 .env
 .env.*
 !.env.example
@@ -34,23 +31,14 @@ ENV/
 # Docker volumes (local state only)
 postgres_data/
 
-# Node/JS (Vite)
-node_modules/
-.vite/
-
 # IDE
 .vscode/
 .idea/
-CLAUDE.md
-.serena/
-.planning/*
 
-# Local-only (not for public GitHub)
-# Keep docs/images tracked for README screenshots
+# Local-only
 docs/*
 !docs/images/
 !docs/images/**
-# Test suite and its dev-only requirements stay local: not published.
 tests/
 requirements-dev.txt
 .planning/
@@ -58,6 +46,6 @@ requirements-dev.txt
 # Tooling scratch output
 .playwright-mcp/
 
-# OS junk
+# OS
 .DS_Store
 Thumbs.db

@@ -2,7 +2,7 @@
   <img src="docs/images/logo.png" alt="Fleet CIS logo" width="96">
 </p>
 
-<h1 align="center">Fleet CIS Compliance Dashboard</h1>
+<h1 align="center">Fleet CIS compliance dashboard</h1>
 
 <p align="center">
   CIS Benchmark policy results from a Fleet instance, stored in Postgres and<br>
@@ -48,11 +48,11 @@ Two static reference datasets ship with the repo and are joined to the Fleet dat
 a CIS policy catalog (CIS safeguard IDs and remediation text, matched to Fleet policy
 names) and a safeguard-to-ATT&CK/D3FEND mapping. Those are the only non-Fleet inputs.
 
-### Questions it is built to answer
+### Questions it answers
 
 | Question | Where it is answered |
 |----------|----------------------|
-| How many policies pass, and on how many hosts? | Summary — pass rate, risk level, fully-compliant device count |
+| How many policies pass, and on how many hosts? | Summary — pass rate, risk level, fully compliant device count |
 | What should be fixed first? | Summary — top violations ranked by number of affected hosts |
 | Which failures map to adversary behaviour? | Security Architecture — failed controls joined to ATT&CK techniques |
 | What defensive techniques cover the gap? | Security Architecture / heat map — D3FEND countermeasures |
@@ -115,9 +115,9 @@ Every view can be filtered by Fleet team, platform, label, and OS version.
 - A reachable [Fleet](https://fleetdm.com/) instance that already has CIS policies deployed
 - A Fleet API token for a **read-only** API-only user
 - Free disk for the `postgres_data` volume. It grows with `HISTORY_RETENTION_MONTHS` of
-  policy history, so size it against your host count × policy count × sync frequency
+  policy history, so size it against your host count × policy count × sync frequency.
 
-Nothing else is needed on the host — Python, Postgres and Redis all run in containers.
+You don't need anything else on the host — Python, Postgres, and Redis all run in containers.
 
 ### Deploy
 
@@ -144,9 +144,9 @@ Everything else has a working default. These do not:
 
 | Variable | What to put in it |
 |----------|-------------------|
-| `FLEET_URL` | Base URL of your Fleet server, e.g. `https://fleet.example.com`. **No trailing slash** — paths are appended directly |
+| `FLEET_URL` | Base URL of your Fleet server, for example `https://fleet.example.com`. **No trailing slash** — paths are appended directly |
 | `FLEET_API_TOKEN` | API token for a read-only Fleet API-only user |
-| `POSTGRES_PASSWORD` | A password you choose for the bundled Postgres. There is no default — Compose refuses to start without it. Keep it URL-safe (`[A-Za-z0-9._~-]`), because it is interpolated into a connection string |
+| `POSTGRES_PASSWORD` | A password you choose for the bundled Postgres. Compose refuses to start without one. Keep it URL-safe (`[A-Za-z0-9._~-]`), because it's interpolated into a connection string |
 | `DASHBOARD_API_TOKEN` | A long random string. Only needed if you want the **Settings** page to be able to save; leave it unset and writes are refused with `503` |
 
 `openssl rand -hex 32` produces a suitable value for both tokens.
@@ -214,7 +214,7 @@ not carry a CIS safeguard ID, so they are excluded from safeguard-level roll-ups
 | Edge | nginx (alpine) | Serves `frontend/`, gzips responses, reverse-proxies `/api/*` |
 | Backend | Flask + gunicorn (`WEB_CONCURRENCY` workers × 2 threads, 4 × 2 by default) | Read-only JSON API over Postgres |
 | Sync | Python daemon | Polls the Fleet API, writes Postgres, applies retention |
-| Database | PostgreSQL 16 | Hosts, policies, current results, monthly-partitioned history |
+| Database | PostgreSQL 16 | Hosts, policies, current results, monthly partitioned history |
 | Cache | Redis 7 | Optional response cache for the large endpoints |
 
 The backend and the sync daemon are the **same image** (`Dockerfile.backend`) started with
@@ -255,18 +255,18 @@ Every variable in `docker-compose.yml` uses the `${VAR:-default}` form, so anyth
 which uses `${VAR:?message}` and has no default at all.
 
 One caveat that costs people time: a variable only reaches a container if that service's
-`environment:` block lists it. Setting something in `.env` that Compose does not pass through
+`environment:` block lists it. Setting something in `.env` that Compose doesn't pass through
 has no effect. The tables below mark those cases; if you need one of them, add the line to
 `docker-compose.yml` as well.
 
-Every numeric variable read by this project's own code is parsed leniently: an unparseable
+Every numeric variable this project reads is parsed leniently: an unparseable
 or out-of-range value logs a warning and falls back to the documented default rather than
-raising at import, so a typo in `.env` cannot crash-loop a container.
+raising at import, so a typo in `.env` can't crash-loop a container.
 
 One variable is outside that guarantee. `WEB_CONCURRENCY` is consumed by gunicorn, not by
 this codebase, and gunicorn parses it with a bare `int()` while loading its own config —
-before any application code runs. A non-numeric value there stops the backend from starting,
-and with `restart: unless-stopped` it will keep retrying. Set it to a plain integer.
+before any app code runs. A non-numeric value there stops the backend from starting,
+and with `restart: unless-stopped` it keeps retrying. Set it to a plain integer.
 
 ### Fleet connection
 
@@ -274,7 +274,7 @@ and with `restart: unless-stopped` it will keep retrying. Set it to a plain inte
 |----------|---------|---------|----------|
 | `FLEET_URL` | Base URL of the Fleet server, without a trailing slash | no usable default | **Yes** |
 | `FLEET_API_TOKEN` | Bearer token for the Fleet API. A read-only API-only user is sufficient | empty — sync exits early and logs a warning | **Yes** |
-| `FLEET_SSL_VERIFY` | Verify Fleet's TLS certificate. `false`, `0`, `no`, `off` disable it | `true` | No |
+| `FLEET_SSL_VERIFY` | Verify Fleet's TLS certificate. `false`, `0`, `no`, `off` turn it off | `true` | No |
 
 ### Database
 
@@ -286,18 +286,18 @@ and with `restart: unless-stopped` it will keep retrying. Set it to a plain inte
 | `DATABASE_URL` | libpq connection string used by both the backend and the sync daemon. Under Compose it is **built** from the three variables above, so setting it in `.env` has no effect there; it is only read directly when running the app outside Compose | `postgresql://<user>:<password>@db:5432/<db>`, assembled by Compose | Yes (supplied by Compose) |
 | `DB_POOL_MIN` | Minimum connections per pool | `1` | No |
 | `DB_POOL_MAX` | Maximum connections **per process** | `8` | No |
-| `DB_POOL_RETRY_COOLDOWN_SECONDS` | After the connect retry budget (5 attempts, 2s apart) is exhausted, suppress further attempts for this long so a dead database does not wedge every request thread | `10` | No |
+| `DB_POOL_RETRY_COOLDOWN_SECONDS` | After the connect retry budget (5 attempts, 2 seconds apart) is exhausted, suppress further attempts for this long so a dead database does not wedge every request thread | `10` | No |
 
 **Connection budget.** Every gunicorn worker holds its own pool and the sync daemon holds
 one more, so the ceiling is `WEB_CONCURRENCY × DB_POOL_MAX + DB_POOL_MAX`. Compose starts
 Postgres with `max_connections=200`; the defaults use `4 × 8 + 8 = 40` of that. Raise
 `WEB_CONCURRENCY` and `DB_POOL_MAX` together and check the arithmetic — `16 × 16 + 16 = 272`
-would exhaust the server and connections would start being refused.
+would exhaust the server, and connections start being refused.
 
-The schema is applied automatically at the start of every sync (`CREATE TABLE IF NOT
-EXISTS`, plus this month's history partition). **There is no manual migration step.**
+The schema applies automatically at the start of every sync (`CREATE TABLE IF NOT
+EXISTS`, plus this month's history partition). Manual migration isn't needed.
 
-### HTTP and authorization
+### HTTP & authorization
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
@@ -317,7 +317,7 @@ EXISTS`, plus this month's history partition). **There is no manual migration st
 | `SYNC_MAX_WORKERS` | Concurrent Fleet API requests during the per-policy host fan-out | `10` | No |
 | `SYNC_HOSTS_PER_PAGE` | Page size for host enumeration | `100` | No |
 | `SYNC_POLICY_HOSTS_PER_PAGE` | Page size for per-policy host lists. Larger because one policy can cover the whole fleet | `500` | No |
-| `SYNC_FULL_REFRESH_DIVISOR` | Each sync force-re-enumerates the `1/divisor` slice of policies where `policy_id % divisor == sync_id % divisor`, so every policy is fully re-read within `divisor` syncs. `0` disables the sweep; `1` re-reads everything every sync | `24` (≈6 h at the 15-minute cadence) | No |
+| `SYNC_FULL_REFRESH_DIVISOR` | Each sync force-re-enumerates the `1/divisor` slice of policies where `policy_id % divisor == sync_id % divisor`, so every policy is fully re-read within `divisor` syncs. `0` turns the sweep off; `1` re-reads everything every sync | `24` (≈6 h at the 15-minute cadence) | No |
 | `SYNC_HEARTBEAT_FILE` | Path the daemon touches each second. Its mtime is the container healthcheck. Must be writable by the non-root `appuser` | `/tmp/sync_heartbeat` | No |
 | `SYNC_WATCHDOG_TIMEOUT_SECONDS` | Hard bound on a **single** sync cycle. If one cycle exceeds it the daemon exits with code `75` so the restart policy can recover it. The timer resets at every cycle boundary and idle time is outside the window, so slow-but-completing cycles never accumulate toward it. `0` disables the watchdog; an explicit value below `30` is raised to `30` with a warning. Passed through by `docker-compose.yml`, so setting it in `.env` is enough | `3 × SYNC_INTERVAL_MINUTES`, floored at `900` s — so `2700` s at the 15-minute default | No |
 
@@ -332,7 +332,7 @@ survive without paying for a full re-enumeration on every cycle.
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `HISTORY_RETENTION_MONTHS` | Whole months of `policy_results_history` to keep. Expiry is a partition `DROP`, not a row-wise `DELETE`. `0` or negative disables retention | `12` | No |
+| `HISTORY_RETENTION_MONTHS` | Whole months of `policy_results_history` to keep. Expiry is a partition `DROP`, not a row-wise `DELETE`. `0` or negative turns retention off | `12` | No |
 | `HISTORY_DEFAULT_SWEEP_LIMIT` | Rows that landed in the `DEFAULT` history partition cannot be reclaimed by dropping a partition, so they are swept row-wise, at most this many per sync | `50000` | No |
 | `SYNC_METADATA_RETENTION_DAYS` | Age at which `sync_metadata` rows are deleted. The newest 20 rows are always kept so `/api/sync-status` still has something to report. `0` disables | `90` | No |
 
@@ -347,7 +347,7 @@ survive without paying for a full re-enumeration on every cycle.
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `REDIS_URL` | Redis connection string. An empty or unset value **disables the cache** and the app serves every response live. Compose passes this through as `${REDIS_URL-…}` (no colon), so `REDIS_URL=` in `.env` genuinely reaches the app empty and is the supported way to run without a cache. The `redis` service can also be deleted outright — nothing declares a dependency on it | `redis://redis:6379/0` under Compose; unset otherwise | No |
+| `REDIS_URL` | Redis connection string. An empty or unset value **turns the cache off** and the app serves every response live. Compose passes this through as `${REDIS_URL-…}` (no colon), so `REDIS_URL=` in `.env` genuinely reaches the app empty and is the supported way to run without a cache. The `redis` service can also be deleted outright — nothing declares a dependency on it | `redis://redis:6379/0` under Compose; unset otherwise | No |
 | `CACHE_TTL_SECONDS` | TTL on cached response bodies. Entries also retire implicitly on every successful sync | `900` | No |
 | `REDIS_TIMEOUT_MS` | Connect and socket timeout, deliberately sub-second: a wedged Redis must never cost more than the query it replaces | `500` | No |
 | `CACHE_RETRY_COOLDOWN_SECONDS` | After a transient Redis failure, serve uncached for this long before re-probing | `30` | No |
@@ -357,7 +357,7 @@ survive without paying for a full re-enumeration on every cycle.
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `LOG_FILE` | Absolute path for an **optional** rotating file log, in addition to stdout. Unset means stdout only, which is what `docker compose logs` wants. The path must be writable by `appuser` (e.g. under `/tmp`); an unwritable path logs a warning and is ignored | unset | No |
+| `LOG_FILE` | Absolute path for an **optional** rotating file log, in addition to stdout. Unset means stdout only, which is what `docker compose logs` wants. The path must be writable by `appuser` (for example, under `/tmp`); an unwritable path logs a warning and is ignored | unset | No |
 | `LOG_MAX_BYTES` | Rotation size for `LOG_FILE` | `10485760` (10 MiB) | No |
 | `LOG_BACKUP_COUNT` | Rotated files kept | `3` | No |
 
@@ -396,7 +396,7 @@ Every service has a healthcheck, and each one is chosen to prove something diffe
 | `db` | `pg_isready -U $POSTGRES_USER -d $POSTGRES_DB` | Postgres is not accepting connections |
 | `redis` | `redis-cli ping` | Cache unavailable — the app keeps working, uncached |
 | `backend` | `GET /healthz` via the Python stdlib (no `curl` in the image) | gunicorn is down, or Postgres is unreachable from it |
-| `sync` | mtime of `SYNC_HEARTBEAT_FILE`, allowed to be `2 × SYNC_INTERVAL_MINUTES + 60s` stale | The daemon is wedged or dead. One slow or skipped cycle will not flap it, and a Fleet outage does **not** trip it — the daemon refreshes the heartbeat even when a sync fails |
+| `sync` | mtime of `SYNC_HEARTBEAT_FILE`, allowed to be `2 × SYNC_INTERVAL_MINUTES + 60s` stale | The daemon is wedged or dead. One slow or skipped cycle doesn't flap it, and a Fleet outage does **not** trip it — the daemon refreshes the heartbeat even when a sync fails |
 | `nginx` | `wget -q -O /dev/null http://localhost/` | The worker is not accepting connections, or the mounted `frontend/` volume is not being served (a missing `index.html` is a 404, which exits non-zero) |
 
 Dependency ordering is on health, not on start: the backend and sync wait for `db` (and the
@@ -433,7 +433,7 @@ Container logs are bounded: every service uses the `json-file` driver with
 `max-size: 10m` and `max-file: 3`, so each service is capped at roughly 30 MB and the whole
 stack at roughly 150 MB. That matters here because the sync daemon prints a diagnostic block
 every cycle forever and nginx logs a line per request — the driver's default is unbounded
-and will fill the disk.
+and the default fills the disk.
 
 Set `LOG_FILE` only if you specifically need a file inside the container.
 
@@ -445,7 +445,7 @@ one, and the header indicator in the UI renders it:
 | `sync_metadata.status` | `degraded` | UI | Meaning |
 |------------------------|------------|-----|---------|
 | `running` | — | "syncing…" with a spinner | A cycle is in flight |
-| `success` | `false` | relative time, e.g. "4 min ago" | Every Fleet call succeeded |
+| `success` | `false` | relative time, for example "4 min ago" | Every Fleet call succeeded |
 | `success` | `true` | relative time + ⚠, error text in the tooltip | Data landed, but some Fleet fetches failed — a subset of policies was not refreshed. `error_message` reads `N fetch error(s); first — …` |
 | `failed` | `false` | relative time + ⚠, error in the tooltip | The cycle aborted; `error_message` says why |
 | — (no rows) | `false` | "never" | No sync has run yet |
@@ -487,7 +487,7 @@ Partition DDL takes `ACCESS EXCLUSIVE` on a table the Strategy and Architecture 
 read, so it runs under a 5-second lock timeout and a timeout is treated as a skip, retried
 next cycle. Retention failures are never fatal to a sync.
 
-**There is no migration command to run.** Creating the database, applying the schema,
+**No migration command to run.** Creating the database, applying the schema,
 creating partitions, and dropping expired ones all happen inside the normal sync.
 
 ### Response cache
@@ -546,23 +546,23 @@ Stated rather than papered over:
 ## Security posture
 
 **Writes fail closed.** `PUT /api/config` is the only mutating endpoint. It requires
-`Authorization: Bearer $DASHBOARD_API_TOKEN` (or `X-API-Token`), compared with
-`hmac.compare_digest`. If `DASHBOARD_API_TOKEN` is unset the endpoint returns `503` — it
+`Authorization: Bearer $DASHB...KEN` (or `X-API-Token`), compared with
+`hmac.compare_digest`. If `DASHBOARD_API_TOKEN` is unset, the endpoint returns `503` — it
 never falls back to unauthenticated writes. A wrong token returns `401`.
 
-**All read endpoints are unauthenticated.** Anyone who can reach the UI port or the API port
+**Read endpoints don't authenticate.** Anyone who can reach the UI port or the API port
 can read your compliance posture, host names, and failing controls. Put this behind your own
 authenticating proxy, or bind it to a trusted network, before exposing it beyond localhost.
-Nothing in the stack does authentication for reads.
+Nothing in the stack authenticates reads.
 
 **`FLEET_SSL_VERIFY` defaults to `true`, and turning it off has a real cost.** Setting it to
-`false` (for a self-signed lab Fleet) means `FLEET_API_TOKEN` is sent over a TLS connection
-whose certificate is not validated — an on-path attacker can present any certificate and
-capture the token. The sync daemon prints a warning on every start when it is disabled.
+`false` (for a self-signed lab Fleet) means `FLEET_API_TOKEN` crosses a TLS connection
+whose certificate the sync doesn't validate — an on-path attacker can present any certificate and
+capture the token. The sync daemon prints a warning on every start when you turn it off.
 Prefer trusting the lab CA over disabling verification.
 
 **CORS is an allowlist.** `/api/*` responses are restricted to `ALLOWED_ORIGINS`. Served
-through nginx on port 8082 the UI is same-origin and CORS never applies; the allowlist
+through nginx on port 8082, the UI is same-origin and CORS never applies; the allowlist
 matters for anything calling the API from another origin.
 
 **The database password is operator-supplied.** `POSTGRES_PASSWORD` has no default and no
@@ -570,9 +570,9 @@ fallback; Compose refuses to start without it, and neither the working tree, `.e
 nor the images contain a usable credential.
 
 Two caveats worth knowing. Earlier commits in this repository's history did contain a
-`postgres`/`postgres` pair, so treat any database initialised from those revisions as having
+`postgres`/`postgres` pair, so treat any database initialized from those revisions as having
 a published password and rotate it. And because `POSTGRES_PASSWORD` is only consumed when the
-volume is first initialised, changing it later does not re-key an existing cluster — run
+volume is first initialized, changing it later doesn't re-key an existing cluster — run
 `ALTER USER` inside the `db` container first, then update `.env`.
 
 **Containers drop privileges.** The backend image creates and runs as an unprivileged
@@ -585,7 +585,7 @@ through the Compose environment at runtime.
 
 **Input is bounded.** `?limit=` on `/api/devices` is clamped to `MAX_PAGE_SIZE`, the computed
 `OFFSET` is capped, and the response cache key is built from a fixed allowlist of four scope
-arguments — an unauthenticated caller cannot mint unbounded cache entries by appending junk
+arguments — an unauthenticated caller can't mint unbounded cache entries by appending junk
 query parameters.
 
 **Error bodies are quiet.** Exception details are only included when `FLASK_1_DEBUG=1`.
@@ -742,10 +742,3 @@ data. They are not part of the runtime and are never invoked by the containers.
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  <img src="docs/images/logo.png" alt="Fleet CIS" width="48"><br>
-  <sub>Fleet CIS — Compliance Intelligence</sub>
-</p>
