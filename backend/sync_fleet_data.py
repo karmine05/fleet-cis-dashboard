@@ -1362,78 +1362,44 @@ def sync_data():
                 f"{force_refreshed_unchanged} of them looked unchanged by Fleet's counts."
             )
 
-        # Fetch results. `count` is how many rows Fleet reported; results_written
-        # is how many rows the upsert actually inserted or flipped status. They
-        # differ whenever a host's status is unchanged since the last sync, which
-        # is the normal case, so sync_metadata.results_changed records the second —
-        # a "changed" column carrying the fetched total would overstate every sync.
+        # Fetch results, flushing per-policy as soon as it completes so memory
+        # is bounded to a single policy's worth of rows plus one in-flight
+        # fetch per worker. Previously the entire results_buffer could hold all
+        # MAX_WORKERS policies simultaneously (256 MB+ for large fleets).
         #
-        # The DO UPDATE only fires on a genuine status change, which is what makes
-        # RETURNING a real change count: gating on checked_at alone was always true
-        # (the timestamp moves every sync), so RETURNING handed back every row and
-        # a steady-state sync reported "1956 of 1956 changed".
-        # Consequence to know about: policy_results.checked_at therefore marks when
-        # a status was last observed to CHANGE, not when it was last observed. No
-        # endpoint reads that column — every checked_at the API touches belongs to
-        # policy_results_history, which still records one row per observation.
-        results_buffer = []
+        # `count` is how many rows Fleet reported; results_written is how many
+        # rows the upsert actually inserted or flipped status. They differ
+        # whenever a host's status is unchanged since the last sync, which is
+        # the normal case, so sync_metadata.results_changed records the second.
+        #
+        # The DO UPDATE only fires on a genuine status change, which is what
+        # makes RETURNING a real change count: gating on checked_at alone was
+        # always true (the timestamp moves every sync), so RETURNING handed
+        # back every row and a steady-state sync reported "1956 of 1956
+        # changed". Consequence: policy_results.checked_at marks when a status
+        # was last observed to CHANGE, not when it was last observed. No
+        # endpoint reads that column — every checked_at the API touches belongs
+        # to policy_results_history, which still records one row per observation.
         count = 0
         results_written = 0
-        # policy_id -> host ids Fleet reported this sync, and how many of that
-        # policy's fetches actually succeeded. Only the host ids are kept in
-        # memory (not the rows), so the existing 5000-row flush batching stays.
+        # policy_id -> host ids Fleet reported this sync. Only host ids are kept
+        # in memory (not the full rows), so deduplication + flush is per-policy.
         fetched_hosts = {}
+        # Per-policy row accumulator: each pid's rows are flushed and discarded
+        # as soon as all its fetches complete.
+        results_buffer: dict[int, list] = {}
         completed_tasks = {}
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(fetch_policy_hosts, pid, status): (pid, status)
-                for pid, status in tasks
-            }
-            for future in as_completed(futures):
-                task_pid = futures[future][0]
-                ok, items = future.result()
-                if ok:
-                    completed_tasks[task_pid] = completed_tasks.get(task_pid, 0) + 1
-                    seen = fetched_hosts.setdefault(task_pid, set())
-                    for row in items:
-                        seen.add(row[1])
-                if items:
-                    results_buffer.extend(items)
-                    count += len(items)
 
-                if len(results_buffer) > 5000:
-                    # De-duplicate immediately before the upsert — see
-                    # _dedupe_result_rows() for why a single flush can legitimately
-                    # carry the same (policy_id, host_id) twice.
-                    flush_rows = _dedupe_result_rows(results_buffer)
-                    with db.get_db_cursor(commit=True) as cur:
-                        # Upsert first, prune after — a dashboard read sees a superset of truth,
-                        # never a half-empty policy.
-                        written = extras.execute_values(cur, """
-                            INSERT INTO policy_results (policy_id, host_id, status, checked_at)
-                            VALUES %s
-                            ON CONFLICT (policy_id, host_id) DO UPDATE SET
-                                status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
-                            WHERE EXCLUDED.checked_at >= policy_results.checked_at
-                              AND policy_results.status IS DISTINCT FROM EXCLUDED.status
-                            RETURNING policy_id
-                        """, flush_rows, fetch=True)
-                        results_written += len(written or [])
-
-                        # History log: same de-duplicated rows; the discarded duplicate is the
-                        # older observation of a host that flipped mid-sync.
-                        extras.execute_values(cur, """
-                            INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
-                            VALUES %s
-                        """, flush_rows)
-
-                    results_buffer = []
-                    print(f"    ... synced {count} policy results")
-
-        # Flush final
-        if results_buffer:
-             flush_rows = _dedupe_result_rows(results_buffer)
-             with db.get_db_cursor(commit=True) as cur:
+        def _flush_policy_rows(pid):
+            """Flush one policy's rows, then discard from the buffer."""
+            nonlocal results_written
+            rows = results_buffer.pop(pid, [])
+            if not rows:
+                return 0
+            flush_rows = _dedupe_result_rows(rows)
+            if not flush_rows:
+                return 0
+            with db.get_db_cursor(commit=True) as cur:
                 written = extras.execute_values(cur, """
                     INSERT INTO policy_results (policy_id, host_id, status, checked_at)
                     VALUES %s
@@ -1448,6 +1414,35 @@ def sync_data():
                     INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
                     VALUES %s
                 """, flush_rows)
+            return len(flush_rows)
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {
+                executor.submit(fetch_policy_hosts, pid, status): (pid, status)
+                for pid, status in tasks
+            }
+            for future in as_completed(futures):
+                pid = futures[future][0]
+                ok, items = future.result()
+                if ok:
+                    completed_tasks[pid] = completed_tasks.get(pid, 0) + 1
+                    seen = fetched_hosts.setdefault(pid, set())
+                    for row in items:
+                        seen.add(row[1])
+
+                count += len(items)
+
+                # Route rows into per-policy bucket
+                if items:
+                    results_buffer.setdefault(pid, []).extend(items)
+
+                # As soon as all fetches for this policy complete, flush and
+                # discard. Memory is bounded to ~MAX_WORKERS in-flight fetches,
+                # not the entire fleet's results simultaneously.
+                if completed_tasks.get(pid, 0) >= expected_tasks.get(pid, 1):
+                    flushed = _flush_policy_rows(pid)
+                    if flushed:
+                        print(f"    ... flushed {flushed} row(s) for policy {pid} (total fetched: {count})")
 
         # 5.1 Prune result rows Fleet no longer reports.
         # policy_results was upsert-only, so a (policy_id, host_id) pair that
