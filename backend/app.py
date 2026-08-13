@@ -1317,9 +1317,9 @@ def update_config():
 
         # Basic type validation for numeric fields
         numeric_keys = [
-            'risk_exposure_multiplier', 
-            'security_debt_hours_per_issue', 
-            'impact_high_threshold', 
+            'risk_exposure_multiplier',
+            'security_debt_hours_per_issue',
+            'impact_high_threshold',
             'impact_medium_threshold',
             'framework_cis_multiplier',
             'framework_nist_multiplier',
@@ -1336,14 +1336,39 @@ def update_config():
                     numeric_value = float(value)
                 except (ValueError, TypeError):
                     return error_response(f"Value for {key} must be numeric", 400)
-                # "nan"/"inf" pass float() and would be stored verbatim, then
-                # serialized into /api/strategy as a non-standard JSON token that
-                # strict clients reject.
                 if not math.isfinite(numeric_value):
                     return error_response(
                         f"Value for {key} must be a finite number", 400
                     )
-        
+                if numeric_value < 0:
+                    return error_response(f"Value for {key} must be non-negative", 400)
+
+        # Semantic validation: maturity thresholds must be in ascending order
+        if any(k in updates for k in ('maturity_level_1', 'maturity_level_5')):
+            existing = {}
+            with db.get_db_cursor() as cur:
+                cur.execute(
+                    "SELECT key, value FROM config_settings "
+                    "WHERE key LIKE 'maturity_level_%'"
+                )
+                for row in cur.fetchall():
+                    try:
+                        existing[row['key']] = float(row['value'])
+                    except (TypeError, ValueError):
+                        pass
+            for k, v in updates.items():
+                if k.startswith('maturity_level_'):
+                    existing[k] = float(v)
+            for level in range(1, 5):
+                lo = existing.get(f'maturity_level_{level}', 0)
+                hi = existing.get(f'maturity_level_{level + 1}', 100)
+                if lo >= hi:
+                    return error_response(
+                        f"maturity_level_{level} ({lo}) must be < "
+                        f"maturity_level_{level + 1} ({hi})",
+                        400,
+                    )
+
         with db.get_db_cursor(commit=True) as cur:
             updated_count = 0
             for key, value in updates.items():
