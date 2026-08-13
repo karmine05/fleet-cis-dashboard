@@ -1124,11 +1124,16 @@ function updateAuditUI() {
         return;
     }
 
-    listContainer.innerHTML = DOMPurify.sanitize(filtered.map(s => `
+    listContainer.innerHTML = filtered.map(s => {
+        const statusClass = s.fail === 0 ? 'control-badge-pass' : s.pass === 0 ? 'control-badge-fail' : 'control-badge-risk';
+        const rateClass = s.pass_rate >= 100 ? 'highlight-pass' : s.pass_rate >= 60 ? '' : 'highlight-fail';
+        return `
         <div class="audit-policy-item" data-id="${s.safeguard_id}">
-            ${s.name}
+            <span class="control-badge ${statusClass}"></span>
+            <span class="control-name" title="${s.name || ''}">${s.name || s.safeguard_id}</span>
+            <span class="control-rate ${rateClass}" title="${s.pass} pass / ${s.fail} fail">${Math.round(s.pass_rate)}%</span>
         </div>
-    `).join(''));
+    `;}).join('');
 
     // Attach click handlers
     listContainer.querySelectorAll('.audit-policy-item').forEach(item => {
@@ -1152,6 +1157,23 @@ function updateAuditUI() {
 
 function showPolicyDetails(policy) {
     if (!policy) return;
+
+    // Update compliance metrics
+    const passHostsEl = document.getElementById('policy-pass-hosts');
+    const failHostsEl = document.getElementById('policy-fail-hosts');
+    const totalHostsEl = document.getElementById('policy-total-hosts');
+    const passRateEl = document.getElementById('policy-pass-rate');
+    const miniFillEl = document.getElementById('policy-mini-fill');
+
+    if (passHostsEl) passHostsEl.textContent = policy.pass ?? '--';
+    if (failHostsEl) failHostsEl.textContent = policy.fail ?? '--';
+    if (totalHostsEl) totalHostsEl.textContent = (policy.pass || 0) + (policy.fail || 0);
+    if (passRateEl) passRateEl.textContent = `${Math.round(policy.pass_rate ?? 0)}%`;
+    if (miniFillEl) {
+        miniFillEl.style.width = `${policy.pass_rate ?? 0}%`;
+        miniFillEl.style.background = (policy.pass_rate ?? 0) >= 80 ? 'var(--success)' :
+            (policy.pass_rate ?? 0) >= 50 ? 'var(--warning)' : 'var(--brand-500)';
+    }
 
     document.getElementById('policy-description').textContent = policy.description || 'No description available for this policy.';
     document.getElementById('policy-resolution').textContent = policy.resolution || 'No resolution steps defined.';

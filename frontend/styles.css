@@ -1696,6 +1696,56 @@ html, body {
     flex-shrink: 0;
 }
 
+/* Audit Metrics Row (in detail panel) */
+.audit-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-sm);
+}
+
+.audit-metric-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-sm);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.audit-metric-val {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.audit-metric-lab {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.audit-mini-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-root);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 2px;
+}
+
+.audit-mini-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 400ms ease, background 200ms ease;
+}
+
 .audit-detail-panel {
     background: var(--bg-secondary);
     border: 1px solid var(--border-subtle);

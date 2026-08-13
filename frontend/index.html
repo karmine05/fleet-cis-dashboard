@@ -383,6 +383,29 @@
                     <!-- Right Detail Panel -->
                     <div class="audit-detail-panel">
                         <div class="detail-section">
+                            <h3 class="section-title">Compliance Metrics</h3>
+                            <div class="audit-metrics-row">
+                                <div class="audit-metric-card">
+                                    <div class="audit-metric-val highlight-pass" id="policy-pass-hosts">--</div>
+                                    <div class="audit-metric-lab">Passing Systems</div>
+                                </div>
+                                <div class="audit-metric-card">
+                                    <div class="audit-metric-val highlight-fail" id="policy-fail-hosts">--</div>
+                                    <div class="audit-metric-lab">Failing Systems</div>
+                                </div>
+                                <div class="audit-metric-card">
+                                    <div class="audit-metric-val" id="policy-total-hosts">--</div>
+                                    <div class="audit-metric-lab">Total Scanned</div>
+                                </div>
+                                <div class="audit-metric-card">
+                                    <div class="audit-metric-val" id="policy-pass-rate">--%</div>
+                                    <div class="audit-metric-lab">Pass Rate</div>
+                                    <div class="audit-mini-bar"><div class="audit-mini-fill" id="policy-mini-fill"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
                             <h3 class="section-title">Description</h3>
                             <div id="policy-description" class="detail-content">Select a policy to view details</div>
                         </div>
