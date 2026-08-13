@@ -717,8 +717,6 @@ function renderHeatmapMatrix() {
     const maxItems = Math.max(...sortedKeys.map(k => groups[k].length), 1);
     const layout = computeHeatmapLayout(container, sortedKeys.length, maxItems);
 
-    container.style.setProperty('--cell-size', `${layout.cell}px`);
-
     let html = '<div class="d3fend-matrix d3fend-matrix-fill">';
 
     sortedKeys.forEach(key => {
