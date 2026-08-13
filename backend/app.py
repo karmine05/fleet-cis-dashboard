@@ -170,6 +170,11 @@ app = Flask(__name__)
 # back to the built-in default and says so, instead of becoming a deny-everything list
 # that looks like a broken deployment. The effective list is logged at boot, because a
 # CORS allow-list nobody can see is a CORS allow-list nobody can debug.
+# Read endpoints are unauthenticated by design: this dashboard is always deployed
+# behind a reverse proxy (nginx) that provides TLS and network-level access control.
+# CORS is scoped to localhost-only; the only defense-in-depth on the read path is the
+# proxy. Write endpoints carry `@require_write_auth` and fail closed when
+# DASHBOARD_API_TOKEN is unset.
 CORS_DEFAULT_ORIGIN = 'http://localhost:8081'
 
 
