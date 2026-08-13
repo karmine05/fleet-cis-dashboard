@@ -1641,6 +1641,22 @@ def get_safeguard_compliance():
             
         return jsonify({"safeguards": result_list})
 
+def build_policy_host_agg(h_query, params):
+    """Build the policy_results subquery aggregated by (policy_id, host_id).
+
+    Returns (sql_fragment, params) where *sql_fragment* can be used
+    directly as ``FROM ({fragment}) sq`` in a larger query.
+    """
+    fragment = (
+        "SELECT pr.policy_id, pr.host_id, "
+        "SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count "
+        "FROM policy_results pr "
+        f"WHERE pr.host_id IN ({h_query}) "
+        "GROUP BY pr.policy_id, pr.host_id"
+    )
+    return fragment, params
+
+
 @app.route('/api/heatmap-data', methods=['GET'])
 @cached_response('heatmap-data')
 def get_heatmap_data():
@@ -1659,6 +1675,8 @@ def get_heatmap_data():
     filter_platform = request.args.get('platform', '')
     # group_mode query param reserved; frontend groups client-side
 
+    sq, sq_params = build_policy_host_agg(h_query, params)
+
     query = f"""
         SELECT
             p.policy_id,
@@ -1676,15 +1694,7 @@ def get_heatmap_data():
             h.platform AS host_platform,
             COUNT(*) as total_count,
             SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count
-        FROM (
-            SELECT
-                pr.policy_id,
-                pr.host_id,
-                SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
-            FROM policy_results pr
-            WHERE pr.host_id IN ({h_query})
-            GROUP BY pr.policy_id, pr.host_id
-        ) sq
+        FROM ({sq}) sq
         JOIN cis_policies p ON sq.policy_id = p.policy_id
         JOIN fleet_hosts h ON sq.host_id = h.host_id
         GROUP BY
@@ -1698,7 +1708,7 @@ def get_heatmap_data():
         cur.execute(f"SELECT COUNT(*) as n FROM ({h_query}) hosts", params)
         fleet_size = cur.fetchone()['n'] or 0
 
-        cur.execute(query, params)
+        cur.execute(query, sq_params)
         rows = cur.fetchall()
 
         heatmap_data = []
@@ -2062,6 +2072,7 @@ def get_strategy():
 @cached_response('architecture')
 def get_architecture():
     h_query, params = get_filtered_hosts_subquery()
+    sq, sq_params = build_policy_host_agg(h_query, params)
 
     with db.get_db_cursor() as cur:
         # Aggregate by policy × host platform; map via cis_safeguard_ids
@@ -2074,19 +2085,11 @@ def get_architecture():
                 p.cis_category,
                 SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) as pass_count,
                 COUNT(*) as total_count
-            FROM (
-                SELECT
-                    pr.policy_id,
-                    pr.host_id,
-                    SUM(CASE WHEN pr.status = 'fail' THEN 1 ELSE 0 END) as fail_count
-                FROM policy_results pr
-                WHERE pr.host_id IN ({h_query})
-                GROUP BY pr.policy_id, pr.host_id
-            ) sq
+            FROM ({sq}) sq
             JOIN cis_policies p ON sq.policy_id = p.policy_id
             JOIN fleet_hosts h ON sq.host_id = h.host_id
             GROUP BY h.platform, p.policy_id, p.policy_name, p.cis_safeguard_ids, p.cis_category
-        """, params)
+        """, sq_params)
         rows = cur.fetchall()
 
         mitre_stats = {}
