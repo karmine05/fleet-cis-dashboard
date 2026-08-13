@@ -239,6 +239,10 @@ def _finalize_mapping(m: Dict[str, Any], sid: str = "") -> Dict[str, Any]:
     return out
 
 
+# Rate-limited warning for unmapped safeguards (logged once per distinct id).
+_UNMAPPED_WARNED = set()
+_MAX_UNMAPPED_WARNINGS = 256
+
 def mapping_for_safeguard(safeguard_id: str) -> Dict[str, Any]:
     """D3FEND + ATT&CK (multi-technique) for a cis_safeguard_id."""
     if not safeguard_id:
@@ -250,6 +254,15 @@ def mapping_for_safeguard(safeguard_id: str) -> Dict[str, Any]:
     alt = sid if sid.startswith("CIS") else f"CIS{sid}"
     if alt in smap:
         return _finalize_mapping(smap[alt], alt)
+    # Warn once per distinct unmapped safeguard_id so operators can detect
+    # stale reference data without log spam.
+    if len(_UNMAPPED_WARNED) < _MAX_UNMAPPED_WARNINGS:
+        _UNMAPPED_WARNED.add(sid)
+    logger.warning(
+        "Safeguard %s not found in D3FEND map (check safeguard_d3fend.json is current); "
+        "showing %d/%d distinct unmapped warnings (cap: %d)",
+        sid, len(_UNMAPPED_WARNED), _MAX_UNMAPPED_WARNINGS, _MAX_UNMAPPED_WARNINGS,
+    )
     return _unmapped(sid)
 
 
