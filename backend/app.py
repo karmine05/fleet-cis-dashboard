@@ -74,17 +74,13 @@ if LOG_FILE:
 def error_response(message, status_code=500, error_details=None):
     """Standardized error response and logging.
 
-    error_details is for the LOG only unless FLASK_1_DEBUG=1. Every caller passes
+    error_details is for the LOG only unless FLASK_DEBUG=1. Every caller passes
     str(exception) there, and psycopg2's messages embed the DSN host, port and user,
     so that gate is the one thing keeping a connection failure from being narrated
     to an unauthenticated client. Both call sites are on /api/config.
 
-    FLASK_1_DEBUG is almost certainly a typo for Flask's own FLASK_DEBUG, and it is
-    deliberately left exactly as it is: an operator may already have it set, the
-    README documents it under this name, and teaching this gate to ALSO honour
-    FLASK_DEBUG would widen the leak, since FLASK_DEBUG=1 is a normal thing to have
-    in a shell for `flask run`. Renaming it is a docs-and-compose change, not a
-    one-line edit here.
+    FLASK_DEBUG is the standard Flask env var. The gate keeps DSN host/port/user
+    out of the response body for unauthenticated clients.
     """
     log_msg = f"{message}"
     if error_details:
@@ -93,7 +89,7 @@ def error_response(message, status_code=500, error_details=None):
     
     response = {"error": message}
     # Only include details in debug mode for security
-    if error_details and os.environ.get('FLASK_1_DEBUG', '0') == '1':
+    if error_details and os.environ.get('FLASK_DEBUG', '0') == '1':
         response["details"] = error_details
     return jsonify(response), status_code
 
@@ -234,13 +230,13 @@ def handle_unexpected_exception(e):
 
     None of the read endpoints has a try/except, so before this an unhandled
     psycopg2 error reached Werkzeug's generic 500 page: an HTML body where every
-    client expects JSON, and one FLASK_1_DEBUG=1 deployment away from serving the
+    client expects JSON, and one FLASK_DEBUG=1 deployment away from serving the
     interactive debugger - whose traceback carries the DSN host, port and user - to an
     unauthenticated client. The message returned here is a constant; the exception and
     its traceback go to the log.
     """
     if app.debug or app.testing or app.config.get('PROPAGATE_EXCEPTIONS'):
-        # Keep `python backend/app.py` with FLASK_1_DEBUG=1 debuggable, and let the
+        # Keep `python backend/app.py` with FLASK_DEBUG=1 debuggable, and let the
         # test client see the real exception instead of a masked 500.
         raise e
     logger.exception(
@@ -2261,5 +2257,5 @@ def get_architecture():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    debug_mode = os.environ.get('FLASK_1_DEBUG', '0') == '1'
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(debug=debug_mode, port=port, host='0.0.0.0')
