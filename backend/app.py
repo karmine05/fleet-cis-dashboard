@@ -1584,41 +1584,60 @@ def get_safeguard_compliance():
     h_query, params = get_filtered_hosts_subquery()
     
     query = f"""
-        SELECT p.policy_id, p.policy_name, p.cis_control, p.description, p.resolution, p.query, pr.status, COUNT(*) as count
+        SELECT p.policy_id, p.policy_name, p.cis_control, p.description, p.resolution, p.query, p.cis_safeguard_ids, pr.status, COUNT(*) as count
         FROM policy_results pr
         JOIN cis_policies p ON pr.policy_id = p.policy_id
         WHERE pr.host_id IN ({h_query})
-        GROUP BY p.policy_id, p.policy_name, p.cis_control, p.description, p.resolution, p.query, pr.status
+        GROUP BY p.policy_id, p.policy_name, p.cis_control, p.description, p.resolution, p.query, p.cis_safeguard_ids, pr.status
     """
     
     with db.get_db_cursor() as cur:
         cur.execute(query, params)
         rows = cur.fetchall()
         
-        stats = {}
+        policy_stats = {}
         for row in rows:
             pid = row['policy_id']
-            if pid not in stats:
-                stats[pid] = {
-                    "safeguard_id": str(pid),
-                    "name": row['policy_name'],
+            if pid not in policy_stats:
+                policy_stats[pid] = {
+                    "policy_name": row['policy_name'],
                     "control": row['cis_control'],
                     "description": row['description'],
                     "resolution": row['resolution'],
                     "query": row['query'],
+                    "cis_safeguard_ids": row.get('cis_safeguard_ids') or [],
                     "pass": 0,
                     "fail": 0
                 }
             if row['status'] == 'pass':
-                stats[pid]['pass'] += row['count']
+                policy_stats[pid]['pass'] += row['count']
             elif row['status'] == 'fail':
-                stats[pid]['fail'] += row['count']
+                policy_stats[pid]['fail'] += row['count']
                 
+        # Expand each policy into its safeguard IDs, deduplicating on (safeguard_id, policy_name)
         result_list = []
-        for s in stats.values():
-            total = s['pass'] + s['fail']
-            s['pass_rate'] = (s['pass'] / total * 100) if total > 0 else 0
-            result_list.append(s)
+        seen = set()
+        for p in policy_stats.values():
+            sids = list(p['cis_safeguard_ids']) if p['cis_safeguard_ids'] else []
+            if not sids:
+                sids = ['policy_' + str(p['policy_name'].lower().replace(' ', '_'))]
+            total = p['pass'] + p['fail']
+            pass_rate = (p['pass'] / total * 100) if total > 0 else 0
+            for sid in sids:
+                key = (sid, p['policy_name'])
+                if key not in seen:
+                    seen.add(key)
+                    result_list.append({
+                        "safeguard_id": sid,
+                        "name": p['policy_name'],
+                        "control": p['control'],
+                        "description": p['description'],
+                        "resolution": p['resolution'],
+                        "query": p['query'],
+                        "pass": p['pass'],
+                        "fail": p['fail'],
+                        "pass_rate": pass_rate
+                    })
             
         return jsonify({"safeguards": result_list})
 

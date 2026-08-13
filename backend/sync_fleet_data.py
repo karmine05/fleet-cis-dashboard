@@ -1382,6 +1382,7 @@ def sync_data():
         # to policy_results_history, which still records one row per observation.
         count = 0
         results_written = 0
+        removed_results = 0
         # policy_id -> host ids Fleet reported this sync. Only host ids are kept
         # in memory (not the full rows), so deduplication + flush is per-policy.
         fetched_hosts = {}
@@ -1389,32 +1390,47 @@ def sync_data():
         # as soon as all its fetches complete.
         results_buffer: dict[int, list] = {}
         completed_tasks = {}
+        # Track ALL task completions (ok or not) so a failed fetch still
+        # triggers the per-policy flush + discard.
+        all_tasks_done = {}
 
-        def _flush_policy_rows(pid):
-            """Flush one policy's rows, then discard from the buffer."""
-            nonlocal results_written
+        def _flush_and_prune(pid):
+            """Flush one policy's rows and prune stale results, then discard."""
+            nonlocal results_written, removed_results
+            # Flush rows
             rows = results_buffer.pop(pid, [])
-            if not rows:
-                return 0
-            flush_rows = _dedupe_result_rows(rows)
-            if not flush_rows:
-                return 0
-            with db.get_db_cursor(commit=True) as cur:
-                written = extras.execute_values(cur, """
-                    INSERT INTO policy_results (policy_id, host_id, status, checked_at)
-                    VALUES %s
-                    ON CONFLICT (policy_id, host_id) DO UPDATE SET
-                        status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
-                    WHERE EXCLUDED.checked_at >= policy_results.checked_at
-                      AND policy_results.status IS DISTINCT FROM EXCLUDED.status
-                    RETURNING policy_id
-                """, flush_rows, fetch=True)
-                results_written += len(written or [])
-                extras.execute_values(cur, """
-                    INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
-                    VALUES %s
-                """, flush_rows)
-            return len(flush_rows)
+            if rows:
+                flush_rows = _dedupe_result_rows(rows)
+                if flush_rows:
+                    with db.get_db_cursor(commit=True) as cur:
+                        written = extras.execute_values(cur, """
+                            INSERT INTO policy_results (policy_id, host_id, status, checked_at)
+                            VALUES %s
+                            ON CONFLICT (policy_id, host_id) DO UPDATE SET
+                                status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
+                            WHERE EXCLUDED.checked_at >= policy_results.checked_at
+                              AND policy_results.status IS DISTINCT FROM EXCLUDED.status
+                            RETURNING policy_id
+                        """, flush_rows, fetch=True)
+                        results_written += len(written or [])
+                        extras.execute_values(cur, """
+                            INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
+                            VALUES %s
+                        """, flush_rows)
+
+            # Prune stale results for this policy — only safe when the *complete*
+            # picture arrived (all expected fetches succeeded). A failed fetch
+            # means we don't have the full host set, so skip prune.
+            host_ids = fetched_hosts.pop(pid, set())
+            expected = expected_tasks.get(pid, 0)
+            if expected > 0 and completed_tasks.get(pid, 0) == expected:
+                with db.get_db_cursor(commit=True) as cur:
+                    cur.execute(
+                        "DELETE FROM policy_results "
+                        "WHERE policy_id = %s AND NOT (host_id = ANY(%s::bigint[]))",
+                        (pid, sorted(host_ids))
+                    )
+                    removed_results += cur.rowcount or 0
 
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = {
@@ -1424,6 +1440,10 @@ def sync_data():
             for future in as_completed(futures):
                 pid = futures[future][0]
                 ok, items = future.result()
+
+                # Count ALL completions so we know when the policy is done.
+                all_tasks_done[pid] = all_tasks_done.get(pid, 0) + 1
+
                 if ok:
                     completed_tasks[pid] = completed_tasks.get(pid, 0) + 1
                     seen = fetched_hosts.setdefault(pid, set())
@@ -1436,50 +1456,23 @@ def sync_data():
                 if items:
                     results_buffer.setdefault(pid, []).extend(items)
 
-                # As soon as all fetches for this policy complete, flush and
-                # discard. Memory is bounded to ~MAX_WORKERS in-flight fetches,
-                # not the entire fleet's results simultaneously.
-                if completed_tasks.get(pid, 0) >= expected_tasks.get(pid, 1):
-                    flushed = _flush_policy_rows(pid)
-                    if flushed:
-                        print(f"    ... flushed {flushed} row(s) for policy {pid} (total fetched: {count})")
+                # As soon as all fetches for this policy complete, flush,
+                # prune, and discard. Memory is bounded to ~MAX_WORKERS
+                # in-flight fetches, not the entire fleet.
+                if all_tasks_done.get(pid, 0) >= expected_tasks.get(pid, 1):
+                    _flush_and_prune(pid)
 
-        # 5.1 Prune result rows Fleet no longer reports.
-        # policy_results was upsert-only, so a (policy_id, host_id) pair that
-        # drops out of Fleet's lists (label change, scope change, host moved
-        # team) survived forever: it skewed the compliance denominator and kept
-        # the differential check permanently unequal, refetching that policy
-        # every single sync.
-        #
-        # Pruning is only safe for a policy whose *complete* picture arrived:
-        # a policy with both passing and failing hosts queues two fetches, and
-        # with only one of them successful we cannot account for the other half's
-        # hosts, so that policy is skipped rather than half-deleted.
-        prune_targets = []
+        # 5.1 Post-sync prune summary (pruning already happened inline above).
+        skipped_prunes = 0
         for pid, expected in expected_tasks.items():
             if completed_tasks.get(pid, 0) != expected:
-                continue
-            prune_targets.append((pid, sorted(fetched_hosts.get(pid, set()))))
+                skipped_prunes += 1
 
-        if prune_targets:
-            removed_results = 0
-            with db.get_db_cursor(commit=True) as cur:
-                for pid, host_ids in prune_targets:
-                    # One statement per policy, so the delete is atomic for that
-                    # policy. An empty host_ids array removes every row for the
-                    # policy, which is exactly right when Fleet reports 0/0.
-                    cur.execute(
-                        "DELETE FROM policy_results "
-                        "WHERE policy_id = %s AND NOT (host_id = ANY(%s::bigint[]))",
-                        (pid, host_ids)
-                    )
-                    removed_results += cur.rowcount or 0
-            if removed_results:
-                print(
-                    f"  Pruned {removed_results} stale policy result row(s) "
-                    f"across {len(prune_targets)} fully-fetched policies."
-                )
-        skipped_prunes = len(expected_tasks) - len(prune_targets)
+        if removed_results:
+            print(
+                f"  Pruned {removed_results} stale policy result row(s) "
+                f"across {len(expected_tasks) - skipped_prunes} fully-fetched policies."
+            )
         if skipped_prunes:
             print(f"  Skipped prune for {skipped_prunes} policy(ies) with an incomplete host fetch.")
 
