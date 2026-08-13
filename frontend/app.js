@@ -791,7 +791,7 @@ function renderHeatmapMatrix() {
 
     html += '</div>';
     container.innerHTML = DOMPurify.sanitize(html, {
-        ADD_ATTR: ['aria-label', 'data-tooltip', 'data-cis-id', 'data-attack-id', 'data-platform', 'style']
+        ADD_ATTR: ['aria-label', 'data-tooltip', 'data-cis-id', 'data-attack-id', 'data-platform', 'data-safeguard', 'style']
     });
 }
 
