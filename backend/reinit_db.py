@@ -57,7 +57,12 @@ def reinit_db():
             ('risk_exposure_multiplier', '2', 'Multiplier for risk exposure calculation'),
             ('framework_cis_multiplier', '0.95', 'CIS Controls v8 alignment multiplier'),
             ('framework_nist_multiplier', '0.88', 'NIST CSF 2.0 alignment multiplier'),
-            ('framework_iso_multiplier', '0.82', 'ISO 27001 alignment multiplier')
+            ('framework_iso_multiplier', '0.82', 'ISO 27001 alignment multiplier'),
+            ('maturity_level_5', '90', 'Posture score threshold for maturity level 5'),
+            ('maturity_level_4', '80', 'Posture score threshold for maturity level 4'),
+            ('maturity_level_3', '70', 'Posture score threshold for maturity level 3'),
+            ('maturity_level_2', '50', 'Posture score threshold for maturity level 2'),
+            ('maturity_level_1', '0', 'Posture score threshold for maturity level 1')
         ]
         
         psycopg2.extras.execute_values(

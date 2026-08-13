@@ -107,7 +107,12 @@ VALID_CONFIG_KEYS = {
     'effort_high_keywords',
     'framework_cis_multiplier',
     'framework_nist_multiplier',
-    'framework_iso_multiplier'
+    'framework_iso_multiplier',
+    'maturity_level_5',
+    'maturity_level_4',
+    'maturity_level_3',
+    'maturity_level_2',
+    'maturity_level_1',
 }
 
 # How much of a rejected PUT /api/config body is quoted back in the 400. The keys
@@ -250,6 +255,23 @@ if os.environ.get('DATABASE_URL'):
         db.get_db_pool()
     except Exception as e:
         logger.warning(f"Deferred DB pool creation: {e}")
+
+    # Seed default config rows that may be absent on existing databases.
+    # INSERT ... ON CONFLICT DO NOTHING is idempotent: safe on every restart.
+    try:
+        with db.get_db_cursor(commit=True) as cur:
+            cur.execute("""
+                INSERT INTO config_settings (key, value, description)
+                VALUES
+                    ('maturity_level_5', '90', 'Posture score threshold for maturity level 5'),
+                    ('maturity_level_4', '80', 'Posture score threshold for maturity level 4'),
+                    ('maturity_level_3', '70', 'Posture score threshold for maturity level 3'),
+                    ('maturity_level_2', '50', 'Posture score threshold for maturity level 2'),
+                    ('maturity_level_1', '0',  'Posture score threshold for maturity level 1')
+                ON CONFLICT (key) DO NOTHING
+            """)
+    except Exception as e:
+        logger.warning(f"Could not seed maturity config defaults: {e}")
 
 # Load MITRE Data from JSON (technique id → name + tactic for architecture matrix)
 MITRE_DATA = {}
@@ -1305,7 +1327,12 @@ def update_config():
             'impact_medium_threshold',
             'framework_cis_multiplier',
             'framework_nist_multiplier',
-            'framework_iso_multiplier'
+            'framework_iso_multiplier',
+            'maturity_level_5',
+            'maturity_level_4',
+            'maturity_level_3',
+            'maturity_level_2',
+            'maturity_level_1',
         ]
         for key, value in updates.items():
             if key in numeric_keys:
@@ -1841,12 +1868,13 @@ def get_strategy():
             # inflating a per-day rate by three orders of magnitude.
             velocity = round(net_fixed / max(1.0, span_days), 1)
 
-        # Maturity
-        if posture_score > 90: maturity = 5
-        elif posture_score > 75: maturity = 4
-        elif posture_score > 50: maturity = 3
-        elif posture_score > 25: maturity = 2
-        else: maturity = 1
+        # Maturity — configurable thresholds from config_settings, evaluated
+        # highest level first so the first match wins.
+        maturity = 1
+        if posture_score >= config_number('maturity_level_5', 90): maturity = 5
+        elif posture_score >= config_number('maturity_level_4', 80): maturity = 4
+        elif posture_score >= config_number('maturity_level_3', 70): maturity = 3
+        elif posture_score >= config_number('maturity_level_2', 50): maturity = 2
 
         # 6. Roadmap — projected targets only; actual only for current month (no fabricated history)
         roadmap = []
