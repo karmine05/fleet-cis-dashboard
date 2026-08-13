@@ -186,7 +186,7 @@ def main():
                      if WATCHDOG_TIMEOUT_SECONDS > 0 else "disabled")
 
     print(f"{'='*60}")
-    print(f"🔄 Sync Daemon started")
+    print(f"[DAEMON] Sync Daemon started")
     print(f"   Interval: every {INTERVAL_MINUTES} minute(s)")
     print(f"   Fleet URL: {sync_fleet_data.FLEET_URL}")
     print(f"   Token set: {'Yes' if sync_fleet_data.FLEET_TOKEN else 'No'}")
@@ -212,7 +212,7 @@ def main():
     while not shutdown_requested:
         next_run = datetime.now().timestamp() + (INTERVAL_MINUTES * 60)
         next_run_str = datetime.fromtimestamp(next_run).strftime('%H:%M:%S')
-        print(f"\n⏳ Next sync at {next_run_str} (in {INTERVAL_MINUTES}m)")
+        print(f"\n[WAIT] Next sync at {next_run_str} (in {INTERVAL_MINUTES}m)")
 
         # Sleep in small increments to respond to shutdown signals quickly
         while not shutdown_requested and time.time() < next_run:
@@ -222,7 +222,7 @@ def main():
         if shutdown_requested:
             break
 
-        print(f"\n🔄 Scheduled sync triggered at {datetime.now().strftime('%H:%M:%S')}")
+        print(f"\n[SYNC] Scheduled sync triggered at {datetime.now().strftime('%H:%M:%S')}")
         run_sync_cycle("Sync")
 
     print("👋 Sync daemon stopped.")

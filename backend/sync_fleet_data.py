@@ -150,7 +150,7 @@ def init_db():
     
     with db.get_db_cursor(commit=True) as cur:
         cur.execute(schema_sql)
-    print("✅ Database schema ensured.")
+    print("[OK] Database schema ensured.")
 
 # --- API Generators ---
 
@@ -579,7 +579,7 @@ def _ensure_history_partition(year, month):
         )
 
     suffix = f" (relocated {moved} row(s) from the default partition)" if moved else ""
-    print(f"  🧱 Created history partition {name}{suffix}")
+    print(f"  [+] Created history partition {name}{suffix}")
     return True
 
 
@@ -613,7 +613,7 @@ def ensure_history_partitions(months_ahead=None):
                 f"policy_results_history was locked longer than {DDL_LOCK_TIMEOUT}."
             )
     if created:
-        print(f"  ✅ Ensured history partitions ({created} created).")
+        print(f"  [OK] Ensured history partitions ({created} created).")
     return created
 
 
@@ -909,7 +909,7 @@ def _dedupe_result_rows(rows):
 
 def sync_data():
     start_time = time.time()
-    print(f"\n🔄 Sync started at {datetime.now()}")
+    print(f"\n[SYNC] Sync started at {datetime.now()}")
     
     # Initialize DB (create tables if missing)
     try:
@@ -954,7 +954,7 @@ def sync_data():
                     ON CONFLICT (label_id) DO UPDATE SET label_name=EXCLUDED.label_name
                 """, [(l['id'], l['name'], l.get('label_type'), l.get('description')) for l in labels])
         
-        print(f"  ✅ Synced {len(teams)} teams and {len(labels)} labels.")
+        print(f"  [OK] Synced {len(teams)} teams and {len(labels)} labels.")
 
         # 2. Sync Hosts (Differential)
         # Get DB state: {host_id: updated_at}
@@ -970,7 +970,7 @@ def sync_data():
         hosts_changed_ids = []
         host_labels_buffer = []  # Buffer for host-label associations
 
-        print("  🔄 Fetching hosts...")
+        print("  [FETCH] Fetching hosts...")
         errors_before_hosts = len(FETCH_ERRORS)
 
         for batch in fetch_hosts_generator():
@@ -1064,11 +1064,11 @@ def sync_data():
                 cur.execute("DELETE FROM policy_results WHERE host_id = ANY(%s)", (list(stale_ids),))
                 cur.execute("DELETE FROM host_labels WHERE host_id = ANY(%s)", (list(stale_ids),))
                 cur.execute("DELETE FROM fleet_hosts WHERE host_id = ANY(%s)", (list(stale_ids),))
-            print(f"  ✅ Removed {len(stale_ids)} stale hosts.")
+            print(f"  [OK] Removed {len(stale_ids)} stale hosts.")
 
         # 3. Host Labels - Save labels collected during host fetch (populate_labels=true)
         if host_labels_buffer:
-            print(f"  🔄 Saving {len(host_labels_buffer)} host-label associations...")
+            print(f"  [SAVE] Saving {len(host_labels_buffer)} host-label associations...")
             processed_host_ids = list(set(h for h, _ in host_labels_buffer))
             # Delete + re-insert in one transaction so a dashboard read never sees an empty label set.
             with db.get_db_cursor(commit=True) as cur:
@@ -1078,9 +1078,9 @@ def sync_data():
                     INSERT INTO host_labels (host_id, label_id) VALUES %s
                     ON CONFLICT DO NOTHING
                 """, host_labels_buffer)
-            print(f"  ✅ Synced {len(host_labels_buffer)} host-label associations.")
+            print(f"  [OK] Synced {len(host_labels_buffer)} host-label associations.")
         else:
-            print(f"  ✅ No host labels to sync.")
+            print(f"  [OK] No host labels to sync.")
 
         # 4. Policies & Results
         errors_before_policies = len(FETCH_ERRORS)
@@ -1274,7 +1274,7 @@ def sync_data():
                 )
             print(f"  Removed {len(stale_policy_ids)} policy(ies) that no longer exist in Fleet.")
         else:
-            print("  ✅ No stale policies to remove (per-scope cleanup).")
+            print("  [OK] No stale policies to remove (per-scope cleanup).")
 
         # Monthly partitions must exist before the first history INSERT below,
         # otherwise every row lands in the DEFAULT partition and retention can
@@ -1357,7 +1357,7 @@ def sync_data():
 
         if force_refreshed:
             print(
-                f"  🔁 Full-refresh sweep force-queued {force_refreshed} policy(ies) "
+                f"  [REFRESH] Full-refresh sweep force-queued {force_refreshed} policy(ies) "
                 f"(slice {refresh_slice} of {SYNC_FULL_REFRESH_DIVISOR}); "
                 f"{force_refreshed_unchanged} of them looked unchanged by Fleet's counts."
             )
@@ -1508,7 +1508,7 @@ def sync_data():
 
         if partial_error:
             print(f"Sync completed with {len(FETCH_ERRORS)} fetch error(s)")
-        print(f"✅ Sync complete in {duration/1000:.1f}s")
+        print(f"[OK] Sync complete in {duration/1000:.1f}s")
         
     except Exception as e:
         print(f"Sync failed: {e}")
@@ -1621,7 +1621,7 @@ def create_compliance_snapshot():
                 ) VALUES (%s, %s, %s, %s, %s)
             """, (today, team_id, score, passing_hosts, critical_failures))
 
-    print(f"  📸 Wrote {len(scopes)} compliance snapshot row(s) for {today} (1 global + {len(scopes) - 1} team).")
+    print(f"  [SNAP] Wrote {len(scopes)} compliance snapshot row(s) for {today} (1 global + {len(scopes) - 1} team).")
 
 
 if __name__ == "__main__":
