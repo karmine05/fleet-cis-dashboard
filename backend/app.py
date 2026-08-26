@@ -199,8 +199,8 @@ if '*' in allowed_origins:
 logger.info(f"CORS allow-list for /api/*: {allowed_origins}")
 CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
-# Cap the request body. The only endpoint that reads one is PUT /api/config, whose
-# payload is a handful of numbers and two short keyword lists. With no cap, whatever a
+# Cap the request body. Write endpoints that read a body are PUT /api/config and
+# /api/alerts/* (destinations, rules, dry-run). With no cap, whatever a
 # client sends is materialized in the worker's memory as soon as anything reads the
 # stream (request.get_json here), and the size of that allocation was entirely the
 # caller's choice. With the cap Werkzeug refuses instead of reading. 1 MiB is orders of
@@ -344,6 +344,10 @@ def require_write_auth(fn):
             return error_response("Unauthorized", 401)
         return fn(*args, **kwargs)
     return wrapper
+
+
+from alerting.routes import register_alert_routes
+register_alert_routes(app, require_write_auth, error_response)
 
 
 # --- Request input limits ---
@@ -1176,7 +1180,9 @@ def index():
             "/api/safeguard-compliance",
             "/api/heatmap-data",
             "/api/sync-status",
-            "/api/config"
+            "/api/config",
+            "/api/alerts/destinations",
+            "/api/alerts/rules",
         ]
     })
 

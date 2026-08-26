@@ -1509,7 +1509,15 @@ def sync_data():
         if partial_error:
             print(f"Sync completed with {len(FETCH_ERRORS)} fetch error(s)")
         print(f"[OK] Sync complete in {duration/1000:.1f}s")
-        
+
+        try:
+            from alerting.runner import run_evaluation
+            decisions = run_evaluation()
+            fired = sum(1 for d in decisions if d.action == "fire")
+            print(f"  [ALERT] Evaluated {len(decisions)} rule(s); fired {fired}")
+        except Exception as alert_exc:
+            print(f"  [ALERT] Evaluation failed: {type(alert_exc).__name__}: {alert_exc}")
+
     except Exception as e:
         print(f"Sync failed: {e}")
         with db.get_db_cursor(commit=True) as cur:

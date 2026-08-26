@@ -134,6 +134,11 @@ const PAGE_META = {
         subtitle: 'Posture, risk, and priority actions for leadership',
         docTitle: 'Strategy · Fleet CIS'
     },
+    alerts: {
+        title: 'Alert Manager',
+        subtitle: 'Destinations, policy-fail rules, and delivery after sync',
+        docTitle: 'Alerts · Fleet CIS'
+    },
     settings: {
         title: 'Configuration',
         subtitle: 'Framework weights, sync, and dashboard preferences',
@@ -198,6 +203,14 @@ function switchPage(page) {
 
     if (window.location.hash !== `#${page}`) {
         history.replaceState(null, '', `#${page}`);
+    }
+
+    const filters = document.querySelector('.filters-bar');
+    if (filters) {
+        filters.style.display = page === 'alerts' ? 'none' : '';
+    }
+    if (page === 'alerts' && typeof window.loadAlertManager === 'function') {
+        window.loadAlertManager();
     }
 }
 

@@ -50,6 +50,10 @@
                     <i class="fas fa-chess-knight"></i>
                     <span>Executive Strategy</span>
                 </a>
+                <a href="#alerts" class="nav-link" data-page="alerts">
+                    <i class="fas fa-bell"></i>
+                    <span>Alert Manager</span>
+                </a>
                 <a href="#settings" class="nav-link" data-page="settings">
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
@@ -541,6 +545,208 @@
                 </section>
             </div>
 
+            <!-- Alert Manager -->
+            <div id="alerts" class="page-content">
+                <section class="settings-header">
+                    <h2><i class="fas fa-bell"></i> Alert Manager</h2>
+                    <p class="settings-subtitle">Destinations and rules evaluated after each successful sync. Writes use the same API token as Settings.</p>
+                </section>
+
+                <section class="alert-token-bar">
+                    <label for="alert-api-token">Write API token</label>
+                    <input type="password" id="alert-api-token" autocomplete="off" placeholder="DASHBOARD_API_TOKEN">
+                    <span class="setting-hint">sessionStorage only</span>
+                </section>
+
+                <section class="alert-grid">
+                    <div class="alert-panel">
+                        <div class="alert-panel-head">
+                            <h3><i class="fas fa-paper-plane"></i> Destinations</h3>
+                            <button type="button" id="alert-dest-new" class="btn-secondary"><i class="fas fa-plus"></i> Add</button>
+                        </div>
+                        <div id="alert-dest-list" class="alert-list">Loading…</div>
+                        <form id="alert-dest-form" class="alert-form hidden">
+                            <input type="hidden" id="alert-dest-id">
+                            <div class="setting-row">
+                                <label for="alert-dest-name">Name</label>
+                                <input type="text" id="alert-dest-name" maxlength="120" required>
+                            </div>
+                            <div class="setting-row">
+                                <label for="alert-dest-channel">Channel</label>
+                                <select id="alert-dest-channel">
+                                    <option value="slack">Slack</option>
+                                    <option value="discord">Discord</option>
+                                    <option value="telegram">Telegram</option>
+                                    <option value="webhook">WebHook</option>
+                                </select>
+                            </div>
+                            <div class="alert-channel-fields" data-channels="slack discord">
+                                <div class="setting-row">
+                                    <label for="alert-dest-webhook">Webhook URL</label>
+                                    <input type="url" id="alert-dest-webhook" placeholder="https://hooks.slack.com/…">
+                                </div>
+                            </div>
+                            <div class="alert-channel-fields hidden" data-channels="telegram">
+                                <div class="setting-row">
+                                    <label for="alert-dest-bot-token">Bot token</label>
+                                    <input type="password" id="alert-dest-bot-token" autocomplete="off">
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-dest-chat-id">Chat ID</label>
+                                    <input type="text" id="alert-dest-chat-id" placeholder="-100… or user id">
+                                </div>
+                            </div>
+                            <div class="alert-channel-fields hidden" data-channels="webhook">
+                                <div class="setting-row">
+                                    <label for="alert-dest-url">URL</label>
+                                    <input type="url" id="alert-dest-url" placeholder="https://example.com/hook">
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-dest-bearer">Bearer token</label>
+                                    <input type="password" id="alert-dest-bearer" autocomplete="off" placeholder="optional">
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-dest-header-name">Custom header</label>
+                                    <input type="text" id="alert-dest-header-name" placeholder="X-Hook-Key">
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-dest-header-value">Header value</label>
+                                    <input type="password" id="alert-dest-header-value" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="setting-row">
+                                <label for="alert-dest-enabled">Enabled</label>
+                                <input type="checkbox" id="alert-dest-enabled" checked>
+                            </div>
+                            <div class="settings-actions">
+                                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save destination</button>
+                                <button type="button" id="alert-dest-cancel" class="btn-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="alert-panel">
+                        <div class="alert-panel-head">
+                            <h3><i class="fas fa-bolt"></i> Rules</h3>
+                            <button type="button" id="alert-rule-new" class="btn-secondary"><i class="fas fa-plus"></i> Add</button>
+                        </div>
+                        <div id="alert-rule-list" class="alert-list">Loading…</div>
+                        <form id="alert-rule-form" class="alert-form hidden">
+                            <input type="hidden" id="alert-rule-id">
+                            <div class="setting-row">
+                                <label for="alert-rule-name">Name</label>
+                                <input type="text" id="alert-rule-name" maxlength="120" required>
+                            </div>
+                            <div class="setting-row">
+                                <label for="alert-rule-kind">Kind</label>
+                                <select id="alert-rule-kind">
+                                    <option value="policy_duration">A · Policy fail duration</option>
+                                    <option value="scoped_duration">B · Scoped fail duration</option>
+                                    <option value="compliance_threshold">C · Compliance threshold</option>
+                                    <option value="label_safeguard">D · Label + policy/safeguard</option>
+                                </select>
+                            </div>
+                            <div class="setting-row">
+                                <label for="alert-rule-dest">Destination</label>
+                                <select id="alert-rule-dest"></select>
+                            </div>
+                            <div class="alert-kind-fields" data-kinds="policy_duration scoped_duration">
+                                <div class="setting-row">
+                                    <label for="alert-rule-duration-hours">Duration</label>
+                                    <select id="alert-rule-duration-hours">
+                                        <option value="24">24 hours</option>
+                                        <option value="48">2 days</option>
+                                        <option value="72">3 days</option>
+                                        <option value="168">7 days</option>
+                                        <option value="336">14 days</option>
+                                        <option value="720">30 days</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="alert-kind-fields" data-kinds="policy_duration scoped_duration label_safeguard">
+                                <div class="setting-row alert-row-stack">
+                                    <label for="alert-policy-search">Policies</label>
+                                    <input type="text" id="alert-policy-search" placeholder="Search and add policies">
+                                    <div id="alert-policy-suggest" class="alert-suggest"></div>
+                                    <div id="alert-policy-chips" class="alert-chips"></div>
+                                </div>
+                            </div>
+                            <div class="alert-kind-fields hidden" data-kinds="scoped_duration compliance_threshold">
+                                <div class="setting-row">
+                                    <label for="alert-rule-platforms">Platforms</label>
+                                    <select id="alert-rule-platforms" multiple></select>
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-rule-fleets">Fleets</label>
+                                    <select id="alert-rule-fleets" multiple></select>
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-rule-labels" data-label-for="scoped">Labels</label>
+                                    <select id="alert-rule-labels" multiple></select>
+                                </div>
+                            </div>
+                            <div class="alert-kind-fields hidden" data-kinds="scoped_duration">
+                                <div class="setting-row">
+                                    <label for="alert-rule-levels">CIS level</label>
+                                    <select id="alert-rule-levels" multiple>
+                                        <option value="L1">L1</option>
+                                        <option value="L2">L2</option>
+                                    </select>
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-rule-severities">Severity</label>
+                                    <select id="alert-rule-severities" multiple>
+                                        <option value="Critical">Critical</option>
+                                        <option value="Medium">Medium</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="alert-kind-fields hidden" data-kinds="compliance_threshold">
+                                <div class="setting-row">
+                                    <label for="alert-rule-threshold">Below %</label>
+                                    <input type="number" id="alert-rule-threshold" min="0" max="100" step="0.1" value="32">
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-rule-duration-days">For days</label>
+                                    <input type="number" id="alert-rule-duration-days" min="1" max="30" value="3">
+                                </div>
+                            </div>
+                            <div class="alert-kind-fields hidden" data-kinds="label_safeguard">
+                                <div class="setting-row">
+                                    <label for="alert-rule-label">Label</label>
+                                    <select id="alert-rule-label"></select>
+                                </div>
+                                <div class="setting-row">
+                                    <label for="alert-rule-safeguards">Safeguard IDs</label>
+                                    <input type="text" id="alert-rule-safeguards" placeholder="CIS3.6, CIS8.4">
+                                </div>
+                            </div>
+                            <div class="setting-row">
+                                <label for="alert-rule-enabled">Enabled</label>
+                                <input type="checkbox" id="alert-rule-enabled" checked>
+                            </div>
+                            <div class="settings-actions">
+                                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save rule</button>
+                                <button type="button" id="alert-rule-preview" class="btn-secondary"><i class="fas fa-eye"></i> Preview</button>
+                                <button type="button" id="alert-rule-cancel" class="btn-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <section class="alert-preview-panel">
+                    <h3><i class="fas fa-file-alt"></i> Subject / body preview</h3>
+                    <pre id="alert-preview" class="alert-preview">Save or preview a rule to see the structured message.</pre>
+                </section>
+
+                <section class="alert-panel">
+                    <div class="alert-panel-head">
+                        <h3><i class="fas fa-exclamation-circle"></i> Recent incidents</h3>
+                    </div>
+                    <div id="alert-incident-list" class="alert-list">—</div>
+                </section>
+            </div>
+
             <!-- Settings Page -->
             <div id="settings" class="page-content">
                 <section class="settings-header">
@@ -645,6 +851,7 @@
     </div>
 
     <script src="app.js"></script>
+    <script src="alerts.js"></script>
 </body>
 
 </html>

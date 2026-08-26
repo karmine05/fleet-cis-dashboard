@@ -68,6 +68,7 @@ names) and a safeguard-to-ATT&CK/D3FEND mapping. Those are the only non-Fleet in
 | **Compliance Audit** | Failed policies with CIS remediation guidance and the policy query |
 | **Executive Strategy** | Security debt, trend deltas, team leaderboard, priority actions |
 | **Settings** | Risk / impact / effort / framework scoring parameters (requires a write token) |
+| **Alert Manager** | Destinations (Slack, Discord, Telegram, WebHook) and four rule kinds, evaluated after each successful sync (requires a write token) |
 
 Every view can be filtered by Fleet team, platform, label, and OS version.
 
@@ -545,10 +546,11 @@ Stated rather than papered over:
 
 ## Security posture
 
-**Writes fail closed.** `PUT /api/config` is the only mutating endpoint. It requires
-`Authorization: Bearer $DASHB...KEN` (or `X-API-Token`), compared with
-`hmac.compare_digest`. If `DASHBOARD_API_TOKEN` is unset, the endpoint returns `503` — it
-never falls back to unauthenticated writes. A wrong token returns `401`.
+**Writes fail closed.** Mutating endpoints (`PUT /api/config` and `/api/alerts/*`) require
+`Authorization: Bearer $DASHBOARD_API_TOKEN` (or `X-API-Token`), compared with
+`hmac.compare_digest`. If `DASHBOARD_API_TOKEN` is unset, those endpoints return `503` — they
+never fall back to unauthenticated writes. A wrong token returns `401`. Destination secrets
+(webhook URLs, bot tokens, auth headers) are stored in Postgres and redacted on read.
 
 **Read endpoints don't authenticate.** Anyone who can reach the UI port or the API port
 can read your compliance posture, host names, and failing controls. Put this behind your own

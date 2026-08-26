@@ -261,3 +261,73 @@ CREATE INDEX IF NOT EXISTS idx_history_checked ON policy_results_history(checked
 -- existing partitions and to every partition created or attached later, which is what
 -- makes runtime partition creation safe.
 CREATE INDEX IF NOT EXISTS idx_history_checked_policy ON policy_results_history(checked_at, policy_id);
+
+-- Alert Manager
+-- Destinations hold channel secrets in config JSONB. API reads redact those
+-- fields; the sync-time evaluator is the only consumer that loads them raw.
+-- Rules point at a destination with ON DELETE RESTRICT so a channel in use
+-- cannot disappear under an enabled rule. One open incident per (rule,
+-- fingerprint) is what makes a still-failing rule not re-send every sync.
+
+CREATE TABLE IF NOT EXISTS alert_destinations (
+    destination_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    channel TEXT NOT NULL CHECK (channel IN ('slack', 'discord', 'telegram', 'webhook')),
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    config JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS alert_rules (
+    rule_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN (
+        'policy_duration',
+        'scoped_duration',
+        'compliance_threshold',
+        'label_safeguard'
+    )),
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    destination_id UUID NOT NULL REFERENCES alert_destinations(destination_id) ON DELETE RESTRICT,
+    config JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_alert_rules_destination ON alert_rules(destination_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);
+
+CREATE TABLE IF NOT EXISTS alert_incidents (
+    incident_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    rule_id UUID NOT NULL REFERENCES alert_rules(rule_id) ON DELETE CASCADE,
+    fingerprint TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('open', 'resolved')),
+    subject TEXT NOT NULL,
+    details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    fired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ,
+    last_evaluated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS alert_incidents_open_uniq
+    ON alert_incidents (rule_id, fingerprint)
+    WHERE status = 'open';
+
+CREATE INDEX IF NOT EXISTS idx_alert_incidents_rule_status
+    ON alert_incidents (rule_id, status);
+
+CREATE TABLE IF NOT EXISTS alert_deliveries (
+    delivery_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    incident_id UUID NOT NULL REFERENCES alert_incidents(incident_id) ON DELETE CASCADE,
+    destination_id UUID REFERENCES alert_destinations(destination_id) ON DELETE SET NULL,
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status TEXT NOT NULL CHECK (status IN ('sent', 'failed', 'dry_run')),
+    http_status INTEGER,
+    error_message TEXT,
+    request_url TEXT,
+    request_body JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_alert_deliveries_incident
+    ON alert_deliveries (incident_id, attempted_at DESC);
