@@ -8,6 +8,7 @@ let currentFilters = {
     label: '',
     osVersion: ''
 };
+let selectedAuditPolicyId = null;
 
 function showLoading() {
     document.getElementById('loading-overlay')?.classList.remove('hidden');
@@ -446,6 +447,68 @@ function escapeAttr(value) {
         .replace(/>/g, '&gt;');
 }
 
+// CIS safeguard IDs (CIS4.8) are shared families. Fleet policy_id is unique.
+function auditPolicyKey(policy) {
+    if (!policy) return '';
+    if (policy.policy_id != null && policy.policy_id !== '') {
+        return String(policy.policy_id);
+    }
+    return `${policy.safeguard_id || ''}::${policy.name || policy.policy_name || ''}`;
+}
+
+function uniqueByPolicyId(items) {
+    const seen = new Set();
+    const out = [];
+    (items || []).forEach(item => {
+        const key = auditPolicyKey(item);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        out.push(item);
+    });
+    return out;
+}
+
+function findAuditPolicy(key, pool) {
+    const want = String(key ?? '');
+    const rows = uniqueByPolicyId(pool || auditData);
+    return rows.find(p => auditPolicyKey(p) === want);
+}
+
+function policyMatchesAuditSearch(policy, query) {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return true;
+    const fields = [
+        policy.safeguard_id,
+        policy.control,
+        policy.cis_id,
+        policy.cis_section,
+        policy.name,
+        policy.policy_name,
+        policy.policy_id,
+        ...(policy.cis_safeguard_ids || [])
+    ];
+    return fields.some(v => String(v || '').toLowerCase().includes(q));
+}
+
+function policyIdSelector(policyId) {
+    const raw = String(policyId ?? '');
+    const escaped = (window.CSS && CSS.escape) ? CSS.escape(raw) : raw.replace(/"/g, '\\"');
+    return `.audit-policy-item[data-policy-id="${escaped}"]`;
+}
+
+function openAuditForPolicy(policyId) {
+    if (policyId == null || policyId === '') return;
+    selectedAuditPolicyId = String(policyId);
+    currentAuditSearch = '';
+    currentAuditFilter = null;
+    const searchInput = document.getElementById('audit-search-input');
+    if (searchInput) searchInput.value = '';
+    switchPage('audit');
+    updateAuditUI();
+    const item = document.querySelector(`#audit-policy-list ${policyIdSelector(policyId)}`);
+    item?.scrollIntoView({ block: 'nearest' });
+}
+
 function groupKeyForItem(item, mode) {
     if (mode === 'safeguard') {
         return item.cis_safeguard_id || 'CISNone';
@@ -604,6 +667,15 @@ function bindHeatmapControls() {
 
     cisInput?.addEventListener('input', onFilterInput);
     mitreInput?.addEventListener('input', onFilterInput);
+
+    const heatmapContainer = document.getElementById('heatmap-container');
+    heatmapContainer?.addEventListener('click', (e) => {
+        const cell = e.target.closest('.d3fend-heatmap-cell');
+        if (!cell || !heatmapContainer.contains(cell)) return;
+        const pid = cell.dataset.policyId;
+        if (!pid) return;
+        openAuditForPolicy(pid);
+    });
 
     clearBtn?.addEventListener('click', () => {
         heatmapCisFilter = '';
@@ -764,14 +836,16 @@ function renderHeatmapMatrix() {
             const conf = item.mapping_confidence ? item.mapping_confidence : 'unmapped';
             const status = item.mapping_status || (item.attack_id ? 'mapped' : 'unmapped');
             const sg = item.cis_safeguard_id || 'CISNone';
-            const pname = item.policy_name || `CIS ${item.cis_id || '?'}`;
+            const section = item.cis_section || item.cis_id || '';
+            const pname = item.policy_name || `CIS ${section || '?'}`;
             const atkList = (item.attack_ids && item.attack_ids.length)
                 ? item.attack_ids.join(', ')
                 : (item.attack_id || '');
             const tooltip = [
                 pname,
-                `Safeguard: ${sg}${item.safeguard_title ? ' — ' + item.safeguard_title : ''}`,
-                `Section: ${item.cis_section || item.cis_id || '—'} · ${item.platform || 'os?'} · ${item.benchmark || ''}`,
+                `Policy: ${item.policy_id ?? '—'} · Section: ${section || '—'}`,
+                `Safeguard family: ${sg}${item.safeguard_title ? ' — ' + item.safeguard_title : ''}`,
+                `${item.platform || 'os?'} · ${item.benchmark || ''}`,
                 `Category: ${item.cis_category || '—'}`,
                 `D3FEND: ${item.d3fend_technique || 'Unmapped'} (${item.d3fend_tactic || '—'}) [${conf}]`,
                 atkList
@@ -780,19 +854,20 @@ function renderHeatmapMatrix() {
                 item.mapping_rationale ? `Why: ${item.mapping_rationale}` : '',
                 `Pass: ${Math.round(passRate)}% (${item.pass}/${item.total}) · Fleet risk: ${Math.round(risk)}%`
             ].filter(Boolean).join('\n');
-            const aria = `${pname}, safeguard ${sg}, fleet risk ${Math.round(risk)} percent`;
+            const aria = `${pname}, section ${section || 'none'}, family ${sg}, fleet risk ${Math.round(risk)} percent`;
 
             html += `
                 <button type="button"
                     class="d3fend-heatmap-cell ${rateCls}"
                     style="width: ${layout.cell}px; height: ${layout.cell}px; min-width: ${layout.cell}px; min-height: ${layout.cell}px;"
                     data-tooltip="${escapeAttr(tooltip)}"
-                    data-cis-id="${escapeAttr(item.cis_id || '')}"
+                    data-policy-id="${escapeAttr(item.policy_id ?? '')}"
+                    data-cis-id="${escapeAttr(section)}"
                     data-safeguard="${escapeAttr(sg)}"
                     data-platform="${escapeAttr(item.platform || '')}"
                     data-attack-id="${escapeAttr(item.attack_id || '')}"
                     aria-label="${escapeAttr(aria)}">
-                    <span class="d3fend-cell-id">${escapeAttr(sg.replace(/^CIS/, ''))}</span>
+                    <span class="d3fend-cell-id">${escapeAttr(section || sg.replace(/^CIS/, ''))}</span>
                 </button>
             `;
         });
@@ -802,7 +877,7 @@ function renderHeatmapMatrix() {
 
     html += '</div>';
     container.innerHTML = DOMPurify.sanitize(html, {
-        ADD_ATTR: ['aria-label', 'data-tooltip', 'data-cis-id', 'data-attack-id', 'data-platform', 'data-safeguard', 'style']
+        ADD_ATTR: ['aria-label', 'data-tooltip', 'data-cis-id', 'data-attack-id', 'data-platform', 'data-safeguard', 'data-policy-id', 'style']
     });
 }
 
@@ -810,7 +885,7 @@ function renderHeatmapMatrix() {
 function updateViolations(data) {
     const container = document.getElementById('violations-list');
     if (!container) return;
-    const safeguards = data.safeguards || [];
+    const safeguards = uniqueByPolicyId(data.safeguards || []);
 
     // Sort by failure count; show pass rate so identical fail counts still differentiate
     const sorted = [...safeguards]
@@ -827,21 +902,32 @@ function updateViolations(data) {
     sorted.forEach(s => {
         const rate = Math.round(s.pass_rate || 0);
         const control = s.control ? ` · ${s.control}` : '';
+        const key = auditPolicyKey(s);
         html += `
-            <div class="violation-item">
-                <span class="violation-name" title="${escapeAttr(s.name)}">${s.name}</span>
+            <div class="violation-item" data-policy-id="${escapeAttr(key)}" role="button" tabindex="0">
+                <span class="violation-name" title="${escapeAttr(s.name)}">${escapeAttr(s.name)}</span>
                 <span class="violation-count">${s.fail} hosts · ${rate}% pass${control}</span>
             </div>
         `;
     });
-    container.innerHTML = DOMPurify.sanitize(html);
+    container.innerHTML = DOMPurify.sanitize(html, { ADD_ATTR: ['data-policy-id'] });
+    container.querySelectorAll('.violation-item[data-policy-id]').forEach(item => {
+        const open = () => openAuditForPolicy(item.dataset.policyId);
+        item.addEventListener('click', open);
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                open();
+            }
+        });
+    });
 }
 
 // Update controls status
 function updateControlsStatus(data) {
     const container = document.getElementById('controls-status');
     if (!container) return;
-    const safeguards = data.safeguards || [];
+    const safeguards = uniqueByPolicyId(data.safeguards || []);
 
     if (safeguards.length === 0) {
         container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No controls data</p>';
@@ -854,15 +940,16 @@ function updateControlsStatus(data) {
         let statusClass = 'critical';
         if (passRate >= 80) statusClass = 'good';
         else if (passRate >= 50) statusClass = 'warning';
+        const label = s.control || s.name || s.policy_name || s.safeguard_id;
 
         html += `
-            <div class="control-item ${statusClass}">
-                <span class="control-name">${s.control || s.safeguard_id}</span>
+            <div class="control-item ${statusClass}" data-policy-id="${escapeAttr(auditPolicyKey(s))}">
+                <span class="control-name" title="${escapeAttr(s.name || '')}">${escapeAttr(label)}</span>
                 <span class="control-rate">${Math.round(passRate)}%</span>
             </div>
         `;
     });
-    container.innerHTML = DOMPurify.sanitize(html);
+    container.innerHTML = DOMPurify.sanitize(html, { ADD_ATTR: ['data-policy-id'] });
 }
 
 
@@ -1053,7 +1140,7 @@ let currentAuditSearch = '';
 async function populateAuditPage(summary) {
     try {
         const resp = await fetch(`${API_BASE}/safeguard-compliance?${new URLSearchParams(currentFilters)}`).then(r => r.json());
-        auditData = resp.safeguards || [];
+        auditData = uniqueByPolicyId(resp.safeguards || []);
 
         // 0. Update Platform Label
         const platformLabel = document.getElementById('audit-platform-label');
@@ -1062,8 +1149,7 @@ async function populateAuditPage(summary) {
             platformLabel.textContent = currentPlatform === 'All Platforms' ? 'All Platforms' : currentPlatform;
         }
 
-        // 1. Calculate and show header metrics
-        // ... (existing logic for counts) ...
+        // 1. Header counts distinct policies, never shared CIS4.8 families
         const total = auditData.length;
         const passed = auditData.filter(s => s.pass > 0 && s.fail === 0).length;
         const failed = auditData.filter(s => s.fail > 0).length;
@@ -1080,10 +1166,12 @@ async function populateAuditPage(summary) {
 
         passBtn.onclick = () => {
             currentAuditFilter = currentAuditFilter === 'pass' ? null : 'pass';
+            selectedAuditPolicyId = null;
             updateAuditUI();
         };
         failBtn.onclick = () => {
             currentAuditFilter = currentAuditFilter === 'fail' ? null : 'fail';
+            selectedAuditPolicyId = null;
             updateAuditUI();
         };
 
@@ -1091,6 +1179,7 @@ async function populateAuditPage(summary) {
         if (searchInput) {
             searchInput.oninput = (e) => {
                 currentAuditSearch = e.target.value.toLowerCase().trim();
+                selectedAuditPolicyId = null;
                 updateAuditUI();
             };
         }
@@ -1111,22 +1200,15 @@ function updateAuditUI() {
     failBtn.classList.toggle('active', currentAuditFilter === 'fail');
 
     // Filter data
-    let filtered = auditData;
+    let filtered = uniqueByPolicyId(auditData);
 
     // 1. Status Filter
     if (currentAuditFilter === 'pass') filtered = filtered.filter(s => s.fail === 0);
     if (currentAuditFilter === 'fail') filtered = filtered.filter(s => s.fail > 0);
 
-    // 2. Search Filter (CIS Number or Name)
+    // 2. Search: name, benchmark section, policy_id, and every family sid
     if (currentAuditSearch) {
-        filtered = filtered.filter(s => {
-            const id = (s.safeguard_id || '').toLowerCase();
-            const name = (s.name || '').toLowerCase();
-            const control = (s.control || '').toLowerCase();
-            return id.includes(currentAuditSearch) ||
-                name.includes(currentAuditSearch) ||
-                control.includes(currentAuditSearch);
-        });
+        filtered = filtered.filter(s => policyMatchesAuditSearch(s, currentAuditSearch));
     }
 
     // Render list
@@ -1138,10 +1220,11 @@ function updateAuditUI() {
     listContainer.innerHTML = filtered.map(s => {
         const statusClass = s.fail === 0 ? 'control-badge-pass' : s.pass === 0 ? 'control-badge-fail' : 'control-badge-risk';
         const rateClass = s.pass_rate >= 100 ? 'highlight-pass' : s.pass_rate >= 60 ? '' : 'highlight-fail';
+        const key = auditPolicyKey(s);
         return `
-        <div class="audit-policy-item" data-id="${s.safeguard_id}">
+        <div class="audit-policy-item" data-policy-id="${escapeAttr(key)}">
             <span class="control-badge ${statusClass}"></span>
-            <span class="control-name" title="${s.name || ''}">${s.name || s.safeguard_id}</span>
+            <span class="control-name" title="${escapeAttr(s.name || '')}">${escapeAttr(s.name || s.safeguard_id)}</span>
             <span class="control-rate ${rateClass}" title="${s.pass} pass / ${s.fail} fail">${Math.round(s.pass_rate)}%</span>
         </div>
     `;}).join('');
@@ -1153,16 +1236,17 @@ function updateAuditUI() {
             listContainer.querySelectorAll('.audit-policy-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
 
-            // Find data
-            const id = item.dataset.id;
-            const policy = auditData.find(p => p.safeguard_id === id);
+            selectedAuditPolicyId = item.dataset.policyId;
+            const policy = findAuditPolicy(item.dataset.policyId);
             showPolicyDetails(policy);
         };
     });
 
-    // Auto-select first if available
     if (filtered.length > 0) {
-        listContainer.querySelector('.audit-policy-item').click();
+        const preferred = selectedAuditPolicyId
+            ? listContainer.querySelector(policyIdSelector(selectedAuditPolicyId))
+            : null;
+        (preferred || listContainer.querySelector('.audit-policy-item')).click();
     }
 }
 
@@ -1408,15 +1492,15 @@ function renderD3FENDMatrix(containerId, data) {
         items.forEach(item => {
             const passRate = passRateOf(item);
             const rateCls = rateClass(passRate, item.total);
-            const tooltip = `CIS ${item.cis_id}: ${item.d3fend_technique || 'Unmapped'} · ${Math.round(passRate)}%`;
-            html += `<button type="button" class="d3fend-heatmap-cell ${rateCls}" data-tooltip="${escapeAttr(tooltip)}" aria-label="${escapeAttr(tooltip)}">
+            const tooltip = `${item.policy_name || 'CIS ' + (item.cis_id || '')}\nSection ${item.cis_id || '—'} · ${item.d3fend_technique || 'Unmapped'} · ${Math.round(passRate)}%`;
+            html += `<button type="button" class="d3fend-heatmap-cell ${rateCls}" data-tooltip="${escapeAttr(tooltip)}" data-policy-id="${escapeAttr(item.policy_id ?? '')}" aria-label="${escapeAttr(tooltip)}">
                 <span class="d3fend-cell-id">${escapeAttr(item.cis_id)}</span>
             </button>`;
         });
         html += '</div></div>';
     });
     html += '</div>';
-    container.innerHTML = DOMPurify.sanitize(html, { ADD_ATTR: ['aria-label', 'data-tooltip'] });
+    container.innerHTML = DOMPurify.sanitize(html, { ADD_ATTR: ['aria-label', 'data-tooltip', 'data-policy-id'] });
 }
 
 // ===== SETTINGS PAGE =====

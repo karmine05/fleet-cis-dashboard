@@ -1175,6 +1175,7 @@ html, body {
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
     transition: all 120ms ease;
+    cursor: pointer;
 }
 
 .violation-item:hover {

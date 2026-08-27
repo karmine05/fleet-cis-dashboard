@@ -121,6 +121,7 @@ MAX_ECHOED_KEY_CHARS = 64
 # Import new DB module
 import db
 import policy_catalog
+from audit_policies import build_safeguard_compliance_list
 
 # --- Optional .env, for host runs only ---
 # basedir is the repo root, so this resolves to <repo>/.env outside a container and
@@ -1611,7 +1612,7 @@ def get_compliance_summary():
         })
 
 @app.route('/api/safeguard-compliance', methods=['GET'])
-@cached_response('safeguard-compliance')
+@cached_response('safeguard-compliance-v3')
 def get_safeguard_compliance():
     h_query, params = get_filtered_hosts_subquery()
     
@@ -1626,52 +1627,7 @@ def get_safeguard_compliance():
     with db.get_db_cursor() as cur:
         cur.execute(query, params)
         rows = cur.fetchall()
-        
-        policy_stats = {}
-        for row in rows:
-            pid = row['policy_id']
-            if pid not in policy_stats:
-                policy_stats[pid] = {
-                    "policy_name": row['policy_name'],
-                    "control": row['cis_control'],
-                    "description": row['description'],
-                    "resolution": row['resolution'],
-                    "query": row['query'],
-                    "cis_safeguard_ids": row.get('cis_safeguard_ids') or [],
-                    "pass": 0,
-                    "fail": 0
-                }
-            if row['status'] == 'pass':
-                policy_stats[pid]['pass'] += row['count']
-            elif row['status'] == 'fail':
-                policy_stats[pid]['fail'] += row['count']
-                
-        # Expand each policy into its safeguard IDs, deduplicating on (safeguard_id, policy_name)
-        result_list = []
-        seen = set()
-        for p in policy_stats.values():
-            sids = list(p['cis_safeguard_ids']) if p['cis_safeguard_ids'] else []
-            if not sids:
-                sids = ['policy_' + str(p['policy_name'].lower().replace(' ', '_'))]
-            total = p['pass'] + p['fail']
-            pass_rate = (p['pass'] / total * 100) if total > 0 else 0
-            for sid in sids:
-                key = (sid, p['policy_name'])
-                if key not in seen:
-                    seen.add(key)
-                    result_list.append({
-                        "safeguard_id": sid,
-                        "name": p['policy_name'],
-                        "control": p['control'],
-                        "description": p['description'],
-                        "resolution": p['resolution'],
-                        "query": p['query'],
-                        "pass": p['pass'],
-                        "fail": p['fail'],
-                        "pass_rate": pass_rate
-                    })
-            
-        return jsonify({"safeguards": result_list})
+        return jsonify({"safeguards": build_safeguard_compliance_list(rows)})
 
 def build_policy_host_agg(h_query, params):
     """Build the policy_results subquery aggregated by (policy_id, host_id).
