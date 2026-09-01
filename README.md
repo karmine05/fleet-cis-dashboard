@@ -114,6 +114,7 @@ Every view can be filtered by Fleet team, platform, label, and OS version.
 
 - Docker with Compose v2 (`docker compose`)
 - A reachable [Fleet](https://fleetdm.com/) instance that already has CIS policies deployed
+- Deploy the recommended policies [Fleet CISv8.1 policies](https://github.com/karmine05/fleet_policies) 
 - A Fleet API token for a **read-only** API-only user
 - Free disk for the `postgres_data` volume. It grows with `HISTORY_RETENTION_MONTHS` of
   policy history, so size it against your host count × policy count × sync frequency.
