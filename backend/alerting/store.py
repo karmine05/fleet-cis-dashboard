@@ -456,11 +456,19 @@ def load_snapshot(now: datetime) -> Snapshot:
             """
         )
         result_rows = cur.fetchall()
+        # Status changes only: the evaluators ask "status at time t" and "any pass since
+        # t", which repeated same-status rows never change. Keeps memory bounded by
+        # churn instead of by sync count.
         cur.execute(
             """
             SELECT policy_id, host_id, status, checked_at
-            FROM policy_results_history
-            WHERE checked_at >= %s
+            FROM (
+                SELECT policy_id, host_id, status, checked_at,
+                       LAG(status) OVER (PARTITION BY policy_id, host_id ORDER BY checked_at) AS prev_status
+                FROM policy_results_history
+                WHERE checked_at >= %s
+            ) h
+            WHERE prev_status IS DISTINCT FROM status
             """,
             (lookback,),
         )

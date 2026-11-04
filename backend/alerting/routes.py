@@ -10,7 +10,7 @@ from flask import jsonify, request
 
 from alerting.formatters import sample_event
 from alerting.models import Destination, Rule
-from alerting.runner import dry_run_send, preview_rule
+from alerting.runner import delivery_error_text, dry_run_send, preview_rule
 from alerting.ssrf import UnsafeWebhookUrl
 from alerting.validate import PayloadError, parse_destination_payload, parse_rule_payload
 from alerting import store
@@ -140,7 +140,7 @@ def register_alert_routes(app, require_write_auth, error_response):
                 {
                     "dry_run": False,
                     "ok": False,
-                    "error": f"{type(exc).__name__}: {exc}",
+                    "error": delivery_error_text(exc),
                     "request": public,
                     "subject": event.subject,
                 }

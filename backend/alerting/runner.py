@@ -38,8 +38,10 @@ def run_evaluation(
 
     now = now or datetime.now(timezone.utc)
     transport = transport or post_json
-    snapshot = store.load_snapshot(now)
     rules = [rule for rule in store.list_rules() if rule.enabled]
+    if not rules:
+        return []  # no rule can fire or resolve; skip loading the snapshot
+    snapshot = store.load_snapshot(now)
     destinations = {
         dest.destination_id: dest
         for dest in store.list_destinations(include_secrets=True)
@@ -102,6 +104,18 @@ def apply_decisions(
             store_mod.resolve_incident(incident.incident_id, now)
 
 
+def delivery_error_text(exc: Exception) -> str:
+    """Error text safe to log, store and return.
+
+    requests puts the request URL in connection/TLS errors, and for Slack, Discord
+    and Telegram the URL path is the secret, so only the exception type is kept.
+    Our own URL-safety errors carry no secret and stay readable.
+    """
+    if isinstance(exc, UnsafeWebhookUrl):
+        return f"{type(exc).__name__}: {exc}"
+    return f"{type(exc).__name__} (details withheld: they can contain the webhook secret)"
+
+
 def deliver(incident_id, destination: Destination, event, transport: Transport, store_mod) -> None:
     outbound = format_outbound(event, destination)
     public = public_outbound(outbound)
@@ -115,14 +129,14 @@ def deliver(incident_id, destination: Destination, event, transport: Transport, 
             DEFAULT_TIMEOUT_SECONDS,
         )
     except Exception as exc:
-        logger.warning("alert delivery failed: %s", exc)
+        logger.warning("alert delivery failed: %s", delivery_error_text(exc))
         store_mod.record_delivery(
             incident_id,
             destination.destination_id,
             "failed",
             public["url"],
             public["json"],
-            error_message=f"{type(exc).__name__}: {exc}",
+            error_message=delivery_error_text(exc),
         )
         return
     ok = 200 <= int(status_code) < 300

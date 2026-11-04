@@ -79,7 +79,7 @@ services:
     image: fleet-cis-dashboard-backend
     ports:
       # Host 5002 avoids clash with other local services on 5001
-      - "5002:5001"
+      - "127.0.0.1:5002:5001"
     environment:
       # Built from the same POSTGRES_* variables the db service uses, so the three
       # services cannot drift apart.

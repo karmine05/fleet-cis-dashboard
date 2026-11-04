@@ -891,9 +891,13 @@ def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
             if (global_ok and all_teams_seen
                     and policy_id not in global_api_ids):
                 stale.append(policy_id)
-        else:
-            if team_id in ok_team_ids and policy_id not in team_api_ids.get(team_id, ()):
+        elif team_id in ok_team_ids:
+            if policy_id not in team_api_ids.get(team_id, ()):
                 stale.append(policy_id)
+        elif teams_ok and team_id not in all_team_ids:
+            # The team was deleted in Fleet: it never comes back into ok_team_ids,
+            # so without this its policies and failures would stay forever.
+            stale.append(policy_id)
     return stale
 
 
@@ -1495,7 +1499,7 @@ def sync_data():
             )
 
         # 6. Snapshots
-        create_compliance_snapshot()
+        create_compliance_snapshot(None if teams_fetch_failed else {t['id'] for t in teams})
 
         # 7. Retention housekeeping (never fatal — see run_retention()).
         run_retention()
@@ -1612,7 +1616,7 @@ def _snapshot_metrics(cur, team_id):
     return score, passing_hosts, critical_failures
 
 
-def create_compliance_snapshot():
+def create_compliance_snapshot(live_team_ids=None):
     """Write today's compliance_snapshots rows: one global plus one per team.
 
     Delete-then-insert per (snapshot_date, team_id) inside a single transaction,
@@ -1624,7 +1628,10 @@ def create_compliance_snapshot():
         cur.execute("SELECT team_id FROM fleet_teams ORDER BY team_id")
         # None first = the global scope; compliance_snapshots.team_id has an FK
         # to fleet_teams, so only teams that exist locally get a row.
-        scopes = [None] + [row['team_id'] for row in cur.fetchall()]
+        scopes = [None] + [row['team_id'] for row in cur.fetchall()
+                           # Teams deleted in Fleet stay in fleet_teams (snapshot history
+                           # references them) but get no new rows. None = list unknown.
+                           if live_team_ids is None or row['team_id'] in live_team_ids]
 
         for team_id in scopes:
             score, passing_hosts, critical_failures = _snapshot_metrics(cur, team_id)
