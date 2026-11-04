@@ -194,6 +194,18 @@ def fetch_labels():
         record_fetch_error("labels", e)
         return []
 
+def prune_labels(cur, labels, fetch_failed):
+    """Delete fleet_labels rows Fleet no longer returns; host_labels cascade.
+
+    Never prunes after a failed or empty fetch, so a Fleet outage cannot empty the list.
+    Returns the number of labels removed.
+    """
+    if fetch_failed or not labels:
+        return 0
+    cur.execute("DELETE FROM fleet_labels WHERE NOT (label_id = ANY(%s))", ([l['id'] for l in labels],))
+    return cur.rowcount
+
+
 def fetch_hosts_by_label(label_id):
     """Fetch all host IDs that belong to a specific label."""
     if not FLEET_TOKEN: return []
@@ -956,12 +968,9 @@ def sync_data():
                     ON CONFLICT (label_id) DO UPDATE SET label_name=EXCLUDED.label_name,
                         label_type=EXCLUDED.label_type, description=EXCLUDED.description
                 """, [(l['id'], l['name'], l.get('label_type'), l.get('description')) for l in labels])
-                # Drop labels deleted in Fleet; host_labels rows go with them (ON DELETE CASCADE).
-                # Only after a clean fetch, so a Fleet outage never empties the label list.
-                if not labels_fetch_failed:
-                    cur.execute("DELETE FROM fleet_labels WHERE NOT (label_id = ANY(%s))", ([l['id'] for l in labels],))
-                    if cur.rowcount:
-                        print(f"  [PRUNE] Removed {cur.rowcount} labels no longer in Fleet.")
+                pruned = prune_labels(cur, labels, labels_fetch_failed)
+                if pruned:
+                    print(f"  [PRUNE] Removed {pruned} labels no longer in Fleet.")
         
         print(f"  [OK] Synced {len(teams)} teams and {len(labels)} labels.")
 

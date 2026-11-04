@@ -481,7 +481,7 @@
                                 <span class="metric-value" id="coverage-value">--%</span>
                                 <span class="metric-label">Coverage
                                     <i class="fas fa-info-circle info-icon"
-                                        data-help="Share of policies with at least one passing device."></i>
+                                        data-help="Share of controls that pass on every device in this scope."></i>
                                 </span>
                             </div>
                         </div>
@@ -489,14 +489,20 @@
                             <div class="metric-icon debt"><i class="fas fa-hourglass-half"></i></div>
                             <div class="metric-content">
                                 <span class="metric-value" id="debt-value">--</span>
-                                <span class="metric-label">Security Debt</span>
+                                <span class="metric-label">Security Debt
+                                    <i class="fas fa-info-circle info-icon"
+                                        data-help="Failing controls × hours per fix (Settings). One fix clears a control on every device."></i>
+                                </span>
                             </div>
                         </div>
                         <div class="strategy-metric-card">
                             <div class="metric-icon risk"><i class="fas fa-triangle-exclamation"></i></div>
                             <div class="metric-content">
                                 <span class="metric-value" id="risk-value">--</span>
-                                <span class="metric-label">Risk Exposure</span>
+                                <span class="metric-label">Risk Exposure
+                                    <i class="fas fa-info-circle info-icon"
+                                        data-help="Share of CIS Level 1 (baseline) checks failing in this scope."></i>
+                                </span>
                             </div>
                         </div>
                         <div class="strategy-metric-card">
@@ -790,12 +796,7 @@
                     <!-- Risk Calculations -->
                     <div class="setting-card">
                         <h3><i class="fas fa-calculator"></i> Risk Calculations</h3>
-                        <p class="setting-desc">Multipliers for risk and security debt metrics</p>
-                        <div class="setting-row">
-                            <label>Risk Exposure Multiplier</label>
-                            <input type="number" id="config-risk-multiplier" min="0.1" max="10" step="0.1" value="2">
-                            <span class="setting-hint">fail_count × this</span>
-                        </div>
+                        <p class="setting-desc">Hours of work per failing control, for the security debt metric</p>
                         <div class="setting-row">
                             <label>Security Debt (hours/issue)</label>
                             <input type="number" id="config-debt-hours" min="0.1" max="10" step="0.1" value="0.5">

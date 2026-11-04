@@ -66,7 +66,6 @@ def reinit_db(force: bool = False) -> None:
             ('effort_low_keywords', '["Ensure", "Set"]', 'Keywords indicating low effort policies (JSON array)'),
             ('effort_high_keywords', '["Manual", "Review"]', 'Keywords indicating high effort policies (JSON array)'),
             ('security_debt_hours_per_issue', '0.5', 'Hours of security debt per failing policy'),
-            ('risk_exposure_multiplier', '2', 'Multiplier for risk exposure calculation'),
             ('framework_cis_multiplier', '0.95', 'CIS Controls v8 alignment multiplier'),
             ('framework_nist_multiplier', '0.88', 'NIST CSF 2.0 alignment multiplier'),
             ('framework_iso_multiplier', '0.82', 'ISO 27001 alignment multiplier'),

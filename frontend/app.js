@@ -1305,7 +1305,7 @@ async function populateStrategyPage(summary, heatmapData) {
         // 3. Strategic Metrics
         document.getElementById('coverage-value').textContent = `${data.compliance_coverage || 0}%`;
         document.getElementById('debt-value').textContent = data.security_debt || '--';
-        document.getElementById('risk-value').textContent = data.risk_exposure || 0;
+        document.getElementById('risk-value').textContent = `${data.risk_exposure || 0}%`;
         // Velocity requires history; do not show fabricated 0
         const velEl = document.getElementById('velocity-value');
         if (velEl) {
@@ -1502,7 +1502,6 @@ const DEFAULT_CONFIG = {
     effort_low_keywords: ["Ensure", "Set"],
     effort_high_keywords: ["Manual", "Review"],
     security_debt_hours_per_issue: 0.5,
-    risk_exposure_multiplier: 2,
     framework_cis_multiplier: 0.95,
     framework_nist_multiplier: 0.88,
     framework_iso_multiplier: 0.82
@@ -1549,9 +1548,6 @@ async function loadConfigSettings() {
             const keywords = config.effort_high_keywords.value;
             document.getElementById('config-effort-high').value = Array.isArray(keywords) ? keywords.join(', ') : keywords;
         }
-        if (config.risk_exposure_multiplier) {
-            document.getElementById('config-risk-multiplier').value = config.risk_exposure_multiplier.value;
-        }
         if (config.security_debt_hours_per_issue) {
             document.getElementById('config-debt-hours').value = config.security_debt_hours_per_issue.value;
         }
@@ -1575,7 +1571,6 @@ async function saveConfigSettings() {
         impact_medium_threshold: parseInt(document.getElementById('config-impact-medium').value),
         effort_low_keywords: document.getElementById('config-effort-low').value.split(',').map(s => s.trim()).filter(s => s),
         effort_high_keywords: document.getElementById('config-effort-high').value.split(',').map(s => s.trim()).filter(s => s),
-        risk_exposure_multiplier: parseFloat(document.getElementById('config-risk-multiplier').value),
         security_debt_hours_per_issue: parseFloat(document.getElementById('config-debt-hours').value),
         framework_cis_multiplier: parseFloat(document.getElementById('config-framework-cis').value),
         framework_nist_multiplier: parseFloat(document.getElementById('config-framework-nist').value),
@@ -1627,7 +1622,6 @@ function resetConfigSettings() {
     document.getElementById('config-impact-medium').value = DEFAULT_CONFIG.impact_medium_threshold;
     document.getElementById('config-effort-low').value = DEFAULT_CONFIG.effort_low_keywords.join(', ');
     document.getElementById('config-effort-high').value = DEFAULT_CONFIG.effort_high_keywords.join(', ');
-    document.getElementById('config-risk-multiplier').value = DEFAULT_CONFIG.risk_exposure_multiplier;
     document.getElementById('config-debt-hours').value = DEFAULT_CONFIG.security_debt_hours_per_issue;
     document.getElementById('config-framework-cis').value = DEFAULT_CONFIG.framework_cis_multiplier;
     document.getElementById('config-framework-nist').value = DEFAULT_CONFIG.framework_nist_multiplier;
@@ -1675,9 +1669,10 @@ async function updateSyncStatus() {
 
         if (iconEl) iconEl.classList.remove('fa-spin');
 
-        // A new sync finished: refresh the filter lists so deleted labels/teams drop out.
+        // A new sync finished: refresh filter lists (deleted labels drop out) and the data.
         if (lastSeenSync && lastSeenSync !== data.last_sync && data.status !== 'failed') {
-            if (await populateFilters()) updateDashboard();  // the selected filter was removed
+            if (await populateFilters()) await updateOSVersions();  // a selected filter was removed
+            updateDashboard();
         }
         lastSeenSync = data.last_sync;
 

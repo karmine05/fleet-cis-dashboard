@@ -95,7 +95,6 @@ def error_response(message, status_code=500, error_details=None):
 
 # Valid configuration keys for validation
 VALID_CONFIG_KEYS = {
-    'risk_exposure_multiplier',
     'security_debt_hours_per_issue',
     'impact_high_threshold',
     'impact_medium_threshold',
@@ -597,8 +596,7 @@ def get_sync_generation():
 def get_config_generation():
     """Config generation token for config_settings: "<row-count>@<newest-updated-at>".
 
-    /api/strategy's numbers come from get_config() — risk_exposure_multiplier,
-    security_debt_hours_per_issue, impact_high_threshold and the effort keyword
+    /api/strategy's numbers come from get_config() — security_debt_hours_per_issue, impact_high_threshold and the effort keyword
     lists — so a PUT /api/config changes its body with no sync involved. Tracking
     only the sync generation meant Settings reported success while the dashboard
     kept serving pre-save numbers for up to a full TTL.
@@ -1402,7 +1400,6 @@ def update_config():
 
         # Basic type validation for numeric fields
         numeric_keys = [
-            'risk_exposure_multiplier',
             'security_debt_hours_per_issue',
             'impact_high_threshold',
             'impact_medium_threshold',
@@ -1919,21 +1916,29 @@ def get_strategy():
         cur.execute(f"SELECT 100.0 * SUM(CASE WHEN status='pass' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) as rate FROM policy_results WHERE host_id IN ({h_query})", params)
         posture_score = float(round(cur.fetchone()['rate'] or 0, 1))
 
-        # 2. Coverage
-        cur.execute(f"SELECT 100.0 * COUNT(DISTINCT CASE WHEN status='pass' THEN policy_id END) / NULLIF(COUNT(DISTINCT policy_id), 0) as coverage FROM policy_results WHERE host_id IN ({h_query})", params)
-        coverage = round(cur.fetchone()['coverage'] or 0, 1)
+        # 2. Coverage: share of evaluated controls that pass on every host in scope.
+        cur.execute(f"""
+            SELECT 100.0 * COUNT(*) FILTER (WHERE fails = 0) / NULLIF(COUNT(*), 0) AS coverage
+            FROM (SELECT policy_id, COUNT(*) FILTER (WHERE status = 'fail') AS fails
+                  FROM policy_results WHERE host_id IN ({h_query}) GROUP BY policy_id) per_policy
+        """, params)
+        coverage = float(round(cur.fetchone()['coverage'] or 0, 1))  # Decimal would serialize as a string
 
-        # 3. Risk Exposure
-        cur.execute(f"SELECT COUNT(*) as fail_count FROM policy_results WHERE status='fail' AND host_id IN ({h_query})", params)
-        fail_count = cur.fetchone()['fail_count'] or 0
-        # config_number, not get_config: these three values land in arithmetic and a
-        # non-numeric stored value used to be a permanent 500 here.
-        risk_multiplier = config_number('risk_exposure_multiplier', 2)
-        risk_exposure = min(100, fail_count * risk_multiplier)
+        # 3. Risk Exposure: % of CIS Level 1 (baseline) checks failing in scope. A count
+        #    capped at 100 pinned every real fleet at 100.
+        cur.execute(f"""
+            SELECT 100.0 * COUNT(*) FILTER (WHERE pr.status = 'fail') / NULLIF(COUNT(*), 0) AS rate
+            FROM policy_results pr JOIN cis_policies p ON p.policy_id = pr.policy_id
+            WHERE p.level = '1' AND pr.host_id IN ({h_query})
+        """, params)
+        risk_exposure = round(cur.fetchone()['rate'] or 0)
 
-        # 4. Security Debt
+        # 4. Security Debt: one fix (profile or script) clears a control on every host,
+        #    so debt is per failing control, not per failing host-check.
+        cur.execute(f"SELECT COUNT(DISTINCT policy_id) AS n FROM policy_results WHERE status = 'fail' AND host_id IN ({h_query})", params)
+        failing_controls = cur.fetchone()['n'] or 0
         debt_per_issue = config_number('security_debt_hours_per_issue', 0.5)
-        security_debt_hours = fail_count * debt_per_issue
+        security_debt_hours = failing_controls * debt_per_issue
         if security_debt_hours < 1: security_debt = "< 1h"
         elif security_debt_hours < 8: security_debt = f"{int(security_debt_hours)}h"
         elif security_debt_hours < 40: security_debt = f"{int(security_debt_hours / 8)}d"
@@ -1956,7 +1961,7 @@ def get_strategy():
             # multi_day only guarantees two different calendar dates, so the span
             # can be minutes across midnight. Flooring at one day stops that from
             # inflating a per-day rate by three orders of magnitude.
-            velocity = round(net_fixed / max(1.0, span_days), 1)
+            velocity = round(net_fixed * 7 / max(1.0, span_days), 1)  # per week, as the tile says
 
         # Maturity — configurable thresholds from config_settings, evaluated
         # highest level first so the first match wins.
@@ -2112,9 +2117,9 @@ def get_strategy():
             "security_debt": security_debt,
             "remediation_velocity": velocity,
             "velocity_available": velocity is not None,
-            # Signed net checks remediated per day. Negative means the fleet lost
+            # Signed net checks remediated per week. Negative means the fleet lost
             # ground over the window.
-            "velocity_unit": "checks/day",
+            "velocity_unit": "checks/week",
             "velocity_window": velocity_window,
             "roadmap": roadmap,
             "team_leaderboard": team_stats,
