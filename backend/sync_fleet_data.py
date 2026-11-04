@@ -206,31 +206,6 @@ def prune_labels(cur, labels, fetch_failed):
     return cur.rowcount
 
 
-def fetch_hosts_by_label(label_id):
-    """Fetch all host IDs that belong to a specific label."""
-    if not FLEET_TOKEN: return []
-    host_ids = []
-    page = 0
-    while True:
-        try:
-            url = f"{FLEET_URL}/api/v1/fleet/hosts?per_page={HOSTS_PER_PAGE}&page={page}&label_id={label_id}"
-            response = requests.get(url, headers=get_fleet_headers(), timeout=30, verify=FLEET_SSL_VERIFY)
-            hosts = response.json().get("hosts", [])
-            if not hosts:
-                break
-            host_ids.extend([h['id'] for h in hosts])
-            page += 1
-        except Exception:
-            break
-    return host_ids
-
-def fetch_host_details(host_id):
-    try:
-        url = f"{FLEET_URL}/api/v1/fleet/hosts/{host_id}"
-        response = requests.get(url, headers=get_fleet_headers(), timeout=10, verify=FLEET_SSL_VERIFY)
-        return response.json().get("host", {})
-    except Exception: return None
-
 def _fetch_policy_page(team_id, page, per_page):
     """One GET to /teams/{id}/policies. Returns (own_list, inherited_list) on
     200; raises requests.HTTPError on a non-2xx so the caller can branch on 404.
@@ -1012,7 +987,6 @@ def sync_data():
         
         hosts_upsert_buffer = []
         host_ids_processed = set()
-        hosts_changed_ids = []
         host_labels_buffer = []  # Buffer for host-label associations
 
         print("  [FETCH] Fetching hosts...")
@@ -1038,7 +1012,6 @@ def sync_data():
                 for label in host_labels_list:
                     host_labels_buffer.append((hid, label['id']))
 
-                hosts_changed_ids.append(hid) # For now assume all valid for label sync (optimize later)
                 host_ids_processed.add(hid)
             
             # Flush Buffer

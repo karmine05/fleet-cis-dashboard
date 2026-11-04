@@ -308,7 +308,7 @@ async function updateDashboard() {
         // Update All Specialized Pages (Async)
         await Promise.all([
             populateArchitecturePage(heatmap, summary),
-            populateAuditPage(summary),
+            populateAuditPage(summary, safeguards),
             populateStrategyPage(summary, heatmap)
         ]);
 
@@ -1128,9 +1128,8 @@ let auditData = [];
 let currentAuditFilter = null;
 let currentAuditSearch = '';
 
-async function populateAuditPage(summary) {
+async function populateAuditPage(summary, resp) {
     try {
-        const resp = await fetch(`${API_BASE}/safeguard-compliance?${new URLSearchParams(currentFilters)}`).then(r => r.json());
         auditData = uniqueByPolicyId(resp.safeguards || []);
 
         // 0. Update Platform Label

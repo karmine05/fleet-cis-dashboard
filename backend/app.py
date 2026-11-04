@@ -794,36 +794,6 @@ def config_keyword_list(key, default):
     return keywords
 
 # --- Helper Query Builder ---
-def build_filter_query(base_query, params, filters_map):
-    """
-    Appends WHERE clauses based on filters.
-    filters_map: dict of {url_param: sql_column}
-
-    Currently unused. If you wire this into a @cached_response endpoint, the
-    filters_map you pass MUST be HOST_SCOPE_FILTERS (or its args added to
-    HOST_SCOPE_EXTRA_ARGS), otherwise the args it reads are absent from the cache
-    key and two different responses will share one entry.
-    """
-    conditions = []
-    
-    for param, col in filters_map.items():
-        val = request.args.get(param)
-        if val:
-            if col == 'platform_version':
-                conditions.append(f"{col} LIKE %s")
-                params.append(f"%{val}%")
-            else:
-                conditions.append(f"{col} = %s")
-                params.append(val)
-            
-    if conditions:
-        if "WHERE" in base_query.upper() and ("FROM" in base_query.upper().split("WHERE")[-1] or "SELECT" not in base_query.upper().split("WHERE")[-1]):
-             base_query += " AND " + " AND ".join(conditions)
-        else:
-             base_query += " WHERE " + " AND ".join(conditions)
-            
-    return base_query, params
-
 def get_filtered_hosts_subquery():
     """
     Build a subquery to get host_ids with label + standard filters applied.
@@ -1573,7 +1543,8 @@ def get_devices():
             params.append(val)
     
     # Add Pagination
-    query += " ORDER BY h.last_seen DESC LIMIT %s OFFSET %s"
+    # host_id breaks ties: hosts often share last_seen, which made pages overlap or skip.
+    query += " ORDER BY h.last_seen DESC NULLS LAST, h.host_id LIMIT %s OFFSET %s"
     
     with db.get_db_cursor() as cur:
         # Get Total Count
@@ -1975,7 +1946,8 @@ def get_strategy():
         remaining = max(1, 11 - current_month_idx)
         for i in range(current_month_idx + 1, 12):
             steps = i - current_month_idx
-            projected = min(95, round(posture_score + steps * (95 - posture_score) / remaining))
+            target = max(95, posture_score)  # never project a decline for fleets already above 95
+            projected = min(target, round(posture_score + steps * (target - posture_score) / remaining))
             roadmap.append({"label": months[i], "month": months[i], "projected": projected, "actual": None})
 
         # 7. Team Leaderboard

@@ -91,7 +91,8 @@ def apply_decisions(
                 continue
             store_mod.touch_incident(incident.incident_id, now)
             if (
-                incident.last_delivery_status == "failed"
+                # None: the incident was opened but delivery never ran (crash in between).
+                incident.last_delivery_status in (None, "failed")
                 and dest is not None
                 and dest.enabled
                 and decision.event is not None

@@ -14,6 +14,19 @@ class RunEvaluation(unittest.TestCase):
         load_snapshot.assert_not_called()
 
 
+class UndeliveredIncidents(unittest.TestCase):
+    def test_open_incident_never_delivered_is_retried(self):
+        from alerting.models import ACTION_SUPPRESS
+        rule = mock.Mock(rule_id="r1", destination_id="d1")
+        decision = mock.Mock(action=ACTION_SUPPRESS, rule=rule, fingerprint="f", event=mock.Mock())
+        dest = mock.Mock(enabled=True)
+        for status, expect in ((None, True), ("failed", True), ("sent", False)):
+            incident = mock.Mock(rule_id="r1", fingerprint="f", incident_id="i1", last_delivery_status=status)
+            with mock.patch.object(runner, "deliver") as deliver:
+                runner.apply_decisions([decision], {"d1": dest}, [incident], None, None, mock.Mock())
+            self.assertEqual(deliver.called, expect, status)
+
+
 class DeliveryErrors(unittest.TestCase):
     def test_connection_error_text_never_carries_the_webhook_path(self):
         import requests
