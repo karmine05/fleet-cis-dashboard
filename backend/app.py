@@ -166,8 +166,9 @@ app = Flask(__name__)
 # back to the built-in default and says so, instead of becoming a deny-everything list
 # that looks like a broken deployment. The effective list is logged at boot, because a
 # CORS allow-list nobody can see is a CORS allow-list nobody can debug.
-# Read endpoints are unauthenticated by design: this dashboard is always deployed
-# behind a reverse proxy (nginx) that provides TLS and network-level access control.
+# Read endpoints are unauthenticated by design. The shipped nginx adds no TLS or access
+# control, so compose binds both nginx (:8082) and the API (:5002) to 127.0.0.1; anyone
+# exposing the dashboard beyond the host must add TLS and access control in front.
 # CORS is scoped to localhost-only; the only defense-in-depth on the read path is the
 # proxy. Write endpoints carry `@require_write_auth` and fail closed when
 # DASHBOARD_API_TOKEN is unset.

@@ -18,6 +18,17 @@ from alerting.models import (
 
 DISCORD_EMBED_COLOR = 0xE53935
 JSON_CONTENT_TYPE = {"Content-Type": "application/json"}
+# Platform hard limits: an over-long message is rejected with 400, so it would never be
+# delivered and would be retried every sync.
+TELEGRAM_TEXT_MAX = 4096
+DISCORD_CONTENT_MAX = 2000
+DISCORD_TITLE_MAX = 256
+DISCORD_FIELD_VALUE_MAX = 1024
+
+
+def _clip(text: str, limit: int) -> str:
+    text = text or ""
+    return text if len(text) <= limit else text[: limit - 1] + "\u2026"
 
 
 def format_outbound(event: AlertEvent, destination: Destination) -> OutboundRequest:
@@ -47,7 +58,7 @@ def format_discord(event: AlertEvent, destination: Destination) -> OutboundReque
     url = str(destination.config.get("webhook_url") or "")
     fields = _discord_fields(event)
     embed = {
-        "title": event.subject,
+        "title": _clip(event.subject, DISCORD_TITLE_MAX),
         "description": "\n".join(event.body_lines)[:4000],
         "color": DISCORD_EMBED_COLOR,
         "fields": fields,
@@ -58,7 +69,7 @@ def format_discord(event: AlertEvent, destination: Destination) -> OutboundReque
         url=url,
         headers=dict(JSON_CONTENT_TYPE),
         json_body={
-            "content": event.subject,
+            "content": _clip(event.subject, DISCORD_CONTENT_MAX),
             "embeds": [embed],
         },
     )
@@ -74,7 +85,7 @@ def format_telegram(event: AlertEvent, destination: Destination) -> OutboundRequ
         headers=dict(JSON_CONTENT_TYPE),
         json_body={
             "chat_id": chat_id,
-            "text": event.text,
+            "text": _clip(event.text, TELEGRAM_TEXT_MAX),
         },
     )
 
@@ -144,7 +155,7 @@ def sample_event(now: datetime | None = None) -> AlertEvent:
 def _discord_fields(event: AlertEvent) -> list:
     details = event.details or {}
     fields = [
-        {"name": "Rule", "value": event.rule_name, "inline": True},
+        {"name": "Rule", "value": _clip(event.rule_name, DISCORD_FIELD_VALUE_MAX), "inline": True},
         {"name": "Kind", "value": event.kind, "inline": True},
     ]
     host_count = details.get("host_count")

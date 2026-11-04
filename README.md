@@ -157,7 +157,7 @@ Everything else has a working default. These do not:
 
 | URL | What it is |
 |-----|------------|
-| **http://localhost:8082** | The dashboard. nginx serves the static UI and reverse-proxies `/api/*` to the backend |
+| **http://localhost:8082** | The dashboard. nginx serves the static UI and reverse-proxies `/api/*` to the backend. Bound to `127.0.0.1`: the read API has no login, so expose it beyond this host only behind TLS and access control |
 | http://localhost:5002 | The Flask API directly (container port `5001` published on host `5002`, bound to `127.0.0.1` so the unauthenticated read API is not reachable from the LAN) |
 | http://localhost:5002/healthz | Readiness probe — see [Operations](#operations) |
 

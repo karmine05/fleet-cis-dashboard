@@ -279,8 +279,10 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      # Host 8082 avoids local port clashes with 8081
-      - "8082:80"
+      # Host 8082 avoids local port clashes with 8081. Loopback only: nginx adds no auth
+      # or TLS, so a 0.0.0.0 bind exposes the unauthenticated read API to the LAN. To
+      # serve other machines, put TLS + allow/deny (or auth) in front first.
+      - "127.0.0.1:8082:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./frontend:/usr/share/nginx/html:ro
