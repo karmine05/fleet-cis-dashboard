@@ -9,10 +9,10 @@
     <meta name="theme-color" content="#0c0d11">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="favicon.svg">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.17/purify.min.js" integrity="sha384-P0JNneQf81HOl9VwNXK76cQ9VMD6Nfsnepxb0cCOg8+UzEdzgPHAPV4wVQrvYQSx" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
@@ -764,16 +764,11 @@
                     <!-- Impact Thresholds -->
                     <div class="setting-card">
                         <h3><i class="fas fa-bolt"></i> Impact Thresholds</h3>
-                        <p class="setting-desc">Configure fail count thresholds for impact classification</p>
+                        <p class="setting-desc">Failing devices above this mark a priority action High impact; the rest are Medium</p>
                         <div class="setting-row">
                             <label>High Impact Threshold</label>
                             <input type="number" id="config-impact-high" min="1" max="100" value="5">
                             <span class="setting-hint">Fails > this = High</span>
-                        </div>
-                        <div class="setting-row">
-                            <label>Medium Impact Threshold</label>
-                            <input type="number" id="config-impact-medium" min="1" max="100" value="2">
-                            <span class="setting-hint">Fails > this = Medium</span>
                         </div>
                     </div>
 
@@ -801,27 +796,6 @@
                             <label>Security Debt (hours/issue)</label>
                             <input type="number" id="config-debt-hours" min="0.1" max="10" step="0.1" value="0.5">
                             <span class="setting-hint">Hours per failing policy</span>
-                        </div>
-                    </div>
-
-                    <!-- Framework Alignment -->
-                    <div class="setting-card">
-                        <h3><i class="fas fa-layer-group"></i> Framework Alignment</h3>
-                        <p class="setting-desc">Approximate alignment multipliers based on posture</p>
-                        <div class="setting-row">
-                            <label>CIS Controls v8</label>
-                            <input type="number" id="config-framework-cis" min="0.5" max="1" step="0.01" value="0.95">
-                            <span class="setting-hint">posture × this</span>
-                        </div>
-                        <div class="setting-row">
-                            <label>NIST CSF 2.0</label>
-                            <input type="number" id="config-framework-nist" min="0.5" max="1" step="0.01" value="0.88">
-                            <span class="setting-hint">posture × this</span>
-                        </div>
-                        <div class="setting-row">
-                            <label>ISO 27001</label>
-                            <input type="number" id="config-framework-iso" min="0.5" max="1" step="0.01" value="0.82">
-                            <span class="setting-hint">posture × this</span>
                         </div>
                     </div>
 

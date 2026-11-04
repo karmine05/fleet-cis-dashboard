@@ -131,7 +131,7 @@ services:
       # /api/sync-status. The sync service below is what actually schedules on it.
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
       # Per-worker connection pool bounds. See the WEB_CONCURRENCY arithmetic above.
-      - DB_POOL_MIN=${DB_POOL_MIN:-1}
+      - DB_POOL_MIN=${DB_POOL_MIN:-2}
       - DB_POOL_MAX=${DB_POOL_MAX:-8}
       # After the pool's connect retries (5 x 2s) are exhausted, remember the
       # failure for this long so requests fail fast instead of each one blocking a
@@ -232,7 +232,7 @@ services:
       - SYNC_FULL_REFRESH_DIVISOR=${SYNC_FULL_REFRESH_DIVISOR:-24}
       # Pool bounds for the daemon's own connections, and the same fail-fast
       # cooldown the backend uses. Counted in the max_connections budget above.
-      - DB_POOL_MIN=${DB_POOL_MIN:-1}
+      - DB_POOL_MIN=${DB_POOL_MIN:-2}
       - DB_POOL_MAX=${DB_POOL_MAX:-8}
       - DB_POOL_RETRY_COOLDOWN_SECONDS=${DB_POOL_RETRY_COOLDOWN_SECONDS:-10}
       # How long policy_results_history rows are kept before their monthly

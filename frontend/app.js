@@ -1498,13 +1498,9 @@ function renderD3FENDMatrix(containerId, data) {
 
 const DEFAULT_CONFIG = {
     impact_high_threshold: 5,
-    impact_medium_threshold: 2,
     effort_low_keywords: ["Ensure", "Set"],
     effort_high_keywords: ["Manual", "Review"],
     security_debt_hours_per_issue: 0.5,
-    framework_cis_multiplier: 0.95,
-    framework_nist_multiplier: 0.88,
-    framework_iso_multiplier: 0.82
 };
 
 const API_TOKEN_STORAGE_KEY = 'fleet_cis_api_token';
@@ -1537,9 +1533,6 @@ async function loadConfigSettings() {
         if (config.impact_high_threshold) {
             document.getElementById('config-impact-high').value = config.impact_high_threshold.value;
         }
-        if (config.impact_medium_threshold) {
-            document.getElementById('config-impact-medium').value = config.impact_medium_threshold.value;
-        }
         if (config.effort_low_keywords) {
             const keywords = config.effort_low_keywords.value;
             document.getElementById('config-effort-low').value = Array.isArray(keywords) ? keywords.join(', ') : keywords;
@@ -1551,15 +1544,6 @@ async function loadConfigSettings() {
         if (config.security_debt_hours_per_issue) {
             document.getElementById('config-debt-hours').value = config.security_debt_hours_per_issue.value;
         }
-        if (config.framework_cis_multiplier) {
-            document.getElementById('config-framework-cis').value = config.framework_cis_multiplier.value;
-        }
-        if (config.framework_nist_multiplier) {
-            document.getElementById('config-framework-nist').value = config.framework_nist_multiplier.value;
-        }
-        if (config.framework_iso_multiplier) {
-            document.getElementById('config-framework-iso').value = config.framework_iso_multiplier.value;
-        }
     } catch (e) {
         console.error('Error loading config:', e);
     }
@@ -1568,13 +1552,9 @@ async function loadConfigSettings() {
 async function saveConfigSettings() {
     const config = {
         impact_high_threshold: parseInt(document.getElementById('config-impact-high').value),
-        impact_medium_threshold: parseInt(document.getElementById('config-impact-medium').value),
         effort_low_keywords: document.getElementById('config-effort-low').value.split(',').map(s => s.trim()).filter(s => s),
         effort_high_keywords: document.getElementById('config-effort-high').value.split(',').map(s => s.trim()).filter(s => s),
         security_debt_hours_per_issue: parseFloat(document.getElementById('config-debt-hours').value),
-        framework_cis_multiplier: parseFloat(document.getElementById('config-framework-cis').value),
-        framework_nist_multiplier: parseFloat(document.getElementById('config-framework-nist').value),
-        framework_iso_multiplier: parseFloat(document.getElementById('config-framework-iso').value)
     };
 
     try {
@@ -1619,13 +1599,9 @@ async function saveConfigSettings() {
 
 function resetConfigSettings() {
     document.getElementById('config-impact-high').value = DEFAULT_CONFIG.impact_high_threshold;
-    document.getElementById('config-impact-medium').value = DEFAULT_CONFIG.impact_medium_threshold;
     document.getElementById('config-effort-low').value = DEFAULT_CONFIG.effort_low_keywords.join(', ');
     document.getElementById('config-effort-high').value = DEFAULT_CONFIG.effort_high_keywords.join(', ');
     document.getElementById('config-debt-hours').value = DEFAULT_CONFIG.security_debt_hours_per_issue;
-    document.getElementById('config-framework-cis').value = DEFAULT_CONFIG.framework_cis_multiplier;
-    document.getElementById('config-framework-nist').value = DEFAULT_CONFIG.framework_nist_multiplier;
-    document.getElementById('config-framework-iso').value = DEFAULT_CONFIG.framework_iso_multiplier;
 }
 
 function showSuccess(message) {

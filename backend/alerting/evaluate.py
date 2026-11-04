@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -294,11 +295,14 @@ def _status_at(
 ) -> Optional[str]:
     latest_status = None
     latest_ts = None
+    rows = snapshot.history_index.get((policy_id, host_id), ())
+    # Rows are sorted by checked_at (Snapshot.build), so the last row at or before
+    # `at` is found by bisection instead of a scan; this runs once per result per day.
+    i = bisect_right(rows, at, key=lambda r: r.checked_at)
+    if i:
+        latest_ts = rows[i - 1].checked_at
+        latest_status = rows[i - 1].status
     pair = (policy_id, host_id)
-    for row in snapshot.history_index.get(pair, ()):
-        if row.checked_at <= at and (latest_ts is None or row.checked_at >= latest_ts):
-            latest_ts = row.checked_at
-            latest_status = row.status
     current = snapshot.current_index.get(pair)
     if current is not None and current.checked_at <= at:
         if latest_ts is None or current.checked_at >= latest_ts:

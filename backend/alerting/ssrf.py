@@ -85,11 +85,6 @@ def _ip_blocked(addr: str) -> bool:
     ip = ipaddress.ip_address(addr)
     if ip.version == 6 and getattr(ip, "ipv4_mapped", None) is not None:
         ip = ip.ipv4_mapped
-    return bool(
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_multicast
-        or ip.is_reserved
-        or ip.is_unspecified
-    )
+    # is_global also covers 100.64.0.0/10 (CGNAT, Tailscale, some cloud metadata),
+    # which is_private does not.
+    return not ip.is_global or ip.is_multicast

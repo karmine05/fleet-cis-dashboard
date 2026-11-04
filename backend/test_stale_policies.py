@@ -22,6 +22,14 @@ class StalePolicies(unittest.TestCase):
     def test_unreachable_team_is_kept(self):
         self.assertNotIn(20, stale())
 
+    def test_partial_team_does_not_block_global_prune(self):
+        # Team 2 answered but one page 404'd: it is not "ok", yet it was reached.
+        db = [(5, None)]
+        args = dict(global_ok=True, teams_ok=True, ok_team_ids={1}, all_team_ids={1, 2},
+                    global_api_ids=set(), team_api_ids={1: set()})
+        self.assertEqual(compute_stale_policy_ids(db, **args, reached_team_ids={1, 2}), [5])
+        self.assertEqual(compute_stale_policy_ids(db, **args, reached_team_ids={1}), [])
+
     def test_nothing_pruned_by_team_when_team_list_failed(self):
         self.assertEqual(stale(teams_ok=False, ok_team_ids=set(), all_team_ids=set()), [])
 

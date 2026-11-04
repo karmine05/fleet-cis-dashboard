@@ -62,13 +62,9 @@ def reinit_db(force: bool = False) -> None:
         # Seed default configuration values.
         defaults = [
             ('impact_high_threshold', '5', 'Fail count threshold for High impact classification'),
-            ('impact_medium_threshold', '2', 'Fail count threshold for Medium impact classification'),
             ('effort_low_keywords', '["Ensure", "Set"]', 'Keywords indicating low effort policies (JSON array)'),
             ('effort_high_keywords', '["Manual", "Review"]', 'Keywords indicating high effort policies (JSON array)'),
             ('security_debt_hours_per_issue', '0.5', 'Hours of security debt per failing policy'),
-            ('framework_cis_multiplier', '0.95', 'CIS Controls v8 alignment multiplier'),
-            ('framework_nist_multiplier', '0.88', 'NIST CSF 2.0 alignment multiplier'),
-            ('framework_iso_multiplier', '0.82', 'ISO 27001 alignment multiplier'),
             ('maturity_level_5', '90', 'Posture score threshold for maturity level 5'),
             ('maturity_level_4', '80', 'Posture score threshold for maturity level 4'),
             ('maturity_level_3', '70', 'Posture score threshold for maturity level 3'),

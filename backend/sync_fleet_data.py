@@ -367,10 +367,11 @@ def fetch_policies(teams):
     — the rest of that team still syncs instead of the whole team going dark.
     """
     if not FLEET_TOKEN:
-        return [], False, set()
+        return [], False, set(), set()
     all_policies = {}
     global_ok = False
     ok_team_ids = set()
+    reached_team_ids = set()  # answered, even if a page 404'd
 
     try:
         # GET /api/latest/fleet/policies returns ONLY global (team_id null)
@@ -387,6 +388,21 @@ def fetch_policies(teams):
     except Exception as e:
         record_fetch_error("global policies", e)
 
+    # "No team" policies live at /teams/0/policies and /teams never lists team 0.
+    # Stored as global (team_id NULL: cis_policies.team_id references fleet_teams);
+    # if this fetch is incomplete, global pruning is skipped like a failed global fetch.
+    try:
+        own_by_id, _, fully_ok = _fetch_team_policy_pages(0)
+        for p in own_by_id.values():
+            p['team_id'] = None
+            all_policies.setdefault(p['id'], p)
+        print(f"No-team policies fetched: {len(own_by_id)}")
+        if not fully_ok:
+            global_ok = False
+    except Exception as e:
+        record_fetch_error("no-team policies", e)
+        global_ok = False
+
     for team in teams:
         try:
             own_by_id, inherited_by_id, fully_ok = _fetch_team_policy_pages(team['id'])
@@ -395,6 +411,7 @@ def fetch_policies(teams):
             # record it and leave the team's rows untouched (not in ok_team_ids).
             record_fetch_error(f"team {team['id']} policies", e)
             continue
+        reached_team_ids.add(team['id'])
         suffix = "" if fully_ok else " (partial: a Fleet page 404'd on a dangling SoftwareInstaller)"
         print(f"Team {team['id']} policies fetched: {len(own_by_id)} own, {len(inherited_by_id)} inherited{suffix}")
         for p in own_by_id.values():
@@ -411,7 +428,7 @@ def fetch_policies(teams):
             ok_team_ids.add(team['id'])
 
     print(f"Total unique policies returned: {len(all_policies)}")
-    return list(all_policies.values()), global_ok, ok_team_ids
+    return list(all_policies.values()), global_ok, ok_team_ids, reached_team_ids
 
 def fetch_policy_hosts(policy_id, status):
     """Fetch every host Fleet reports for (policy_id, status).
@@ -845,7 +862,7 @@ def run_retention():
 # Upserts carry WHERE EXCLUDED.checked_at >= existing so older observations
 # arriving after newer ones don't move checked_at backwards.
 def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
-                             all_team_ids, global_api_ids, team_api_ids):
+                             all_team_ids, global_api_ids, team_api_ids, reached_team_ids=None):
     """Policy ids that are safe to delete because their owning scope was fetched
     successfully this sync and Fleet no longer reports them.
 
@@ -882,7 +899,10 @@ def compute_stale_policy_ids(db_policies, global_ok, teams_ok, ok_team_ids,
     whenever any fetch was partial, which is why deleted policies lingered.
     """
     stale = []
-    all_teams_seen = teams_ok and ok_team_ids == all_team_ids
+    # A team that answered but had one page 404 (dangling software installer) no longer
+    # blocks global pruning forever; only a team that did not answer at all does.
+    reached = ok_team_ids if reached_team_ids is None else reached_team_ids
+    all_teams_seen = teams_ok and reached >= all_team_ids
     for policy_id, team_id in db_policies:
         if team_id is None:
             # Prune a NULL row as a stale global only once every team was
@@ -986,6 +1006,9 @@ def sync_data():
             # Fleet API timestamps are usually ISO strings.
             # We'll rely on 'seen_time' from Fleet.
             db_state = {row['host_id']: row['updated_at'] for row in cur.fetchall()}
+            # A team created after fetch_teams() would trip the fleet_hosts -> fleet_teams FK.
+            cur.execute("SELECT team_id FROM fleet_teams")
+            known_team_ids = {row['team_id'] for row in cur.fetchall()}
         
         hosts_upsert_buffer = []
         host_ids_processed = set()
@@ -1004,7 +1027,8 @@ def sync_data():
 
                 hosts_upsert_buffer.append((
                     hid, host['hostname'], host['uuid'], host['platform'],
-                    host['os_version'], host['osquery_version'], host.get('team_id'),
+                    host['os_version'], host['osquery_version'],
+                    host.get('team_id') if host.get('team_id') in known_team_ids else None,
                     host.get('team_name'), host['status'], seen_time,
                     datetime.now()
                 ))
@@ -1094,19 +1118,30 @@ def sync_data():
             processed_host_ids = list(set(h for h, _ in host_labels_buffer))
             # Delete + re-insert in one transaction so a dashboard read never sees an empty label set.
             with db.get_db_cursor(commit=True) as cur:
+                # A label created after fetch_labels() would trip the host_labels FK; it is
+                # picked up next sync.
+                cur.execute("SELECT label_id FROM fleet_labels")
+                known_label_ids = {row['label_id'] for row in cur.fetchall()}
+                host_labels_buffer = [(h, l) for h, l in host_labels_buffer if l in known_label_ids]
                 if processed_host_ids:
                     cur.execute("DELETE FROM host_labels WHERE host_id = ANY(%s)", (processed_host_ids,))
-                extras.execute_values(cur, """
-                    INSERT INTO host_labels (host_id, label_id) VALUES %s
-                    ON CONFLICT DO NOTHING
-                """, host_labels_buffer)
+                if host_labels_buffer:
+                    extras.execute_values(cur, """
+                        INSERT INTO host_labels (host_id, label_id) VALUES %s
+                        ON CONFLICT DO NOTHING
+                    """, host_labels_buffer)
             print(f"  [OK] Synced {len(host_labels_buffer)} host-label associations.")
         else:
             print(f"  [OK] No host labels to sync.")
 
         # 4. Policies & Results
         errors_before_policies = len(FETCH_ERRORS)
-        policies, global_ok, ok_team_ids = fetch_policies(teams)
+        policies, global_ok, ok_team_ids, reached_team_ids = fetch_policies(teams)
+        # Results for a host that enrolled after the host list was read would trip the
+        # policy_results -> fleet_hosts FK and abort the sync; they arrive next sync.
+        with db.get_db_cursor() as cur:
+            cur.execute("SELECT host_id FROM fleet_hosts")
+            known_host_ids = {row['host_id'] for row in cur.fetchall()}
         policies_fetch_failed = len(FETCH_ERRORS) > errors_before_policies
         # teams_ok: safe to prune global policies because a NULL survivor is genuinely global, not unattributed.
         teams_ok = not teams_fetch_failed
@@ -1277,7 +1312,7 @@ def sync_data():
 
         stale_policy_ids = compute_stale_policy_ids(
             db_policies, global_ok, teams_ok, ok_team_ids,
-            {t['id'] for t in teams}, global_api_ids, team_api_ids,
+            {t['id'] for t in teams}, global_api_ids, team_api_ids, reached_team_ids,
         )
 
         if stale_policy_ids:
@@ -1330,6 +1365,7 @@ def sync_data():
         refresh_slice = sync_id % SYNC_FULL_REFRESH_DIVISOR if SYNC_FULL_REFRESH_DIVISOR > 0 else None
         force_refreshed = 0
         force_refreshed_unchanged = 0
+        forced_pids = set()  # their rows all go to history: a regular full observation
         for p in policies:
             pid = p['id']
             # Only prune on zero when Fleet reported BOTH counts — a missing field
@@ -1355,6 +1391,7 @@ def sync_data():
                 tasks.append((pid, 'pass'))
                 tasks.append((pid, 'fail'))
                 expected_tasks[pid] = 2
+                forced_pids.add(pid)
                 force_refreshed += 1
                 if counts_agree:
                     force_refreshed_unchanged += 1
@@ -1395,7 +1432,8 @@ def sync_data():
         # changed". Consequence: policy_results.checked_at marks when a status
         # was last observed to CHANGE, not when it was last observed. No
         # endpoint reads that column — every checked_at the API touches belongs
-        # to policy_results_history, which still records one row per observation.
+        # to policy_results_history, which records every status change plus a full
+        # observation of each policy per refresh cycle (SYNC_FULL_REFRESH_DIVISOR).
         count = 0
         results_written = 0
         removed_results = 0
@@ -1414,7 +1452,7 @@ def sync_data():
             """Flush one policy's rows and prune stale results, then discard."""
             nonlocal results_written, removed_results
             # Flush rows
-            rows = results_buffer.pop(pid, [])
+            rows = [r for r in results_buffer.pop(pid, []) if r[1] in known_host_ids]
             if rows:
                 flush_rows = _dedupe_result_rows(rows)
                 if flush_rows:
@@ -1426,13 +1464,23 @@ def sync_data():
                                 status=EXCLUDED.status, checked_at=EXCLUDED.checked_at
                             WHERE EXCLUDED.checked_at >= policy_results.checked_at
                               AND policy_results.status IS DISTINCT FROM EXCLUDED.status
-                            RETURNING policy_id
+                            RETURNING policy_id, host_id
                         """, flush_rows, fetch=True)
                         results_written += len(written or [])
-                        extras.execute_values(cur, """
-                            INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
-                            VALUES %s
-                        """, flush_rows)
+                        # History keeps status changes and new pairs, plus every row of a
+                        # force-refreshed policy, so each pair is still observed at least
+                        # once per refresh cycle. Re-reading an unchanged status every sync
+                        # added rows without information.
+                        if pid in forced_pids:
+                            history_rows = flush_rows
+                        else:
+                            changed = {(w['host_id'] if isinstance(w, dict) else w[1]) for w in (written or [])}
+                            history_rows = [r for r in flush_rows if r[1] in changed]
+                        if history_rows:
+                            extras.execute_values(cur, """
+                                INSERT INTO policy_results_history (policy_id, host_id, status, checked_at)
+                                VALUES %s
+                            """, history_rows)
 
             # Prune stale results for this policy — only safe when the *complete*
             # picture arrived (all expected fetches succeeded). A failed fetch

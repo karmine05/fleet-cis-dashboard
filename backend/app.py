@@ -97,12 +97,8 @@ def error_response(message, status_code=500, error_details=None):
 VALID_CONFIG_KEYS = {
     'security_debt_hours_per_issue',
     'impact_high_threshold',
-    'impact_medium_threshold',
     'effort_low_keywords',
     'effort_high_keywords',
-    'framework_cis_multiplier',
-    'framework_nist_multiplier',
-    'framework_iso_multiplier',
     'maturity_level_5',
     'maturity_level_4',
     'maturity_level_3',
@@ -1402,10 +1398,6 @@ def update_config():
         numeric_keys = [
             'security_debt_hours_per_issue',
             'impact_high_threshold',
-            'impact_medium_threshold',
-            'framework_cis_multiplier',
-            'framework_nist_multiplier',
-            'framework_iso_multiplier',
             'maturity_level_5',
             'maturity_level_4',
             'maturity_level_3',
@@ -1426,7 +1418,7 @@ def update_config():
                     return error_response(f"Value for {key} must be non-negative", 400)
 
         # Semantic validation: maturity thresholds must be in ascending order
-        if any(k in updates for k in ('maturity_level_1', 'maturity_level_5')):
+        if any(k.startswith('maturity_level_') for k in updates):
             existing = {}
             with db.get_db_cursor() as cur:
                 cur.execute(

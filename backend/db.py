@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 DB_POOL = None
 
 # Connection pool per process: 4 workers × 8 max + 1 daemon = 40, well under Postgres max_connections=200.
-DEFAULT_DB_POOL_MIN = 1
+# 2, not 1: a request holds one connection while get_config() borrows a second; with
+# min 1 the pool closed that second one on return, so every config read reconnected.
+DEFAULT_DB_POOL_MIN = 2
 DEFAULT_DB_POOL_MAX = 8
 
 # Retry budget for creating the pool: 5 attempts, 2s apart.
