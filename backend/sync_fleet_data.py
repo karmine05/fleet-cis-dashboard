@@ -1340,20 +1340,14 @@ def sync_data():
 
             if not counts_agree:
                 # Queue fetch
-                queued = 0
-                if api_pass > 0:
-                    tasks.append((pid, 'pass'))
-                    queued += 1
-                if api_fail > 0:
-                    tasks.append((pid, 'fail'))
-                    queued += 1
-                if counts_reported and queued:
-                    expected_tasks[pid] = queued
-                elif counts_reported:
-                    # Fleet claims 0/0 but DB still holds rows — don't trust cached aggregates;
-                    # measure with one fetch whose empty result authorises the prune.
-                    tasks.append((pid, 'fail'))
-                    expected_tasks[pid] = 1
+                # Counts disagree, so the aggregates are stale on at least one side:
+                # Fleet only recomputes them in its hourly cron, while the host lists
+                # below are live. Fetch BOTH lists so the prune rests on two measured
+                # sets. Trusting a stale 0 skipped that half and pruned live rows.
+                tasks.append((pid, 'pass'))
+                tasks.append((pid, 'fail'))
+                if counts_reported:
+                    expected_tasks[pid] = 2
 
         if force_refreshed:
             print(
