@@ -1043,13 +1043,14 @@ async function populateArchitecturePage(heatmapData, summary) {
         // 6–7. Gains / Losses — only when real history exists (never fabricate)
         const gainsList = document.getElementById('gains-list');
         const lossesList = document.getElementById('losses-list');
-        const noHistory = data.history_available === false ||
-            !(data.biggest_gains && data.biggest_gains.length) ||
-            !(data.biggest_losses && data.biggest_losses.length);
+        // One empty list is normal (e.g. improving-only fleet); only the flag means no history.
+        const noHistory = data.history_available === false;
 
         if (gainsList) {
-            if (noHistory || !data.biggest_gains?.length) {
+            if (noHistory) {
                 gainsList.innerHTML = '<li><span class="change-name">No historical trend data yet</span></li>';
+            } else if (!data.biggest_gains?.length) {
+                gainsList.innerHTML = '<li><span class="change-name">No gains in this period</span></li>';
             } else {
                 gainsList.innerHTML = DOMPurify.sanitize(data.biggest_gains.map(g => `
                     <li>
@@ -1060,8 +1061,10 @@ async function populateArchitecturePage(heatmapData, summary) {
             }
         }
         if (lossesList) {
-            if (noHistory || !data.biggest_losses?.length) {
+            if (noHistory) {
                 lossesList.innerHTML = '<li><span class="change-name">No historical trend data yet</span></li>';
+            } else if (!data.biggest_losses?.length) {
+                lossesList.innerHTML = '<li><span class="change-name">No losses in this period</span></li>';
             } else {
                 lossesList.innerHTML = DOMPurify.sanitize(data.biggest_losses.map(l => `
                     <li>

@@ -923,7 +923,8 @@ def history_pair_deltas(cur, h_query, params):
 ROADMAP_MAX_POINTS = 48
 
 
-def history_score_series(cur, h_query, params):
+# shortcut: every /api/strategy cache miss re-scans the 30-day history window; at thousands of hosts move these scans to a per-sync aggregate table.
+def history_score_series(cur, h_query, params, first_seen=None, last_seen=None):
     """Measured pass rate over time for this scope, from policy_results_history.
 
     Each history row is an observation of one (policy_id, host_id) pair. LAG gives
@@ -936,17 +937,22 @@ def history_score_series(cur, h_query, params):
     syncs on the same day show up as separate points), otherwise per day.
     shortcut: a pair that later disappears from Fleet stays counted at its last
     status, because history records observations, not deletions.
+
+    first_seen/last_seen: pass the bounds from history_window_bounds() for the
+    same scope to skip a second scan of the window; omitted, they are queried here.
     """
-    cur.execute(f"""
-        SELECT MIN(checked_at) AS first_seen, MAX(checked_at) AS last_seen
-        FROM policy_results_history
-        WHERE checked_at >= NOW() - make_interval(days => %s)
-          AND host_id IN ({h_query})
-    """, [HISTORY_TREND_DAYS] + list(params))
-    bounds = cur.fetchone()
-    if not bounds or bounds['first_seen'] is None:
+    if first_seen is None:
+        cur.execute(f"""
+            SELECT MIN(checked_at) AS first_seen, MAX(checked_at) AS last_seen
+            FROM policy_results_history
+            WHERE checked_at >= NOW() - make_interval(days => %s)
+              AND host_id IN ({h_query})
+        """, [HISTORY_TREND_DAYS] + list(params))
+        bounds = cur.fetchone() or {}
+        first_seen, last_seen = bounds.get('first_seen'), bounds.get('last_seen')
+    if first_seen is None:
         return []
-    per_day = (bounds['last_seen'] - bounds['first_seen']).total_seconds() >= 2 * 86400
+    per_day = (last_seen - first_seen).total_seconds() >= 2 * 86400
     unit = 'day' if per_day else 'minute'
 
     cur.execute(f"""
@@ -1511,7 +1517,8 @@ def get_devices():
     if label_filter:
         query = """
             SELECT h.*, 
-            (SELECT COUNT(*) FROM policy_results pr WHERE pr.host_id = h.host_id AND pr.status = 'fail') as fail_count
+            (SELECT COUNT(*) FROM policy_results pr WHERE pr.host_id = h.host_id AND pr.status = 'fail') as fail_count,
+            EXISTS (SELECT 1 FROM policy_results pr WHERE pr.host_id = h.host_id) as has_results
             FROM fleet_hosts h
             JOIN host_labels hl ON h.host_id = hl.host_id
             JOIN fleet_labels fl ON hl.label_id = fl.label_id
@@ -1527,7 +1534,8 @@ def get_devices():
     else:
         query = """
             SELECT h.*, 
-            (SELECT COUNT(*) FROM policy_results pr WHERE pr.host_id = h.host_id AND pr.status = 'fail') as fail_count
+            (SELECT COUNT(*) FROM policy_results pr WHERE pr.host_id = h.host_id AND pr.status = 'fail') as fail_count,
+            EXISTS (SELECT 1 FROM policy_results pr WHERE pr.host_id = h.host_id) as has_results
             FROM fleet_hosts h
             WHERE 1=1
         """
@@ -1558,7 +1566,13 @@ def get_devices():
         
         devices = []
         for row in rows:
-            status = "non-compliant" if (row.get('fail_count') or 0) > 0 else "compliant"
+            # A host Fleet has not evaluated yet has no failures but is not compliant either.
+            if (row.get('fail_count') or 0) > 0:
+                status = "non-compliant"
+            elif row.get('has_results'):
+                status = "compliant"
+            else:
+                status = "no-data"
             last_seen = row['last_seen'].isoformat() if row['last_seen'] else None
             
             devices.append({
@@ -1592,7 +1606,11 @@ def get_compliance_summary():
     device_query = f"""
         SELECT 
             COUNT(*) as total,
-            SUM(CASE WHEN (SELECT COUNT(*) FROM policy_results pr WHERE pr.host_id = h.host_id AND pr.status = 'fail') = 0 THEN 1 ELSE 0 END) as compliant
+            SUM(CASE WHEN EXISTS (SELECT 1 FROM policy_results pr WHERE pr.host_id = h.host_id)
+                      AND NOT EXISTS (SELECT 1 FROM policy_results pr WHERE pr.host_id = h.host_id AND pr.status = 'fail')
+                     THEN 1 ELSE 0 END) as compliant,
+            SUM(CASE WHEN EXISTS (SELECT 1 FROM policy_results pr WHERE pr.host_id = h.host_id AND pr.status = 'fail')
+                     THEN 1 ELSE 0 END) as non_compliant
         FROM ({h_query}) sq
         JOIN fleet_hosts h ON sq.host_id = h.host_id
     """
@@ -1610,7 +1628,9 @@ def get_compliance_summary():
         dev_row = cur.fetchone()
         total_dev = dev_row['total']
         compliant_dev = dev_row['compliant'] if dev_row['compliant'] is not None else 0
-        non_compliant_dev = total_dev - compliant_dev
+        non_compliant_dev = dev_row['non_compliant'] or 0
+        # Hosts with no policy results yet are neither compliant nor non-compliant.
+        no_data_dev = total_dev - compliant_dev - non_compliant_dev
 
         cur.execute(policy_query, params)
         policy_stats = {row['status']: row['count'] for row in cur.fetchall()}
@@ -1634,6 +1654,7 @@ def get_compliance_summary():
             "compliant_devices": compliant_dev,
             "fully_compliant_devices": compliant_dev,
             "non_compliant_devices": non_compliant_dev,
+            "no_data_devices": no_data_dev,
             # policy_pass_rate = pass result rows / all result rows (NOT device compliance)
             "compliance_percentage": pass_rate,
             "policy_pass_rate": pass_rate,
@@ -1939,7 +1960,7 @@ def get_strategy():
         #    score ("Now"), then a linear target path toward 95% by year end. Past
         #    points come only from stored observations; nothing is fabricated.
         roadmap = [{"label": p["label"], "month": p["label"], "projected": None, "actual": p["score"]}
-                   for p in history_score_series(cur, h_query, params)]
+                   for p in history_score_series(cur, h_query, params, vel_first, vel_last)]
         roadmap.append({"label": "Now", "month": "Now",
                         "projected": posture_score, "actual": posture_score})
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]

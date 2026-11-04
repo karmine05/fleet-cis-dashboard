@@ -39,6 +39,13 @@ def run_evaluation(
     now = now or datetime.now(timezone.utc)
     transport = transport or post_json
     rules = [rule for rule in store.list_rules() if rule.enabled]
+    enabled_ids = {rule.rule_id for rule in rules}
+    open_incidents = store.list_open_incidents()
+    # Disabled rules are never evaluated, so their open incidents would otherwise
+    # stay open and SUPPRESS the first fire after the rule is re-enabled.
+    for incident in open_incidents:
+        if incident.rule_id not in enabled_ids:
+            store.resolve_incident(incident.incident_id, now)
     if not rules:
         return []  # no rule can fire or resolve; skip loading the snapshot
     snapshot = store.load_snapshot(now)
@@ -46,7 +53,6 @@ def run_evaluation(
         dest.destination_id: dest
         for dest in store.list_destinations(include_secrets=True)
     }
-    open_incidents = store.list_open_incidents()
     decisions = evaluate_rules(
         rules,
         snapshot,

@@ -37,4 +37,6 @@ EXPOSE 5001
 # Note that gunicorn's own fallback is 1 worker if WEB_CONCURRENCY is unset —
 # the default supplied in docker-compose.yml is therefore load-bearing, not
 # decorative.
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--threads", "2", "app:app"]
+# --timeout 120: the first /api/strategy after a sync scans the history window
+# and can outlast gunicorn's 30s default, which kills the worker mid-request.
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--threads", "2", "--timeout", "120", "app:app"]

@@ -78,6 +78,9 @@ HISTORY_PARTITION_MONTHS_AHEAD = 2
 # (39/789 disagreed with live lists). Force-refresh ~1/divisor policies per sync
 # so every policy is fully re-enumerated within `divisor` cycles.
 SYNC_FULL_REFRESH_DIVISOR = _env_int("SYNC_FULL_REFRESH_DIVISOR", 24, minimum=0)
+# Copy a forced policy's full host set into history on only 1 refresh cycle in N.
+# Defaults (divisor 24, 15-min syncs) make that daily, not every 6h.
+HISTORY_FULL_OBSERVATION_CYCLES = 4
 
 # Lock/wait SQLSTATEs. Partition DDL takes ACCESS EXCLUSIVE, so a timeout is a skip.
 PG_LOCK_TIMEOUT_SQLSTATES = ('55P03', '57014')
@@ -1387,9 +1390,15 @@ def sync_data():
         # monotonic, so the slice advances by one on every sync and the whole
         # catalog is covered in `divisor` syncs with a flat per-sync cost.
         refresh_slice = sync_id % SYNC_FULL_REFRESH_DIVISOR if SYNC_FULL_REFRESH_DIVISOR > 0 else None
+        # The forced fetch (prune safety) runs every cycle; the full history copy
+        # only on cycles whose index is a multiple of HISTORY_FULL_OBSERVATION_CYCLES.
+        full_history_cycle = (
+            refresh_slice is not None
+            and (sync_id // SYNC_FULL_REFRESH_DIVISOR) % HISTORY_FULL_OBSERVATION_CYCLES == 0
+        )
         force_refreshed = 0
         force_refreshed_unchanged = 0
-        forced_pids = set()  # their rows all go to history: a regular full observation
+        forced_pids = set()  # on a full_history_cycle their rows all go to history
         for p in policies:
             pid = p['id']
             # Only prune on zero when Fleet reported BOTH counts — a missing field
@@ -1457,7 +1466,8 @@ def sync_data():
         # was last observed to CHANGE, not when it was last observed. No
         # endpoint reads that column — every checked_at the API touches belongs
         # to policy_results_history, which records every status change plus a full
-        # observation of each policy per refresh cycle (SYNC_FULL_REFRESH_DIVISOR).
+        # observation of each policy once every HISTORY_FULL_OBSERVATION_CYCLES
+        # refresh cycles (SYNC_FULL_REFRESH_DIVISOR syncs each; daily by default).
         count = 0
         results_written = 0
         removed_results = 0
@@ -1492,10 +1502,11 @@ def sync_data():
                         """, flush_rows, fetch=True)
                         results_written += len(written or [])
                         # History keeps status changes and new pairs, plus every row of a
-                        # force-refreshed policy, so each pair is still observed at least
-                        # once per refresh cycle. Re-reading an unchanged status every sync
-                        # added rows without information.
-                        if pid in forced_pids:
+                        # force-refreshed policy on a full_history_cycle, so each pair is
+                        # still observed at least once a day (default cadence), well inside
+                        # the 30/31-day reader windows. Re-reading an unchanged status every
+                        # sync added rows without information.
+                        if pid in forced_pids and full_history_cycle:
                             history_rows = flush_rows
                         else:
                             changed = {(w['host_id'] if isinstance(w, dict) else w[1]) for w in (written or [])}

@@ -9,6 +9,8 @@ class RunEvaluation(unittest.TestCase):
     def test_no_enabled_rules_skips_the_snapshot(self):
         disabled = mock.Mock(enabled=False)
         with mock.patch.object(store, "list_rules", return_value=[disabled]), \
+             mock.patch.object(store, "list_open_incidents", return_value=[]), \
+             mock.patch.object(store, "resolve_incident"), \
              mock.patch.object(store, "load_snapshot") as load_snapshot:
             self.assertEqual(runner.run_evaluation(), [])
         load_snapshot.assert_not_called()

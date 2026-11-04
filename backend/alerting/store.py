@@ -21,7 +21,9 @@ from psycopg2 import IntegrityError, extras
 
 from alerting.validate import redact_config
 
-HISTORY_LOOKBACK_DAYS = 31
+# Longest rule window (30 days) plus margin: history keeps a full observation only
+# about once a day, so the sample at now-30d needs a row up to a day older.
+HISTORY_LOOKBACK_DAYS = 32
 
 
 class NotFound(LookupError):
@@ -219,6 +221,21 @@ def insert_rule(payload: dict) -> Rule:
 
 def update_rule(rule_id: str, payload: dict) -> Rule:
     with db.get_db_cursor(commit=True) as cur:
+        # The fingerprint ignores config/destination, so a still-open incident would
+        # SUPPRESS alerts for the new target; resolve it when either one changes.
+        cur.execute(
+            """
+            UPDATE alert_incidents
+            SET status = 'resolved', resolved_at = NOW(), last_evaluated_at = NOW()
+            WHERE rule_id = %s AND status = 'open'
+              AND EXISTS (
+                  SELECT 1 FROM alert_rules
+                  WHERE rule_id = %s
+                    AND (destination_id IS DISTINCT FROM %s OR config IS DISTINCT FROM %s)
+              )
+            """,
+            (rule_id, rule_id, payload["destination_id"], extras.Json(payload["config"])),
+        )
         cur.execute(
             """
             UPDATE alert_rules

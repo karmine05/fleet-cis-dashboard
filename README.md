@@ -309,7 +309,7 @@ EXISTS`, plus this month's history partition). Manual migration isn't needed.
 | `MAX_PAGE_SIZE` | Upper bound `?limit=` on `/api/devices` is clamped to | `500` | No |
 | `WEB_CONCURRENCY` | gunicorn worker count. Read by gunicorn itself — `Dockerfile.backend` deliberately omits `--workers` so this can be changed without rebuilding. gunicorn's own fallback is **1** worker if the variable is absent, so the Compose default is load-bearing | `4` (from Compose) | No |
 | `PORT` | Port for the Flask development server (`python backend/app.py`). Ignored under gunicorn, which binds `5001` from the Dockerfile `CMD` | `5001` | No |
-| `FLASK_1_DEBUG` | `1` enables Flask debug mode and adds exception detail to error responses. Deliberately absent from `.env.example` and from `docker-compose.yml`: leave it unset anywhere you do not fully control | `0` | No |
+| `FLASK_DEBUG` | `1` enables Flask debug mode and adds exception detail to error responses. Deliberately absent from `.env.example` and from `docker-compose.yml`: leave it unset anywhere you do not fully control | `0` | No |
 
 ### Sync daemon
 
@@ -591,7 +591,7 @@ through the Compose environment at runtime.
 arguments — an unauthenticated caller can't mint unbounded cache entries by appending junk
 query parameters.
 
-**Error bodies are quiet.** Exception details are only included when `FLASK_1_DEBUG=1`.
+**Error bodies are quiet.** Exception details are only included when `FLASK_DEBUG=1`.
 `/healthz` returns the exception class but never the connection string, which would
 otherwise leak the database host, port, and user on an unauthenticated endpoint.
 
