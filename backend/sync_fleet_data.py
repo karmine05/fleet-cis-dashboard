@@ -172,6 +172,29 @@ def fetch_hosts_generator():
             record_fetch_error(f"hosts page {page}", e)
             break
 
+def confirm_hosts_deleted(host_ids):
+    """Of the hosts missing from this sync's listing, the ones Fleet confirms are gone.
+
+    The host list is paged by offset, so a host deleted in Fleet mid-scan shifts the
+    pages and a live host can be skipped. Deleting on absence alone would drop that
+    live host with its results and labels. Only a 404 counts as deleted; a live host
+    (200) or an error keeps the local row until the next sync.
+    shortcut: one request per missing host; fine for the handful that leave per sync,
+    batch it if hosts are ever removed by the thousand.
+    """
+    gone = []
+    for hid in host_ids:
+        try:
+            response = requests.get(f"{FLEET_URL}/api/v1/fleet/hosts/{hid}", headers=get_fleet_headers(),
+                                    timeout=10, verify=FLEET_SSL_VERIFY)
+            if response.status_code == 404:
+                gone.append(hid)
+            else:
+                response.raise_for_status()
+        except Exception as e:
+            record_fetch_error(f"host {hid} check", e)
+    return gone
+
 def fetch_teams():
     if not FLEET_TOKEN: return []
     try:
@@ -1024,8 +1047,10 @@ def sync_data():
                         ) VALUES %s
                         ON CONFLICT (host_id) DO UPDATE SET
                             hostname=EXCLUDED.hostname,
+                            uuid=EXCLUDED.uuid,
                             platform=EXCLUDED.platform,
                             platform_version=EXCLUDED.platform_version,
+                            osquery_version=EXCLUDED.osquery_version,
                             team_id=EXCLUDED.team_id,
                             team_name=EXCLUDED.team_name,
                             online_status=EXCLUDED.online_status,
@@ -1045,8 +1070,10 @@ def sync_data():
                     ) VALUES %s
                     ON CONFLICT (host_id) DO UPDATE SET 
                         hostname=EXCLUDED.hostname,
+                        uuid=EXCLUDED.uuid,
                         platform=EXCLUDED.platform,
                         platform_version=EXCLUDED.platform_version,
+                        osquery_version=EXCLUDED.osquery_version,
                         team_id=EXCLUDED.team_id,
                         team_name=EXCLUDED.team_name,
                         online_status=EXCLUDED.online_status,
@@ -1075,6 +1102,12 @@ def sync_data():
                 f"({len(stale_ids)} host(s) would have been deleted)."
             )
         elif stale_ids:
+            confirmed = set(confirm_hosts_deleted(stale_ids))
+            if len(confirmed) < len(stale_ids):
+                print(f"  Keeping {len(stale_ids) - len(confirmed)} host(s) missing from the listing "
+                      f"but not confirmed deleted by Fleet (likely skipped by paging).")
+            stale_ids = confirmed
+        if stale_ids and not hosts_fetch_failed and host_ids_processed:
             print(f"  Removing {len(stale_ids)} stale hosts that are no longer in Fleet...")
             with db.get_db_cursor(commit=True) as cur:
                 # Due to FK constraints, we should delete from policy_results first 

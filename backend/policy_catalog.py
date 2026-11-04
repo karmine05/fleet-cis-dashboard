@@ -256,13 +256,13 @@ def mapping_for_safeguard(safeguard_id: str) -> Dict[str, Any]:
         return _finalize_mapping(smap[alt], alt)
     # Warn once per distinct unmapped safeguard_id so operators can detect
     # stale reference data without log spam.
-    if len(_UNMAPPED_WARNED) < _MAX_UNMAPPED_WARNINGS:
+    if sid not in _UNMAPPED_WARNED and len(_UNMAPPED_WARNED) < _MAX_UNMAPPED_WARNINGS:
         _UNMAPPED_WARNED.add(sid)
-    logger.warning(
-        "Safeguard %s not found in D3FEND map (check safeguard_d3fend.json is current); "
-        "showing %d/%d distinct unmapped warnings (cap: %d)",
-        sid, len(_UNMAPPED_WARNED), _MAX_UNMAPPED_WARNINGS, _MAX_UNMAPPED_WARNINGS,
-    )
+        logger.warning(
+            "Safeguard %s not found in D3FEND map (check safeguard_d3fend.json is current); "
+            "showing %d/%d distinct unmapped warnings (cap: %d)",
+            sid, len(_UNMAPPED_WARNED), _MAX_UNMAPPED_WARNINGS, _MAX_UNMAPPED_WARNINGS,
+        )
     return _unmapped(sid)
 
 

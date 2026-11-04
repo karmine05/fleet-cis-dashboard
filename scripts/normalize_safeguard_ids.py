@@ -13,6 +13,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import re
@@ -478,9 +479,15 @@ def rebuild_safeguard_d3fend(catalog: dict) -> dict:
 
 
 def main():
-    fp = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(
-        "/Users/beast/Documents/workspace/fleet_policies"
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
+    parser.add_argument(
+        "fleet_policies",
+        type=Path,
+        help="path to a local checkout of https://github.com/karmine05/fleet_policies",
+    )
+    fp = parser.parse_args().fleet_policies
     if not fp.exists():
         print(f"Not found: {fp}", file=sys.stderr)
         sys.exit(1)

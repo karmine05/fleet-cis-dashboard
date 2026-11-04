@@ -1203,7 +1203,7 @@ function updateAuditUI() {
 
     // Render list
     if (filtered.length === 0) {
-        listContainer.innerHTML = `<p style="padding: 20px; color: var(--text-secondary); text-align: center;">No policies found ${currentAuditSearch ? `matching "${currentAuditSearch}"` : ''}</p>`;
+        listContainer.innerHTML = `<p style="padding: 20px; color: var(--text-secondary); text-align: center;">No policies found ${currentAuditSearch ? `matching "${escapeAttr(currentAuditSearch)}"` : ''}</p>`;
         return;
     }
 
