@@ -154,22 +154,34 @@ def init_db():
 
 # --- API Generators ---
 
+def _next_cursor(hosts, after):
+    """Last host id of a page, for keyset paging. Offset paging (page=N) shifts when a
+    host leaves the list mid-scan and silently skips another; `after=<id>` with
+    order_key=id cannot. Raises if Fleet ignored the cursor, instead of looping."""
+    if after is not None and hosts[0]['id'] <= after:
+        raise RuntimeError(f"Fleet ignored the after={after} cursor")
+    return hosts[-1]['id']
+
+
 def fetch_hosts_generator():
     """Yields batches of hosts from Fleet API."""
     if not FLEET_TOKEN: return
-    page = 0
+    after = None
     while True:
         try:
-            url = f"{FLEET_URL}/api/v1/fleet/hosts?per_page={HOSTS_PER_PAGE}&page={page}&populate_labels=true"
+            url = (f"{FLEET_URL}/api/v1/fleet/hosts?per_page={HOSTS_PER_PAGE}&order_key=id"
+                   f"&populate_labels=true" + (f"&after={after}" if after is not None else ""))
             response = requests.get(url, headers=get_fleet_headers(), timeout=30, verify=FLEET_SSL_VERIFY)
             response.raise_for_status()
             hosts = response.json().get("hosts", [])
             if not hosts:
                 break
+            after = _next_cursor(hosts, after)
             yield hosts
-            page += 1
+            if len(hosts) < HOSTS_PER_PAGE:
+                break
         except Exception as e:
-            record_fetch_error(f"hosts page {page}", e)
+            record_fetch_error(f"hosts after id {after}", e)
             break
 
 def confirm_hosts_deleted(host_ids):
@@ -235,7 +247,10 @@ def _fetch_policy_page(team_id, page, per_page):
     """
     url = f"{FLEET_URL}/api/latest/fleet/teams/{team_id}/policies"
     response = requests.get(
-        url, params={"per_page": per_page, "page": page},
+        # order_key=id: without it Fleet returns pages in no defined order, so a policy
+        # can fall between pages and be pruned as deleted. Offset paging is kept here
+        # because the 404 recovery below re-fetches by page position.
+        url, params={"per_page": per_page, "page": page, "order_key": "id"},
         headers=get_fleet_headers(), timeout=20, verify=FLEET_SSL_VERIFY,
     )
     response.raise_for_status()
@@ -446,12 +461,14 @@ def fetch_policy_hosts(policy_id, status):
     response_type = "passing" if status == "pass" else "failing"
     rows = []
     page = 0
+    after = None  # keyset paging: a host fixed mid-scan must not shift the next page
     while page < MAX_POLICY_HOST_PAGES:
         try:
             url = (
                 f"{FLEET_URL}/api/v1/fleet/hosts?policy_id={policy_id}"
                 f"&policy_response={response_type}"
-                f"&per_page={POLICY_HOSTS_PER_PAGE}&page={page}"
+                f"&per_page={POLICY_HOSTS_PER_PAGE}&order_key=id"
+                + (f"&after={after}" if after is not None else "")
             )
             response = requests.get(url, headers=get_fleet_headers(), timeout=30, verify=FLEET_SSL_VERIFY)
             response.raise_for_status()
@@ -472,6 +489,7 @@ def fetch_policy_hosts(policy_id, status):
             # costs exactly one request like it did before pagination was added.
             if len(hosts) < POLICY_HOSTS_PER_PAGE:
                 return True, rows
+            after = _next_cursor(hosts, after)
         except Exception as e:
             # ok=False with the rows gathered so far: the caller must never prune
             # a policy against a host set we know is incomplete.
