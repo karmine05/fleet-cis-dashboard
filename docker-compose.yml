@@ -205,12 +205,6 @@ services:
       # Same three POSTGRES_* variables as the backend and the db — see the note
       # about URL-safe passwords there.
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set. Copy .env.example to .env and set it.}@db:5432/${POSTGRES_DB:-fleet_cis}
-      # ${VAR-default}, not ${VAR:-default}: the dash-without-colon form only
-      # substitutes when the variable is UNSET, so `REDIS_URL=` in .env reaches
-      # the app as an empty value and genuinely disables the cache. With the
-      # colon form an empty value silently re-applied this default, making the
-      # documented way to run without Redis a no-op.
-      - REDIS_URL=${REDIS_URL-redis://redis:6379/0}
       - FLEET_URL=${FLEET_URL}
       - FLEET_API_TOKEN=${FLEET_API_TOKEN}
       - FLEET_SSL_VERIFY=${FLEET_SSL_VERIFY:-true}

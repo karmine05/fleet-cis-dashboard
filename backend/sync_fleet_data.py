@@ -329,7 +329,10 @@ def _fetch_team_policy_pages(team_id):
         try:
             own, inherited = _fetch_policy_page(team_id, page, POLICY_PAGE_SIZE)
         except requests.HTTPError as e:
-            if e.response is not None and e.response.status_code == 404:
+            # Only Fleet's dangling-installer 404 is recoverable per position; any
+            # other 404 (team gone, bad URL) re-raises so the team counts as unreachable.
+            if (e.response is not None and e.response.status_code == 404
+                    and "softwareinstaller" in (e.response.text or "").lower()):
                 record_fetch_error(f"team {team_id} policies page {page}", e)
                 fully_ok = False
                 # Recover every policy on this page except the one dangling
@@ -962,7 +965,35 @@ def _dedupe_result_rows(rows):
     return list(latest.values())
 
 
+# Fixed key ("FleetCIS") for pg_try_advisory_lock: at most one sync runs at a time.
+SYNC_ADVISORY_LOCK_KEY = 0x466C656574434953
+
+
 def sync_data():
+    """Run one sync unless another process already holds the sync lock."""
+    # Session-level lock: acquire and release on the SAME connection, held for the whole run.
+    with db.get_db_connection() as lock_conn:
+        with lock_conn.cursor() as cur:
+            cur.execute("SELECT pg_try_advisory_lock(%s)", (SYNC_ADVISORY_LOCK_KEY,))
+            acquired = cur.fetchone()[0]
+        lock_conn.commit()  # the lock outlives the transaction; don't idle in one all run
+        if not acquired:
+            print("another sync is running; skipping")
+            return
+        try:
+            return _sync_data_locked()
+        finally:
+            try:
+                with lock_conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_unlock(%s)", (SYNC_ADVISORY_LOCK_KEY,))
+                lock_conn.commit()
+            except Exception as e:
+                # Closing ends the session, which drops the lock; the pool discards a closed conn.
+                print(f"Sync lock release failed: {e}")
+                lock_conn.close()
+
+
+def _sync_data_locked():
     start_time = time.time()
     print(f"\n[SYNC] Sync started at {datetime.now()}")
     
@@ -1169,7 +1200,6 @@ def sync_data():
         with db.get_db_cursor() as cur:
             cur.execute("SELECT host_id FROM fleet_hosts")
             known_host_ids = {row['host_id'] for row in cur.fetchall()}
-        policies_fetch_failed = len(FETCH_ERRORS) > errors_before_policies
         # teams_ok: safe to prune global policies because a NULL survivor is genuinely global, not unattributed.
         teams_ok = not teams_fetch_failed
 
@@ -1185,7 +1215,7 @@ def sync_data():
         # (unreachable teams' rows are kept, NULL rows are kept unless EVERY team
         # was fetched), and the fetch errors are recorded so /api/sync-status can
         # show the run as degraded. Aborting on a single team's 404 — as the old
-        # `not policies and (policies_fetch_failed or teams_fetch_failed)` guard
+        # `not policies and (<any policy fetch error> or teams_fetch_failed)` guard
         # did — kills the whole sync (no results, no snapshots) over one flaky
         # team endpoint, which is how a Fleet-side "SoftwareInstaller was not
         # found" 404 on a single team froze the entire dashboard.
@@ -1301,7 +1331,7 @@ def sync_data():
         # 4.1 Clean up policies deleted in Fleet — per scope, not all-or-nothing.
         #
         # The old guard skipped the WHOLE cleanup whenever any fetch was partial
-        # (policies_fetch_failed or teams_fetch_failed). Policies are enumerated
+        # (any policy fetch error, or teams_fetch_failed). Policies are enumerated
         # per team, so a single 10s timeout against one team with hundreds of
         # policies was enough to skip the entire catalog every sync — and
         # policies deleted in Fleet (e.g. "Windows - Google Chrome up to date")

@@ -248,7 +248,9 @@ CREATE INDEX IF NOT EXISTS idx_results_host ON policy_results(host_id);
 CREATE INDEX IF NOT EXISTS idx_results_policy ON policy_results(policy_id);
 CREATE INDEX IF NOT EXISTS idx_results_status ON policy_results(status);
 CREATE INDEX IF NOT EXISTS idx_host_labels_host ON host_labels(host_id);
-CREATE INDEX IF NOT EXISTS idx_history_checked ON policy_results_history(checked_at);
+-- Redundant prefix of idx_history_checked_policy; dropped so existing DBs lose it too.
+-- Dropping the partitioned parent index drops its per-partition children with it.
+DROP INDEX IF EXISTS idx_history_checked;
 
 -- Trend queries have the shape "per-day per-policy status aggregate over a lookback
 -- window": WHERE checked_at >= now() - interval '<N> days' GROUP BY <day>, policy_id.

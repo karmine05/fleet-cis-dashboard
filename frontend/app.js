@@ -172,7 +172,11 @@ function setupEventListeners() {
     document.getElementById('apply-filters').addEventListener('click', updateDashboard);
     document.getElementById('reset-filters').addEventListener('click', resetFilters);
     document.getElementById('platform-filter').addEventListener('change', updateOSVersions);
-    document.getElementById('team-filter').addEventListener('change', updateDashboard);
+    document.getElementById('team-filter').addEventListener('change', async () => {
+        // The OS list is team-scoped, so a team change can make listed versions stale.
+        if (document.getElementById('platform-filter').value) await updateOSVersions();
+        updateDashboard();
+    });
     document.getElementById('label-filter').addEventListener('change', updateDashboard);
 }
 
@@ -254,6 +258,7 @@ async function populateFilters() {
 async function updateOSVersions() {
     const platform = document.getElementById('platform-filter').value;
     const label = document.getElementById('label-filter').value;
+    const team = document.getElementById('team-filter').value;
 
     if (!platform) {
         document.getElementById('os-version-filter').innerHTML = '<option value="">All Versions</option>';
@@ -263,6 +268,7 @@ async function updateOSVersions() {
     try {
         const params = new URLSearchParams();
         if (label) params.append('label', label);
+        if (team) params.append('team', team);
         const resp = await fetch(`${API_BASE}/os-versions?${params}`).then(r => r.json());
         const allVersions = resp.os_versions || {};
         const versions = allVersions[platform] || [];
@@ -419,15 +425,6 @@ function riskClass(riskScore, total) {
     if (riskScore >= 20) return 'rate-warning';
     if (riskScore >= 5) return 'rate-good';
     return 'rate-excellent';
-}
-
-/** @deprecated pass-rate coloring — prefer riskClass */
-function rateClass(passRate, total) {
-    if (!total) return 'rate-empty';
-    if (passRate >= 80) return 'rate-excellent';
-    if (passRate >= 60) return 'rate-good';
-    if (passRate >= 40) return 'rate-warning';
-    return 'rate-danger';
 }
 
 function escapeAttr(value) {
@@ -954,7 +951,7 @@ async function populateArchitecturePage(heatmapData, summary) {
         const data = await fetch(`${API_BASE}/architecture?${new URLSearchParams(currentFilters)}`).then(r => r.json());
 
         // 1. Update Compliance Gauge
-        const compliance = data.overall_compliance || data.defensive_score || 0;
+        const compliance = data.overall_compliance || 0;
         const gaugeArc = document.getElementById('compliance-gauge-arc');
         const gaugeValue = document.getElementById('arch-compliance');
 
@@ -970,24 +967,6 @@ async function populateArchitecturePage(heatmapData, summary) {
                     compliance >= 40 ? 'var(--warning-orange)' : 'var(--danger-red)';
             gaugeArc.style.stroke = color;
             gaugeValue.style.color = color;
-        }
-
-        // 2. Mini trend bars — only when backend provides history (never fabricate)
-        const miniBars = document.getElementById('arch-mini-bars');
-        if (miniBars) {
-            const series = Array.isArray(data.trend_series) ? data.trend_series : [];
-            if (series.length && data.history_available) {
-                const max = Math.max(...series.map(Number), 1);
-                miniBars.innerHTML = DOMPurify.sanitize(
-                    series.map(v => {
-                        const h = Math.max(4, Math.round((Number(v) / max) * 18));
-                        return `<div class="bar" style="height: ${h}px;"></div>`;
-                    }).join('')
-                );
-            } else {
-                miniBars.innerHTML = '';
-                miniBars.classList.add('hidden');
-            }
         }
 
         // 3. Compliance by MITRE Tactic bars
@@ -1453,49 +1432,6 @@ async function populateStrategyPage(summary, heatmapData) {
     }
 }
 
-// Utility for Matrix Rendering (compact D3FEND heat map in secondary containers)
-function renderD3FENDMatrix(containerId, data) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const heatmapData = (data && data.heatmap) ? data.heatmap : (Array.isArray(data) ? data : []);
-
-    if (heatmapData.length === 0) {
-        container.innerHTML = '<p class="heatmap-empty">No mapping data</p>';
-        return;
-    }
-
-    const groups = {};
-    heatmapData.forEach(item => {
-        const tactic = item.d3fend_tactic || 'Unmapped';
-        if (!groups[tactic]) groups[tactic] = [];
-        groups[tactic].push(item);
-    });
-
-    const sortedTactics = sortGroupKeys(Object.keys(groups), 'd3fend');
-    let html = '<div class="d3fend-matrix">';
-    sortedTactics.forEach(tactic => {
-        const items = groups[tactic];
-        html += `<div class="d3fend-column">
-            <div class="d3fend-header compact">
-                <span class="d3fend-header-title">${escapeAttr(tactic)}</span>
-                <span class="d3fend-header-meta">${items.length}</span>
-            </div>
-            <div class="d3fend-content grid-view">`;
-        items.forEach(item => {
-            const passRate = passRateOf(item);
-            const rateCls = rateClass(passRate, item.total);
-            const tooltip = `${item.policy_name || 'CIS ' + (item.cis_id || '')}\nSection ${item.cis_id || '—'} · ${item.d3fend_technique || 'Unmapped'} · ${Math.round(passRate)}%`;
-            html += `<button type="button" class="d3fend-heatmap-cell ${rateCls}" data-tooltip="${escapeAttr(tooltip)}" data-policy-id="${escapeAttr(item.policy_id ?? '')}" aria-label="${escapeAttr(tooltip)}">
-                <span class="d3fend-cell-id">${escapeAttr(item.cis_id)}</span>
-            </button>`;
-        });
-        html += '</div></div>';
-    });
-    html += '</div>';
-    container.innerHTML = DOMPurify.sanitize(html, { ADD_ATTR: ['aria-label', 'data-tooltip', 'data-policy-id'] });
-}
-
 // ===== SETTINGS PAGE =====
 
 const DEFAULT_CONFIG = {
@@ -1670,6 +1606,7 @@ async function updateSyncStatus() {
         else relativeText = syncTime.toLocaleDateString();
 
         textEl.textContent = relativeText;
+        textEl.title = '';
 
         if (data.status === 'failed') {
             textEl.textContent += ' ⚠';

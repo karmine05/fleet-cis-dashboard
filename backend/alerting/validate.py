@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 from alerting.models import (
@@ -81,6 +82,10 @@ def parse_rule_payload(body: Any, existing: Optional[Mapping[str, Any]] = None) 
     destination_id = str(destination_id or "").strip()
     if not destination_id:
         raise PayloadError("destination_id is required")
+    try:
+        destination_id = str(uuid.UUID(destination_id))
+    except ValueError as exc:
+        raise PayloadError("destination_id must be a UUID") from exc
     raw_config = body.get("config")
     if raw_config is None:
         raw_config = dict((existing or {}).get("config") or {})
@@ -163,8 +168,12 @@ def _channel_config(channel, raw, previous, resolver) -> dict:
         bearer = merge_secret(raw.get("bearer_token"), previous.get("bearer_token"))
         bearer = str(bearer or "").strip()
         header_name = str(raw.get("header_name", previous.get("header_name") or "") or "").strip()
-        header_value = merge_secret(raw.get("header_value"), previous.get("header_value"))
-        header_value = str(header_value or "")
+        if "header_name" in raw and not header_name:
+            # Clearing the name removes the header; merging would resurrect the stored secret.
+            header_value = str(raw.get("header_value") or "").strip()
+        else:
+            header_value = merge_secret(raw.get("header_value"), previous.get("header_value"))
+            header_value = str(header_value or "")
         if header_name:
             if not HEADER_NAME_RE.match(header_name) or header_name.lower() in FORBIDDEN_HEADERS:
                 raise PayloadError("header_name is not allowed")

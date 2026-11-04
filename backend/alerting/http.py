@@ -38,13 +38,16 @@ def post_json(
 
     with requests.Session() as session:
         session.mount("https://", _Pinned())
-        response = session.request(
+        with session.request(
             method,
             urlunparse(parsed._replace(netloc=netloc)),
             headers={**dict(headers), "Host": parsed.netloc.rsplit("@", 1)[-1]},
             json=dict(json_body),
             timeout=timeout,
             allow_redirects=False,
-        )
-    text = response.text or ""
-    return response.status_code, text[:RESPONSE_SNIPPET]
+            stream=True,
+        ) as response:
+            # One bounded read: response.text (or read(amt)) would wait out a trickling or huge body.
+            body = response.raw.read1(RESPONSE_SNIPPET, decode_content=True) or b""
+            status_code = response.status_code
+    return status_code, body[:RESPONSE_SNIPPET].decode("utf-8", errors="replace")
