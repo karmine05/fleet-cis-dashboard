@@ -935,7 +935,9 @@ def sync_data():
         errors_before_teams = len(FETCH_ERRORS)
         teams = fetch_teams()
         teams_fetch_failed = len(FETCH_ERRORS) > errors_before_teams
+        errors_before_labels = len(FETCH_ERRORS)
         labels = fetch_labels()
+        labels_fetch_failed = len(FETCH_ERRORS) > errors_before_labels
         
         with db.get_db_cursor(commit=True) as cur:
             # Upsert Teams
@@ -951,8 +953,15 @@ def sync_data():
                 extras.execute_values(cur, """
                     INSERT INTO fleet_labels (label_id, label_name, label_type, description)
                     VALUES %s
-                    ON CONFLICT (label_id) DO UPDATE SET label_name=EXCLUDED.label_name
+                    ON CONFLICT (label_id) DO UPDATE SET label_name=EXCLUDED.label_name,
+                        label_type=EXCLUDED.label_type, description=EXCLUDED.description
                 """, [(l['id'], l['name'], l.get('label_type'), l.get('description')) for l in labels])
+                # Drop labels deleted in Fleet; host_labels rows go with them (ON DELETE CASCADE).
+                # Only after a clean fetch, so a Fleet outage never empties the label list.
+                if not labels_fetch_failed:
+                    cur.execute("DELETE FROM fleet_labels WHERE NOT (label_id = ANY(%s))", ([l['id'] for l in labels],))
+                    if cur.rowcount:
+                        print(f"  [PRUNE] Removed {cur.rowcount} labels no longer in Fleet.")
         
         print(f"  [OK] Synced {len(teams)} teams and {len(labels)} labels.")
 

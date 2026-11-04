@@ -215,7 +215,21 @@ function switchPage(page) {
     }
 }
 
-// Populate filters
+// Populate filters. Safe to call again: each list is rebuilt from the API,
+// so options removed in Fleet disappear instead of stacking up.
+function fillSelect(select, values) {
+    const keep = select.value;
+    while (select.options.length > 1) select.remove(1);  // option 0 is "All ..."
+    values.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    });
+    select.value = values.includes(keep) ? keep : '';
+    return select.value !== keep;  // true when the selected value no longer exists
+}
+
 async function populateFilters() {
     try {
         const [teamsResp, platformsResp, labelsResp] = await Promise.all([
@@ -224,38 +238,15 @@ async function populateFilters() {
             fetch(`${API_BASE}/labels`).then(r => r.json())
         ]);
 
-        const teams = teamsResp.teams || [];
-        const platforms = platformsResp.platforms || [];
-        const labels = labelsResp.labels || [];
-
-        // Teams
-        const teamSelect = document.getElementById('team-filter');
-        teams.forEach(team => {
-            const option = document.createElement('option');
-            option.value = team;
-            option.textContent = team;
-            teamSelect.appendChild(option);
-        });
-
-        // Platforms
-        const platformSelect = document.getElementById('platform-filter');
-        platforms.forEach(platform => {
-            const option = document.createElement('option');
-            option.value = platform;
-            option.textContent = platform;
-            platformSelect.appendChild(option);
-        });
-
-        // Labels
-        const labelSelect = document.getElementById('label-filter');
-        labels.forEach(label => {
-            const option = document.createElement('option');
-            option.value = label;
-            option.textContent = label;
-            labelSelect.appendChild(option);
-        });
+        const dropped = [
+            fillSelect(document.getElementById('team-filter'), teamsResp.teams || []),
+            fillSelect(document.getElementById('platform-filter'), platformsResp.platforms || []),
+            fillSelect(document.getElementById('label-filter'), labelsResp.labels || [])
+        ].some(Boolean);
+        return dropped;
     } catch (error) {
         console.error('Error populating filters:', error);
+        return false;
     }
 }
 
@@ -1660,6 +1651,8 @@ function setupSettingsListeners() {
 }
 
 // --- Sync Status Indicator ---
+let lastSeenSync = null;
+
 async function updateSyncStatus() {
     const textEl = document.getElementById('sync-status-text');
     const iconEl = document.getElementById('sync-icon');
@@ -1681,6 +1674,12 @@ async function updateSyncStatus() {
         }
 
         if (iconEl) iconEl.classList.remove('fa-spin');
+
+        // A new sync finished: refresh the filter lists so deleted labels/teams drop out.
+        if (lastSeenSync && lastSeenSync !== data.last_sync && data.status !== 'failed') {
+            if (await populateFilters()) updateDashboard();  // the selected filter was removed
+        }
+        lastSeenSync = data.last_sync;
 
         // Format as relative time
         const syncTime = new Date(data.last_sync);
