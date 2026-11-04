@@ -1330,7 +1330,7 @@ async function populateStrategyPage(summary, heatmapData) {
         const ctx = document.getElementById('roadmap-chart');
         if (ctx) {
             const roadmap = data.roadmap || [];
-            const labels = roadmap.map(r => r.month);
+            const labels = roadmap.map(r => r.label || r.month);
             const projectedData = roadmap.map(r => r.projected);
             const actualData = roadmap.map(r => r.actual);
 
@@ -1364,7 +1364,7 @@ async function populateStrategyPage(summary, heatmapData) {
                             tension: 0,
                             pointRadius: 3,
                             pointBackgroundColor: '#10B981',
-                            spanGaps: false,
+                            spanGaps: true,
                             borderWidth: 2
                         }
                     ]

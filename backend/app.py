@@ -955,6 +955,79 @@ def history_pair_deltas(cur, h_query, params):
     return cur.fetchall()
 
 
+ROADMAP_MAX_POINTS = 48
+
+
+def history_score_series(cur, h_query, params):
+    """Measured pass rate over time for this scope, from policy_results_history.
+
+    Each history row is an observation of one (policy_id, host_id) pair. LAG gives
+    the pair's previous observation, so every row is a delta: a first observation
+    adds one measured check, and a status change moves the passing count by +/-1.
+    Running sums of those deltas per bucket give the score as of each bucket, in
+    SQL, without replaying every row in Python.
+
+    Buckets are per minute when the window spans under two days (so separate
+    syncs on the same day show up as separate points), otherwise per day.
+    shortcut: a pair that later disappears from Fleet stays counted at its last
+    status, because history records observations, not deletions.
+    """
+    cur.execute(f"""
+        SELECT MIN(checked_at) AS first_seen, MAX(checked_at) AS last_seen
+        FROM policy_results_history
+        WHERE checked_at >= NOW() - make_interval(days => %s)
+          AND host_id IN ({h_query})
+    """, [HISTORY_TREND_DAYS] + list(params))
+    bounds = cur.fetchone()
+    if not bounds or bounds['first_seen'] is None:
+        return []
+    per_day = (bounds['last_seen'] - bounds['first_seen']).total_seconds() >= 2 * 86400
+    unit = 'day' if per_day else 'minute'
+
+    cur.execute(f"""
+        WITH ev AS (
+            SELECT date_trunc(%s, checked_at) AS bucket, status,
+                   LAG(status) OVER (PARTITION BY policy_id, host_id
+                                     ORDER BY checked_at, history_id) AS prev
+            FROM policy_results_history
+            WHERE checked_at >= NOW() - make_interval(days => %s)
+              AND host_id IN ({h_query})
+        ),
+        deltas AS (
+            SELECT bucket,
+                   COUNT(*) FILTER (WHERE prev IS NULL) AS d_measured,
+                   SUM((status = 'pass')::int - COALESCE((prev = 'pass')::int, 0)) AS d_pass
+            FROM ev
+            GROUP BY bucket
+        )
+        SELECT bucket,
+               SUM(d_measured) OVER (ORDER BY bucket) AS measured,
+               SUM(d_pass) OVER (ORDER BY bucket) AS passing
+        FROM deltas
+        ORDER BY bucket
+    """, [unit, HISTORY_TREND_DAYS] + list(params))
+    rows = cur.fetchall()
+
+    points = []
+    for r in rows:
+        if not r['measured']:
+            continue
+        point = {"at": r['bucket'], "score": round(100.0 * float(r['passing']) / float(r['measured']), 1)}
+        # One sync can straddle a minute boundary; keep only its final state.
+        if not per_day and points and (point["at"] - points[-1]["at"]).total_seconds() <= 120:
+            points[-1] = point
+        else:
+            points.append(point)
+
+    if len(points) > ROADMAP_MAX_POINTS:
+        step = len(points) / float(ROADMAP_MAX_POINTS)
+        thinned = [points[int(i * step)] for i in range(ROADMAP_MAX_POINTS - 1)]
+        points = thinned + [points[-1]]
+
+    fmt = '%b %d' if per_day else '%b %d %H:%M UTC'
+    return [{"label": p["at"].strftime(fmt), "score": p["score"]} for p in points]
+
+
 def technique_trends(trend_rows, policy_techniques):
     """Roll per-policy history deltas up to ATT&CK techniques.
 
@@ -1893,24 +1966,20 @@ def get_strategy():
         elif posture_score >= config_number('maturity_level_3', 70): maturity = 3
         elif posture_score >= config_number('maturity_level_2', 50): maturity = 2
 
-        # 6. Roadmap — projected targets only; actual only for current month (no fabricated history)
-        roadmap = []
+        # 6. Roadmap — measured history from policy_results_history, then the live
+        #    score ("Now"), then a linear target path toward 95% by year end. Past
+        #    points come only from stored observations; nothing is fabricated.
+        roadmap = [{"label": p["label"], "month": p["label"], "projected": None, "actual": p["score"]}
+                   for p in history_score_series(cur, h_query, params)]
+        roadmap.append({"label": "Now", "month": "Now",
+                        "projected": posture_score, "actual": posture_score})
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         current_month_idx = datetime.now().month - 1
-        for i, m in enumerate(months):
-            # Linear target path from current posture toward 95% by year end
-            remaining = max(1, 11 - current_month_idx)
-            if i < current_month_idx:
-                projected = None  # no fake past
-                actual = None
-            elif i == current_month_idx:
-                projected = round(posture_score)
-                actual = round(posture_score)
-            else:
-                steps = i - current_month_idx
-                projected = min(95, round(posture_score + steps * (95 - posture_score) / remaining))
-                actual = None
-            roadmap.append({"month": m, "projected": projected, "actual": actual})
+        remaining = max(1, 11 - current_month_idx)
+        for i in range(current_month_idx + 1, 12):
+            steps = i - current_month_idx
+            projected = min(95, round(posture_score + steps * (95 - posture_score) / remaining))
+            roadmap.append({"label": months[i], "month": months[i], "projected": projected, "actual": None})
 
         # 7. Team Leaderboard
         cur.execute(f"""
